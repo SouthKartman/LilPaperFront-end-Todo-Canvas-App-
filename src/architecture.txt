@@ -1,0 +1,102 @@
+Modular Architecture
+
+todo-canvas-app/
+├── public/
+│   ├── index.html
+│   └── favicon.ico
+├── src/
+│   ├── components/
+│   │   ├── common/
+│   │   │   ├── Button/
+│   │   │   │   ├── Button.jsx
+│   │   │   │   ├── Button.module.css
+│   │   │   │   └── index.js
+│   │   │   ├── Modal/
+│   │   │   │   ├── Modal.jsx
+│   │   │   │   ├── Modal.module.css
+│   │   │   │   └── index.js
+│   │   │   └── Tooltip/
+│   │   │       ├── Tooltip.jsx
+│   │   │       ├── Tooltip.module.css
+│   │   │       └── index.js
+│   │   ├── canvas/
+│   │   │   ├── Canvas/
+│   │   │   │   ├── Canvas.jsx
+│   │   │   │   ├── Canvas.module.css
+│   │   │   │   └── index.js
+│   │   │   ├── Node/
+│   │   │   │   ├── Node.jsx
+│   │   │   │   ├── Node.module.css
+│   │   │   │   └── index.js
+│   │   │   ├── Connection/
+│   │   │   │   ├── Connection.jsx
+│   │   │   │   ├── Connection.module.css
+│   │   │   │   └── index.js
+│   │   │   └── SelectionBox/
+│   │   │       ├── SelectionBox.jsx
+│   │   │       ├── SelectionBox.module.css
+│   │   │       └── index.js
+│   │   ├── toolbar/
+│   │   │   ├── Toolbar/
+│   │   │   │   ├── Toolbar.jsx
+│   │   │   │   ├── Toolbar.module.css
+│   │   │   │   └── index.js
+│   │   │   └── ToolbarItem/
+│   │   │       ├── ToolbarItem.jsx
+│   │   │       ├── ToolbarItem.module.css
+│   │   │       └── index.js
+│   │   ├── sidebar/
+│   │   │   ├── Sidebar/
+│   │   │   │   ├── Sidebar.jsx
+│   │   │   │   ├── Sidebar.module.css
+│   │   │   │   └── index.js
+│   │   │   ├── PropertiesPanel/
+│   │   │   │   ├── PropertiesPanel.jsx
+│   │   │   │   ├── PropertiesPanel.module.css
+│   │   │   │   └── index.js
+│   │   │   └── LayersPanel/
+│   │   │       ├── LayersPanel.jsx
+│   │   │       ├── LayersPanel.module.css
+│   │   │       └── index.js
+│   │   └── todo/
+│   │       ├── TodoNode/
+│   │       │   ├── TodoNode.jsx
+│   │       │   ├── TodoNode.module.css
+│   │       │   └── index.js
+│   │       ├── TodoForm/
+│   │       │   ├── TodoForm.jsx
+│   │       │   ├── TodoForm.module.css
+│   │       │   └── index.js
+│   │       └── TodoList/
+│   │           ├── TodoList.jsx
+│   │           ├── TodoList.module.css
+│   │           └── index.js
+│   ├── hooks/
+│   │   ├── useCanvas.js
+│   │   ├── useDragAndDrop.js
+│   │   ├── useSelection.js
+│   │   └── useZoomPan.js
+│   ├── utils/
+│   │   ├── canvasHelpers.js
+│   │   ├── domHelpers.js
+│   │   └── todoHelpers.js
+│   ├── store/
+│   │   ├── slices/
+│   │   │   ├── canvasSlice.js
+│   │   │   ├── todosSlice.js
+│   │   │   └── uiSlice.js
+│   │   └── index.js
+│   ├── styles/
+│   │   ├── global.css
+│   │   ├── variables.css
+│   │   └── themes/
+│   │       ├── light.css
+│   │       └── dark.css
+│   ├── App.jsx
+│   ├── App.module.css
+│   ├── index.jsx
+│   └── serviceWorker.js
+├── package.json
+├── README.md
+├── .gitignore
+└── jsconfig.json / tsconfig.json (для TypeScript)

@@ -1,0 +1,107 @@
+/* src/features/todo-nodes/ui/TodoNode/TodoNode.module.css */
+.node {
+  position: absolute;
+  width: 220px;
+  background: white;
+  border: 2px solid;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  cursor: move;
+  user-select: none;
+  transition: all 0.2s ease;
+  z-index: 1;
+}
+
+.node:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.node.dragging {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  cursor: grabbing;
+  pointer-events: none;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+
+.title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+  flex: 1;
+  line-height: 1.4;
+}
+
+.status {
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.description {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.4;
+  min-height: 34px;
+  word-break: break-word;
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  margin-top: 8px;
+}
+
+.priority {
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.dueDate {
+  color: #9ca3af;
+}
+
+.tags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.tag {
+  background: #f3f4f6;
+  color: #6b7280;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.dragHandle {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  opacity: 0.3;
+  font-size: 12px;
+  cursor: move;
+  user-select: none;
+}
+
+.node:hover .dragHandle {
+  opacity: 0.6;
+}
