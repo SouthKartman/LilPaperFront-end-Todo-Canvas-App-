@@ -1,0 +1,84 @@
+/* src/features/context-menu/ui/ContextMenu.css */
+.context-menu {
+  position: fixed;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  min-width: 200px;
+  max-width: 320px;
+  overflow: hidden;
+  animation: contextMenuFadeIn 0.1s ease-out;
+  z-index: 9999;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.context-menu__content {
+  padding: 4px 0;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.context-menu::-webkit-scrollbar {
+  width: 6px;
+}
+
+.context-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.context-menu::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+
+.context-menu::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+.menu-divider {
+  height: 1px;
+  background-color: #e5e7eb;
+  margin: 4px 0;
+  border: none;
+}
+
+@keyframes contextMenuFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Темная тема */
+@media (prefers-color-scheme: dark) {
+  .context-menu {
+    background: #1f2937;
+    border-color: #374151;
+    color: #f9fafb;
+  }
+  
+  .menu-item {
+    color: #f9fafb;
+  }
+  
+  .menu-item:hover:not(.menu-item--disabled) {
+    background-color: #374151;
+  }
+  
+  .menu-item:focus {
+    background-color: #4b5563;
+  }
+  
+  .menu-item__shortcut {
+    color: #d1d5db;
+  }
+  
+  .menu-divider {
+    background-color: #374151;
+  }
+}
