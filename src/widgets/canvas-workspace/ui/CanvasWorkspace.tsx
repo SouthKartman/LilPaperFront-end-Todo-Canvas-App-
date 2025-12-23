@@ -544,10 +544,10 @@ export const CanvasWorkspace: React.FC = () => {
       {/* Информация о выделении */}
       {selectedNodes.length > 0 && (
         <div className={styles.selectionInfo}>
-          Выбрано: {selectedNodes.length} задач
+          {/* Выбрано: {selectedNodes.length} задач
           <span className={styles.selectionHint}>
             (Del - удалить, Ctrl+D - дублировать, Esc - снять выделение)
-          </span>
+          </span> */}
         </div>
       )}
       

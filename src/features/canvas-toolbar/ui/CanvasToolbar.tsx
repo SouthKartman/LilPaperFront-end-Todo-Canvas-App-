@@ -8,7 +8,7 @@ export const CanvasToolbar: React.FC = () => {
   return (
     <div className={styles.toolbar}>
       <div className={styles.tools}>
-        <button className={`${styles.toolButton} ${styles.active}`}>
+        {/* <button className={`${styles.toolButton} ${styles.active}`}>
           <span>🔍</span> Выделение
         </button>
         <button className={styles.toolButton}>
@@ -19,7 +19,7 @@ export const CanvasToolbar: React.FC = () => {
         </button>
         <button className={styles.toolButton}>
           <span>🔗</span> Соединение
-        </button>
+        </button> */}
       </div>
       <div style={{ marginLeft: 'auto', display: 'flex', gap: '10px', alignItems: 'center' }}>
         <span style={{ fontSize: '14px', color: '#666' }}>Масштаб: 100%</span>
