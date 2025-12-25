@@ -1,46 +1,28 @@
 // src/features/todo-nodes/model/slice.ts
-import { createSlice, PayloadAction } from '@reduxjs/toolkit'
-import { CreateTodoDto, UpdateTodoDto } from '@entities/todo/model/types'
-import { nanoid } from 'nanoid'
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { CreateTodoDto, UpdateTodoDto } from '@entities/todo/model/types';
+import { nanoid } from 'nanoid';
+import { TodoStorage } from '../../../shared/api/storage/jsonStorage/todoStorage';
+import { TodoNodesState } from './types';
 
-export interface TodoNode {
-  id: string
-  title: string
-  description: string
-  status: 'todo' | 'in-progress' | 'done' | 'blocked'
-  priority: 'low' | 'medium' | 'high' | 'critical'
-  createdAt: Date
-  updatedAt: Date
-  dueDate?: Date
-  tags: string[]
-  parentId?: string
-  assignee?: string
-  position: {
-    x: number
-    y: number
-  }
-  size: {
-    width: number
-    height: number
-  }
-  // Добавленные поля для работы с канвасом
-  zIndex?: number
-  isEditing?: boolean
-  type?: 'default' | 'checklist' | 'note' | 'urgent'
-}
+// ... ваш существующий код с интерфейсами ...
 
-interface TodoNodesState {
-  nodes: Record<string, TodoNode>
-  selectedNodeIds: string[]
-  // Добавленное поле для редактирования
-  editingNodeId: string | null
-}
+// Загружаем начальное состояние из localStorage
+const savedNodes = TodoStorage.loadNodes();
 
 const initialState: TodoNodesState = {
-  nodes: {},
+  nodes: savedNodes,
   selectedNodeIds: [],
   editingNodeId: null,
-}
+};
+
+// Вспомогательная функция для автосохранения
+const saveState = (state: TodoNodesState) => {
+  // Используем setTimeout для асинхронного сохранения без блокировки UI
+  setTimeout(() => {
+    TodoStorage.saveNodes(state.nodes);
+  }, 0);
+};
 
 export const todoNodesSlice = createSlice({
   name: 'todoNodes',
@@ -68,9 +50,11 @@ export const todoNodesSlice = createSlice({
         isEditing: false,
         type: action.payload.type || 'default',
       }
+      
+      // Автосохранение
+      saveState(state);
     },
     
-    // Новый action для создания через контекстное меню
     createTodoAtPosition: (
       state, 
       action: PayloadAction<{
@@ -99,16 +83,17 @@ export const todoNodesSlice = createSlice({
         position,
         size: { width: 280, height: 180 },
         zIndex: 1,
-        isEditing: true, // Автоматически начинаем редактирование
+        isEditing: true,
         type,
       }
       
-      // Выделяем созданную ноду
       state.selectedNodeIds = [id]
       state.editingNodeId = id
+      
+      // Автосохранение
+      saveState(state);
     },
     
-    // Новый action для дублирования ноды
     duplicateTodo: (state, action: PayloadAction<string>) => {
       const originalId = action.payload
       const originalNode = state.nodes[originalId]
@@ -117,7 +102,6 @@ export const todoNodesSlice = createSlice({
         const id = nanoid()
         const now = new Date()
         
-        // Создаем копию со смещением позиции
         state.nodes[id] = {
           ...originalNode,
           id,
@@ -131,13 +115,14 @@ export const todoNodesSlice = createSlice({
           isEditing: false,
         }
         
-        // Выделяем новую ноду
         state.selectedNodeIds = [id]
         state.editingNodeId = null
+        
+        // Автосохранение
+        saveState(state);
       }
     },
     
-    // Новый action для начала редактирования
     startEditingTodo: (state, action: PayloadAction<string>) => {
       const nodeId = action.payload
       if (state.nodes[nodeId]) {
@@ -146,12 +131,14 @@ export const todoNodesSlice = createSlice({
       }
     },
     
-    // Новый action для завершения редактирования
     finishEditingTodo: (state, action: PayloadAction<string>) => {
       const nodeId = action.payload
       if (state.nodes[nodeId]) {
         state.editingNodeId = null
         state.nodes[nodeId].isEditing = false
+        
+        // Автосохранение при завершении редактирования
+        saveState(state);
       }
     },
     
@@ -162,13 +149,15 @@ export const todoNodesSlice = createSlice({
         Object.assign(node, { 
           ...updates, 
           updatedAt: new Date(),
-          isEditing: false, // Завершаем редактирование при обновлении
+          isEditing: false,
         })
         state.editingNodeId = null
+        
+        // Автосохранение
+        saveState(state);
       }
     },
     
-    // Новый action для частичного обновления
     updateTodoPartial: (
       state, 
       action: PayloadAction<{id: string; updates: Partial<TodoNode>}>
@@ -180,6 +169,9 @@ export const todoNodesSlice = createSlice({
           ...updates, 
           updatedAt: new Date() 
         })
+        
+        // Автосохранение
+        saveState(state);
       }
     },
     
@@ -190,24 +182,27 @@ export const todoNodesSlice = createSlice({
         selectedId => selectedId !== nodeId
       )
       
-      // Если удаляем редактируемую ноду, сбрасываем editingNodeId
       if (state.editingNodeId === nodeId) {
         state.editingNodeId = null
       }
+      
+      // Автосохранение
+      saveState(state);
     },
     
-    // Новый action для удаления нескольких нод
     deleteSelectedTodos: (state) => {
       state.selectedNodeIds.forEach(nodeId => {
         delete state.nodes[nodeId]
       })
       
-      // Если среди удаленных была редактируемая нода
       if (state.editingNodeId && state.selectedNodeIds.includes(state.editingNodeId)) {
         state.editingNodeId = null
       }
       
       state.selectedNodeIds = []
+      
+      // Автосохранение
+      saveState(state);
     },
     
     selectNode: (state, action: PayloadAction<string>) => {
@@ -226,7 +221,6 @@ export const todoNodesSlice = createSlice({
       state.selectedNodeIds = []
     },
     
-    // Новый action для перемещения ноды
     moveTodo: (
       state, 
       action: PayloadAction<{id: string; position: { x: number; y: number }}>
@@ -236,10 +230,12 @@ export const todoNodesSlice = createSlice({
       if (node) {
         node.position = position
         node.updatedAt = new Date()
+        
+        // Автосохранение при перемещении
+        saveState(state);
       }
     },
     
-    // Новый action для изменения размера ноды
     resizeTodo: (
       state, 
       action: PayloadAction<{id: string; size: { width: number; height: number }}>
@@ -249,33 +245,38 @@ export const todoNodesSlice = createSlice({
       if (node) {
         node.size = size
         node.updatedAt = new Date()
+        
+        // Автосохранение при изменении размера
+        saveState(state);
       }
     },
     
-    // Новый action для изменения z-index
     bringToFront: (state, action: PayloadAction<string>) => {
       const node = state.nodes[action.payload]
       if (node) {
-        // Находим максимальный zIndex среди всех нод
         const maxZIndex = Object.values(state.nodes)
           .reduce((max, n) => Math.max(max, n.zIndex || 1), 1)
         node.zIndex = maxZIndex + 1
         node.updatedAt = new Date()
+        
+        // Автосохранение
+        saveState(state);
       }
     },
     
     sendToBack: (state, action: PayloadAction<string>) => {
       const node = state.nodes[action.payload]
       if (node) {
-        // Находим минимальный zIndex среди всех нод
         const minZIndex = Object.values(state.nodes)
           .reduce((min, n) => Math.min(min, n.zIndex || 1), 1)
         node.zIndex = Math.max(1, minZIndex - 1)
         node.updatedAt = new Date()
+        
+        // Автосохранение
+        saveState(state);
       }
     },
     
-    // Новый action для установки приоритета
     setTodoPriority: (
       state, 
       action: PayloadAction<{id: string; priority: TodoNode['priority']}>
@@ -285,10 +286,12 @@ export const todoNodesSlice = createSlice({
       if (node) {
         node.priority = priority
         node.updatedAt = new Date()
+        
+        // Автосохранение
+        saveState(state);
       }
     },
     
-    // Новый action для установки статуса
     setTodoStatus: (
       state, 
       action: PayloadAction<{id: string; status: TodoNode['status']}>
@@ -298,10 +301,12 @@ export const todoNodesSlice = createSlice({
       if (node) {
         node.status = status
         node.updatedAt = new Date()
+        
+        // Автосохранение
+        saveState(state);
       }
     },
     
-    // Новый action для добавления тега
     addTodoTag: (
       state, 
       action: PayloadAction<{id: string; tag: string}>
@@ -311,10 +316,12 @@ export const todoNodesSlice = createSlice({
       if (node && !node.tags.includes(tag)) {
         node.tags.push(tag)
         node.updatedAt = new Date()
+        
+        // Автосохранение
+        saveState(state);
       }
     },
     
-    // Новый action для удаления тега
     removeTodoTag: (
       state, 
       action: PayloadAction<{id: string; tag: string}>
@@ -324,11 +331,68 @@ export const todoNodesSlice = createSlice({
       if (node) {
         node.tags = node.tags.filter(t => t !== tag)
         node.updatedAt = new Date()
+        
+        // Автосохранение
+        saveState(state);
       }
     },
+    
+    // НОВЫЕ ACTIONS ДЛЯ УПРАВЛЕНИЯ ХРАНИЛИЩЕМ
+    
+    /**
+     * Импортировать ноды из файла
+     */
+    importNodes: (state, action: PayloadAction<Record<string, TodoNode>>) => {
+      state.nodes = action.payload;
+      state.selectedNodeIds = [];
+      state.editingNodeId = null;
+      
+      // Сохраняем импортированные данные
+      saveState(state);
+    },
+    
+    /**
+     * Экспортировать ноды в файл
+     */
+    exportNodes: (state) => {
+      // Экспорт происходит через компонент, здесь только триггер
+      TodoStorage.exportToFile(state.nodes);
+    },
+    
+    /**
+     * Очистить все ноды и хранилище
+     */
+    clearAllNodes: (state) => {
+      state.nodes = {};
+      state.selectedNodeIds = [];
+      state.editingNodeId = null;
+      
+      // Очищаем хранилище
+      TodoStorage.clearAll();
+    },
+    
+    /**
+     * Восстановить из последней сохраненной версии
+     */
+    restoreFromStorage: (state) => {
+      const savedNodes = TodoStorage.loadNodes();
+      state.nodes = savedNodes;
+      state.selectedNodeIds = [];
+      state.editingNodeId = null;
+    },
+    
+    /**
+     * Сохранить состояние вручную (например, перед закрытием)
+     */
+    manualSave: (state) => {
+      TodoStorage.saveNodes(state.nodes);
+    },
   },
-})
+});
 
+// ... остальной код экспортов ...
+
+// Добавьте новые actions в экспорт
 export const {
   createTodo,
   createTodoAtPosition,
@@ -350,11 +414,15 @@ export const {
   setTodoStatus,
   addTodoTag,
   removeTodoTag,
-} = todoNodesSlice.actions
+  // Новые actions для хранилища
+  importNodes,
+  exportNodes,
+  clearAllNodes,
+  restoreFromStorage,
+  manualSave,
+} = todoNodesSlice.actions;
 
-
-
-// В конце файла slice.ts, после всех actions, добавьте:
+// Обновите todoNodesActions
 export const todoNodesActions = {
   createTodo,
   createTodoAtPosition,
@@ -376,6 +444,11 @@ export const todoNodesActions = {
   setTodoStatus,
   addTodoTag,
   removeTodoTag,
-}
+  importNodes,
+  exportNodes,
+  clearAllNodes,
+  restoreFromStorage,
+  manualSave,
+};
 
-export default todoNodesSlice.reducer
+export default todoNodesSlice.reducer;

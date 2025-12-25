@@ -8,9 +8,9 @@ export interface Todo {
   description: string
   status: TodoStatus
   priority: TodoPriority
-  createdAt: Date
-  updatedAt: Date
-  dueDate?: Date
+  createdAt: string;  // Изменено: Date → string (ISO format)
+  updatedAt: string;  // Изменено: Date → string (ISO format)
+  dueDate?: string;   // Изменено: Date → string (ISO format)
   tags: string[]
   parentId?: string
   assignee?: string
@@ -41,6 +41,22 @@ export interface CreateTodoDto {
 export interface UpdateTodoDto extends Partial<CreateTodoDto> {
   id: string
 }
+
+export interface TodoNodesState {
+  nodes: Record<string, TodoNode>;
+  selectedNodeIds: string[];
+  editingNodeId: string | null;
+}
+
+// Хелпер для создания даты в ISO формате
+export const createISODate = (date?: Date): string => {
+  return (date || new Date()).toISOString();
+};
+
+// Хелпер для преобразования строки в Date
+export const parseISODate = (dateString: string): Date => {
+  return new Date(dateString);
+};
 
 // Реэкспорт
 export * from './types'

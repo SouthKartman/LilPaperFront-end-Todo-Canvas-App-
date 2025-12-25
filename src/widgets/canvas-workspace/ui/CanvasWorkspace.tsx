@@ -14,6 +14,7 @@ import { QuickTodoForm } from '@features/todo-form/ui/QuickTodoForm'
 import { TodoFormModal } from '@features/todo-form/ui/TodoFormModal'
 import styles from './CanvasWorkspace.module.css'
 import { RootState } from '@shared/lib/state/store'
+import { StorageManager } from '@features/storage/ui/StorageManager';
 
 export const CanvasWorkspace: React.FC = () => {
   const { nodes } = useTodoNodes()

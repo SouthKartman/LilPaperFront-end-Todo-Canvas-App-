@@ -1,0 +1,101 @@
+/* src/features/storage/ui/StorageManager/StorageManager.css */
+.storage-manager {
+  background: #f5f5f5;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 20px 0;
+  border: 1px solid #e0e0e0;
+}
+
+.storage-stats {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #666;
+  font-weight: 500;
+}
+
+.stat-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.storage-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.storage-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.storage-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.storage-btn-export {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.storage-btn-export:hover {
+  background: #bbdefb;
+}
+
+.storage-btn-import {
+  background: #f3e5f5;
+  color: #7b1fa2;
+}
+
+.storage-btn-import:hover {
+  background: #e1bee7;
+}
+
+.storage-btn-backup {
+  background: #e8f5e9;
+  color: #388e3c;
+}
+
+.storage-btn-backup:hover {
+  background: #c8e6c9;
+}
+
+.storage-btn-clear {
+  background: #ffebee;
+  color: #d32f2f;
+}
+
+.storage-btn-clear:hover {
+  background: #ffcdd2;
+}
+
+.storage-info {
+  font-size: 12px;
+  color: #757575;
+  line-height: 1.4;
+}

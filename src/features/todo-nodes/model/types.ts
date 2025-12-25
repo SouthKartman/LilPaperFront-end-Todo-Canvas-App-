@@ -7,3 +7,4 @@ export interface TodoNodesState {
   nodes: Record<string, TodoNode>
   selectedNodeIds: string[]
 }
+

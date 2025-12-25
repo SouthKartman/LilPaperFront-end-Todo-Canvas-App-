@@ -1,13 +1,15 @@
 // src/features/canvas-toolbar/ui/CanvasToolbar.tsx
 import React from 'react'
 import styles from './CanvasToolbar.module.css'
-
+import { RootState } from '@shared/lib/state/store'
+import { StorageManager } from '@features/storage/ui/StorageManager';
 
 
 export const CanvasToolbar: React.FC = () => {
   return (
     <div className={styles.toolbar}>
       <div className={styles.tools}>
+        <StorageManager></StorageManager>
         {/* <button className={`${styles.toolButton} ${styles.active}`}>
           <span>🔍</span> Выделение
         </button>
