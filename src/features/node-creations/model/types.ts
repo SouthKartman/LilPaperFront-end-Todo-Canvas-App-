@@ -1,26 +1,20 @@
-export type MenuItemType = {
+// src/features/context-menu/model/types.ts
+export interface MenuItemData {
   id: string;
   label: string;
-  icon?: React.ReactNode;
+  icon?: string;
   shortcut?: string;
   disabled?: boolean;
-  onClick: () => void;
-  children?: MenuItemType[];
-};
+  // ❌ УДАЛИТЬ: onClick: () => void;
+  // ✅ ДОБАВИТЬ вместо функции:
+  actionType?: string; // Например: 'EDIT_NODE', 'DELETE_NODE'
+  payload?: any; // Данные для action
+  children?: MenuItemData[];
+}
 
-export type ContextMenuState = {
+export interface ContextMenuState {
   isVisible: boolean;
   position: { x: number; y: number } | null;
-  items: MenuItemType[];
-  context?: {
-    type: 'canvas' | 'node' | 'selection';
-    targetId?: string;
-    position?: { x: number; y: number };
-  };
-};
-
-export type ShowMenuPayload = {
-  x: number;
-  y: number;
-  context?: ContextMenuState['context'];
-};
+  items: MenuItemData[];
+  context?: any;
+}

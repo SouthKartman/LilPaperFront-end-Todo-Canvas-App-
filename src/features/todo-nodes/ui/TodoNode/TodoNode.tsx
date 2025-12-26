@@ -1,6 +1,6 @@
 // src/features/todo-nodes/ui/TodoNode/TodoNode.tsx
 import React, { useRef, useEffect, useState } from 'react'
-import { Todo } from '@entities/todo/model/types'
+import { createISODate, Todo } from '@entities/todo/model/types'
 import { useCanvasDnd } from '@features/canvas-dnd/lib/useCanvasDnd'
 import { useAppDispatch } from '@shared/lib/state'
 import { 
@@ -58,7 +58,7 @@ export const TodoNode: React.FC<TodoNodeProps> = ({
       dispatch(updateTodo({
         id: node.id,
         title: editedTitle,
-        updatedAt: new Date(),
+        updatedAt: createISODate()
       }))
     }
     setIsEditingTitle(false)
@@ -69,7 +69,7 @@ export const TodoNode: React.FC<TodoNodeProps> = ({
       dispatch(updateTodo({
         id: node.id,
         description: editedDescription,
-        updatedAt: new Date(),
+        updatedAt: createISODate()
       }))
     }
     setIsEditingDesc(false)

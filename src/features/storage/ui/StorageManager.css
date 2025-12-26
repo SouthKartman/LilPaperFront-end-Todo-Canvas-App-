@@ -1,18 +1,39 @@
 /* src/features/storage/ui/StorageManager/StorageManager.css */
 .storage-manager {
-  background: #f5f5f5;
-  border-radius: 8px;
-  padding: 16px;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 20px;
   margin: 20px 0;
   border: 1px solid #e0e0e0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  position: absolute;
+  bottom: 50px;
+}
+
+.storage-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.storage-header h3 {
+  margin: 0;
+  color: #333;
+  font-size: 18px;
 }
 
 .storage-stats {
-  display: flex;
-  gap: 24px;
-  margin-bottom: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #e0e0e0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
 }
 
 .stat-item {
@@ -22,80 +43,132 @@
 }
 
 .stat-label {
-  font-size: 12px;
-  color: #666;
+  font-size: 13px;
+  color: #6c757d;
   font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .stat-value {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
-  color: #333;
+  color: #212529;
 }
 
 .storage-actions {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .storage-btn {
-  padding: 8px 16px;
+  padding: 10px 16px;
   border: none;
   border-radius: 6px;
   cursor: pointer;
   font-weight: 500;
   font-size: 14px;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  min-width: 140px;
+  justify-content: center;
 }
 
 .storage-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.storage-btn:active {
+  transform: translateY(0);
+}
+
+.storage-btn-refresh {
+  background: #6c757d;
+  color: white;
+  padding: 8px;
+  min-width: auto;
+  width: 40px;
+  height: 40px;
+}
+
+.storage-btn-refresh:hover {
+  background: #5a6268;
 }
 
 .storage-btn-export {
-  background: #e3f2fd;
-  color: #1976d2;
+  background: linear-gradient(135deg, #17a2b8, #138496);
+  color: white;
 }
 
 .storage-btn-export:hover {
-  background: #bbdefb;
+  background: linear-gradient(135deg, #138496, #117a8b);
 }
 
 .storage-btn-import {
-  background: #f3e5f5;
-  color: #7b1fa2;
+  background: linear-gradient(135deg, #28a745, #218838);
+  color: white;
 }
 
 .storage-btn-import:hover {
-  background: #e1bee7;
+  background: linear-gradient(135deg, #218838, #1e7e34);
 }
 
 .storage-btn-backup {
-  background: #e8f5e9;
-  color: #388e3c;
+  background: linear-gradient(135deg, #ffc107, #e0a800);
+  color: #212529;
 }
 
 .storage-btn-backup:hover {
-  background: #c8e6c9;
+  background: linear-gradient(135deg, #e0a800, #d39e00);
 }
 
 .storage-btn-clear {
-  background: #ffebee;
-  color: #d32f2f;
+  background: linear-gradient(135deg, #dc3545, #c82333);
+  color: white;
 }
 
 .storage-btn-clear:hover {
-  background: #ffcdd2;
+  background: linear-gradient(135deg, #c82333, #bd2130);
 }
 
 .storage-info {
-  font-size: 12px;
-  color: #757575;
-  line-height: 1.4;
+  padding: 16px;
+  background: #e7f5ff;
+  border-radius: 8px;
+  border-left: 4px solid #17a2b8;
+  margin-top: 16px;
+}
+
+.storage-info small {
+  font-size: 13px;
+  color: #055160;
+}
+
+.storage-info ul {
+  margin: 8px 0 0 0;
+  padding-left: 20px;
+}
+
+.storage-info li {
+  margin-bottom: 4px;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .storage-stats {
+    grid-template-columns: 1fr;
+  }
+  
+  .storage-actions {
+    flex-direction: column;
+  }
+  
+  .storage-btn {
+    width: 100%;
+  }
 }

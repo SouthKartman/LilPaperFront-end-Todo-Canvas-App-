@@ -1,74 +1,160 @@
 // src/features/todo-nodes/model/slice.ts
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { CreateTodoDto, UpdateTodoDto } from '@entities/todo/model/types';
 import { nanoid } from 'nanoid';
-import { TodoStorage } from '../../../shared/api/storage/jsonStorage/todoStorage';
-import { TodoNodesState } from './types';
+import { 
+  Todo, 
+  TodoStatus, 
+  TodoPriority, 
+  CreateTodoDto, 
+  UpdateTodoDto,
+  createISODate 
+} from '@entities/todo/model/types';
+import { TodoStorage } from '@shared/api/storage/jsonStorage/todoStorage';
 
-// ... ваш существующий код с интерфейсами ...
+export interface TodoNodesState {
+  nodes: Record<string, Todo>;
+  selectedNodeIds: string[];
+  editingNodeId: string | null;
+}
 
-// Загружаем начальное состояние из localStorage
-const savedNodes = TodoStorage.loadNodes();
+// БЕЗОПАСНАЯ загрузка начального состояния
+const loadInitialState = (): TodoNodesState => {
+  // Проверяем, что мы в браузере (не SSR)
+  if (typeof window === 'undefined') {
+    return {
+      nodes: {},
+      selectedNodeIds: [],
+      editingNodeId: null,
+    };
+  }
 
-const initialState: TodoNodesState = {
-  nodes: savedNodes,
-  selectedNodeIds: [],
-  editingNodeId: null,
+  try {
+    const savedTodos = TodoStorage.loadTodos();
+    console.log('📂 Загружено задач из хранилища:', Object.keys(savedTodos).length);
+    
+    return {
+      nodes: savedTodos,
+      selectedNodeIds: [],
+      editingNodeId: null,
+    };
+  } catch (error) {
+    console.error('❌ Ошибка загрузки из хранилища:', error);
+    return {
+      nodes: {},
+      selectedNodeIds: [],
+      editingNodeId: null,
+    };
+  }
 };
 
-// Вспомогательная функция для автосохранения
+const initialState: TodoNodesState = loadInitialState();
+
+// ФУНКЦИЯ ДЛЯ СОХРАНЕНИЯ - КОНВЕРТИРУЕМ PROXY В ОБЫЧНЫЙ ОБЪЕКТ
 const saveState = (state: TodoNodesState) => {
-  // Используем setTimeout для асинхронного сохранения без блокировки UI
+  // Важно: конвертируем proxy Immer в обычный объект
+  try {
+    // Способ 1: Используем JSON.stringify/parse для глубокого копирования
+    const nodesToSave = JSON.parse(JSON.stringify(state.nodes));
+    TodoStorage.saveTodos(nodesToSave);
+  } catch (error) {
+    console.error('❌ Ошибка автосохранения:', error);
+    
+    // Способ 2: Ручное копирование как fallback
+    try {
+      const manualCopy: Record<string, Todo> = {};
+      for (const [key, value] of Object.entries(state.nodes)) {
+        if (value && typeof value === 'object') {
+          manualCopy[key] = { ...value };
+        }
+      }
+      TodoStorage.saveTodos(manualCopy);
+    } catch (fallbackError) {
+      console.error('❌ Ошибка и в fallback сохранении:', fallbackError);
+    }
+  }
+};
+
+// АВТОСОХРАНЕНИЕ С ЗАЩИТОЙ ОТ PROXY
+const autoSave = (state: TodoNodesState) => {
+  // Используем setTimeout чтобы дать Redux завершить обновление состояния
+  // и избежать работы с уже отозванным proxy
   setTimeout(() => {
-    TodoStorage.saveNodes(state.nodes);
+    saveState(state);
   }, 0);
+};
+
+// МИДЛВАРЕ ДЛЯ АВТОСОХРАНЕНИЯ (опционально, но надежнее)
+export const createAutoSaveMiddleware = () => (store: any) => (next: any) => (action: any) => {
+  const result = next(action);
+  
+  // Сохраняем только после определенных действий
+  const saveActions = [
+    'todoNodes/createTodo',
+    'todoNodes/updateTodo',
+    'todoNodes/deleteTodo',
+    'todoNodes/moveTodo',
+    'todoNodes/setTodoStatus',
+    'todoNodes/setTodoPriority',
+    'todoNodes/clearAllNodes',
+    'todoNodes/importNodes',
+    'todoNodes/duplicateTodo',
+    'todoNodes/deleteSelectedTodos',
+  ];
+  
+  if (saveActions.includes(action.type)) {
+    // Используем setTimeout чтобы состояние уже обновилось
+    setTimeout(() => {
+      const state = store.getState();
+      saveState(state.todoNodes);
+    }, 0);
+  }
+  
+  return result;
 };
 
 export const todoNodesSlice = createSlice({
   name: 'todoNodes',
   initialState,
   reducers: {
+    // Создание новой задачи
     createTodo: (state, action: PayloadAction<CreateTodoDto>) => {
-      const id = nanoid()
-      const now = new Date()
+      const id = nanoid();
+      const now = createISODate();
+      const payload = action.payload;
       
-      state.nodes[id] = {
+      const newTodo: Todo = {
         id,
-        title: action.payload.title,
-        description: action.payload.description || '',
-        status: action.payload.status || 'todo',
-        priority: action.payload.priority || 'medium',
+        title: payload.title,
+        description: payload.description || '',
+        status: payload.status || 'todo',
+        priority: payload.priority || 'medium',
         createdAt: now,
         updatedAt: now,
-        dueDate: action.payload.dueDate,
-        tags: action.payload.tags || [],
-        parentId: action.payload.parentId,
+        dueDate: payload.dueDate ? createISODate(payload.dueDate) : undefined,
+        tags: payload.tags || [],
+        parentId: payload.parentId,
         assignee: undefined,
-        position: action.payload.position || { x: 100, y: 100 },
+        position: payload.position || { x: 100, y: 100 },
         size: { width: 200, height: 150 },
-        zIndex: 1,
-        isEditing: false,
-        type: action.payload.type || 'default',
-      }
+      };
       
-      // Автосохранение
-      saveState(state);
+      state.nodes[id] = newTodo;
     },
-    
+
+    // Создание задачи на определенной позиции
     createTodoAtPosition: (
       state, 
       action: PayloadAction<{
-        position: { x: number; y: number }
-        type?: TodoNode['type']
-        title?: string
-        priority?: TodoNode['priority']
+        position: { x: number; y: number };
+        title?: string;
+        priority?: TodoPriority;
       }>
     ) => {
-      const id = nanoid()
-      const now = new Date()
-      const { position, type = 'default', title = 'Новая задача', priority = 'medium' } = action.payload
+      const id = nanoid();
+      const now = createISODate();
+      const { position, title = 'Новая задача', priority = 'medium' } = action.payload;
       
-      state.nodes[id] = {
+      const newTodo: Todo = {
         id,
         title,
         description: '',
@@ -82,25 +168,21 @@ export const todoNodesSlice = createSlice({
         assignee: undefined,
         position,
         size: { width: 280, height: 180 },
-        zIndex: 1,
-        isEditing: true,
-        type,
-      }
+      };
       
-      state.selectedNodeIds = [id]
-      state.editingNodeId = id
-      
-      // Автосохранение
-      saveState(state);
+      state.nodes[id] = newTodo;
+      state.selectedNodeIds = [id];
+      state.editingNodeId = id;
     },
-    
+
+    // Дублирование задачи
     duplicateTodo: (state, action: PayloadAction<string>) => {
-      const originalId = action.payload
-      const originalNode = state.nodes[originalId]
+      const originalId = action.payload;
+      const originalNode = state.nodes[originalId];
       
       if (originalNode) {
-        const id = nanoid()
-        const now = new Date()
+        const id = nanoid();
+        const now = createISODate();
         
         state.nodes[id] = {
           ...originalNode,
@@ -112,343 +194,319 @@ export const todoNodesSlice = createSlice({
           },
           createdAt: now,
           updatedAt: now,
-          isEditing: false,
+        };
+        
+        state.selectedNodeIds = [id];
+        state.editingNodeId = null;
+      }
+    },
+
+    // Обновление задачи
+    updateTodo: (state, action: PayloadAction<UpdateTodoDto>) => {
+      const { id, ...updates } = action.payload;
+      const node = state.nodes[id];
+      
+      if (node) {
+        const processedUpdates: any = { ...updates };
+        
+        if ('dueDate' in updates) {
+          processedUpdates.dueDate = updates.dueDate 
+            ? createISODate(updates.dueDate) 
+            : undefined;
         }
         
-        state.selectedNodeIds = [id]
-        state.editingNodeId = null
-        
-        // Автосохранение
-        saveState(state);
+        Object.assign(node, {
+          ...processedUpdates,
+          updatedAt: createISODate(),
+        });
       }
     },
-    
-    startEditingTodo: (state, action: PayloadAction<string>) => {
-      const nodeId = action.payload
-      if (state.nodes[nodeId]) {
-        state.editingNodeId = nodeId
-        state.nodes[nodeId].isEditing = true
-      }
-    },
-    
-    finishEditingTodo: (state, action: PayloadAction<string>) => {
-      const nodeId = action.payload
-      if (state.nodes[nodeId]) {
-        state.editingNodeId = null
-        state.nodes[nodeId].isEditing = false
-        
-        // Автосохранение при завершении редактирования
-        saveState(state);
-      }
-    },
-    
-    updateTodo: (state, action: PayloadAction<UpdateTodoDto>) => {
-      const { id, ...updates } = action.payload
-      const node = state.nodes[id]
-      if (node) {
-        Object.assign(node, { 
-          ...updates, 
-          updatedAt: new Date(),
-          isEditing: false,
-        })
-        state.editingNodeId = null
-        
-        // Автосохранение
-        saveState(state);
-      }
-    },
-    
+
+    // Частичное обновление
     updateTodoPartial: (
       state, 
-      action: PayloadAction<{id: string; updates: Partial<TodoNode>}>
+      action: PayloadAction<{
+        id: string; 
+        updates: Partial<Todo>
+      }>
     ) => {
-      const { id, updates } = action.payload
-      const node = state.nodes[id]
+      const { id, updates } = action.payload;
+      const node = state.nodes[id];
+      
       if (node) {
-        Object.assign(node, { 
-          ...updates, 
-          updatedAt: new Date() 
-        })
-        
-        // Автосохранение
-        saveState(state);
+        Object.assign(node, {
+          ...updates,
+          updatedAt: createISODate(),
+        });
       }
     },
-    
+
+    // Удаление задачи
     deleteTodo: (state, action: PayloadAction<string>) => {
-      const nodeId = action.payload
-      delete state.nodes[nodeId]
-      state.selectedNodeIds = state.selectedNodeIds.filter(
-        selectedId => selectedId !== nodeId
-      )
+      const nodeId = action.payload;
+      const node = state.nodes[nodeId];
       
-      if (state.editingNodeId === nodeId) {
-        state.editingNodeId = null
+      if (node) {
+        delete state.nodes[nodeId];
+        state.selectedNodeIds = state.selectedNodeIds.filter(id => id !== nodeId);
+        
+        if (state.editingNodeId === nodeId) {
+          state.editingNodeId = null;
+        }
       }
-      
-      // Автосохранение
-      saveState(state);
     },
-    
+
+    // Удаление выделенных задач
     deleteSelectedTodos: (state) => {
-      state.selectedNodeIds.forEach(nodeId => {
-        delete state.nodes[nodeId]
-      })
+      const selectedIds = [...state.selectedNodeIds];
       
-      if (state.editingNodeId && state.selectedNodeIds.includes(state.editingNodeId)) {
-        state.editingNodeId = null
+      selectedIds.forEach(nodeId => {
+        delete state.nodes[nodeId];
+      });
+      
+      if (state.editingNodeId && selectedIds.includes(state.editingNodeId)) {
+        state.editingNodeId = null;
       }
       
-      state.selectedNodeIds = []
-      
-      // Автосохранение
-      saveState(state);
+      state.selectedNodeIds = [];
     },
-    
-    selectNode: (state, action: PayloadAction<string>) => {
-      if (!state.selectedNodeIds.includes(action.payload)) {
-        state.selectedNodeIds.push(action.payload)
-      }
-    },
-    
-    deselectNode: (state, action: PayloadAction<string>) => {
-      state.selectedNodeIds = state.selectedNodeIds.filter(
-        nodeId => nodeId !== action.payload
-      )
-    },
-    
-    clearSelection: (state) => {
-      state.selectedNodeIds = []
-    },
-    
+
+    // Перемещение задачи
     moveTodo: (
       state, 
-      action: PayloadAction<{id: string; position: { x: number; y: number }}>
+      action: PayloadAction<{
+        id: string; 
+        position: { x: number; y: number }
+      }>
     ) => {
-      const { id, position } = action.payload
-      const node = state.nodes[id]
+      const { id, position } = action.payload;
+      const node = state.nodes[id];
+      
       if (node) {
-        node.position = position
-        node.updatedAt = new Date()
-        
-        // Автосохранение при перемещении
-        saveState(state);
+        node.position = position;
+        node.updatedAt = createISODate();
       }
     },
-    
+
+    // Изменение размера
     resizeTodo: (
       state, 
-      action: PayloadAction<{id: string; size: { width: number; height: number }}>
+      action: PayloadAction<{
+        id: string; 
+        size: { width: number; height: number }
+      }>
     ) => {
-      const { id, size } = action.payload
-      const node = state.nodes[id]
+      const { id, size } = action.payload;
+      const node = state.nodes[id];
+      
       if (node) {
-        node.size = size
-        node.updatedAt = new Date()
-        
-        // Автосохранение при изменении размера
-        saveState(state);
+        node.size = size;
+        node.updatedAt = createISODate();
       }
     },
-    
-    bringToFront: (state, action: PayloadAction<string>) => {
-      const node = state.nodes[action.payload]
-      if (node) {
-        const maxZIndex = Object.values(state.nodes)
-          .reduce((max, n) => Math.max(max, n.zIndex || 1), 1)
-        node.zIndex = maxZIndex + 1
-        node.updatedAt = new Date()
-        
-        // Автосохранение
-        saveState(state);
-      }
-    },
-    
-    sendToBack: (state, action: PayloadAction<string>) => {
-      const node = state.nodes[action.payload]
-      if (node) {
-        const minZIndex = Object.values(state.nodes)
-          .reduce((min, n) => Math.min(min, n.zIndex || 1), 1)
-        node.zIndex = Math.max(1, minZIndex - 1)
-        node.updatedAt = new Date()
-        
-        // Автосохранение
-        saveState(state);
-      }
-    },
-    
-    setTodoPriority: (
-      state, 
-      action: PayloadAction<{id: string; priority: TodoNode['priority']}>
-    ) => {
-      const { id, priority } = action.payload
-      const node = state.nodes[id]
-      if (node) {
-        node.priority = priority
-        node.updatedAt = new Date()
-        
-        // Автосохранение
-        saveState(state);
-      }
-    },
-    
+
+    // Установка статуса
     setTodoStatus: (
       state, 
-      action: PayloadAction<{id: string; status: TodoNode['status']}>
+      action: PayloadAction<{
+        id: string; 
+        status: TodoStatus
+      }>
     ) => {
-      const { id, status } = action.payload
-      const node = state.nodes[id]
+      const { id, status } = action.payload;
+      const node = state.nodes[id];
+      
       if (node) {
-        node.status = status
-        node.updatedAt = new Date()
-        
-        // Автосохранение
-        saveState(state);
+        node.status = status;
+        node.updatedAt = createISODate();
       }
     },
-    
+
+    // Установка приоритета
+    setTodoPriority: (
+      state, 
+      action: PayloadAction<{
+        id: string; 
+        priority: TodoPriority
+      }>
+    ) => {
+      const { id, priority } = action.payload;
+      const node = state.nodes[id];
+      
+      if (node) {
+        node.priority = priority;
+        node.updatedAt = createISODate();
+      }
+    },
+
+    // Добавление тега
     addTodoTag: (
       state, 
-      action: PayloadAction<{id: string; tag: string}>
+      action: PayloadAction<{
+        id: string; 
+        tag: string
+      }>
     ) => {
-      const { id, tag } = action.payload
-      const node = state.nodes[id]
+      const { id, tag } = action.payload;
+      const node = state.nodes[id];
+      
       if (node && !node.tags.includes(tag)) {
-        node.tags.push(tag)
-        node.updatedAt = new Date()
-        
-        // Автосохранение
-        saveState(state);
+        node.tags.push(tag);
+        node.updatedAt = createISODate();
       }
     },
-    
+
+    // Удаление тега
     removeTodoTag: (
       state, 
-      action: PayloadAction<{id: string; tag: string}>
+      action: PayloadAction<{
+        id: string; 
+        tag: string
+      }>
     ) => {
-      const { id, tag } = action.payload
-      const node = state.nodes[id]
+      const { id, tag } = action.payload;
+      const node = state.nodes[id];
+      
       if (node) {
-        node.tags = node.tags.filter(t => t !== tag)
-        node.updatedAt = new Date()
-        
-        // Автосохранение
-        saveState(state);
+        node.tags = node.tags.filter(t => t !== tag);
+        node.updatedAt = createISODate();
       }
     },
-    
-    // НОВЫЕ ACTIONS ДЛЯ УПРАВЛЕНИЯ ХРАНИЛИЩЕМ
-    
-    /**
-     * Импортировать ноды из файла
-     */
-    importNodes: (state, action: PayloadAction<Record<string, TodoNode>>) => {
-      state.nodes = action.payload;
-      state.selectedNodeIds = [];
-      state.editingNodeId = null;
+
+    // Выделение/снятие выделения
+    selectNode: (state, action: PayloadAction<string>) => {
+      const nodeId = action.payload;
       
-      // Сохраняем импортированные данные
-      saveState(state);
+      if (!state.selectedNodeIds.includes(nodeId)) {
+        state.selectedNodeIds.push(nodeId);
+      }
     },
-    
-    /**
-     * Экспортировать ноды в файл
-     */
-    exportNodes: (state) => {
-      // Экспорт происходит через компонент, здесь только триггер
-      TodoStorage.exportToFile(state.nodes);
+
+    deselectNode: (state, action: PayloadAction<string>) => {
+      const nodeId = action.payload;
+      state.selectedNodeIds = state.selectedNodeIds.filter(id => id !== nodeId);
     },
-    
-    /**
-     * Очистить все ноды и хранилище
-     */
+
+    clearSelection: (state) => {
+      state.selectedNodeIds = [];
+    },
+
+    // Управление редактированием
+    startEditingTodo: (state, action: PayloadAction<string>) => {
+      const nodeId = action.payload;
+      if (state.nodes[nodeId]) {
+        state.editingNodeId = nodeId;
+      }
+    },
+
+    finishEditingTodo: (state, action: PayloadAction<string>) => {
+      const nodeId = action.payload;
+      if (state.editingNodeId === nodeId) {
+        state.editingNodeId = null;
+      }
+    },
+
+    // Z-index операции
+    bringToFront: (state, action: PayloadAction<string>) => {
+      const node = state.nodes[action.payload];
+      
+      if (node) {
+        const maxZIndex = Object.values(state.nodes).reduce((max, n) => 
+          Math.max(max, n.zIndex || 0), 0
+        );
+        node.zIndex = maxZIndex + 1;
+        node.updatedAt = createISODate();
+      }
+    },
+
+    sendToBack: (state, action: PayloadAction<string>) => {
+      const node = state.nodes[action.payload];
+      
+      if (node) {
+        const minZIndex = Object.values(state.nodes).reduce((min, n) => 
+          Math.min(min, n.zIndex || 0), 0
+        );
+        node.zIndex = Math.max(0, minZIndex - 1);
+        node.updatedAt = createISODate();
+      }
+    },
+
+    // Управление хранилищем
     clearAllNodes: (state) => {
       state.nodes = {};
       state.selectedNodeIds = [];
       state.editingNodeId = null;
-      
-      // Очищаем хранилище
-      TodoStorage.clearAll();
     },
-    
-    /**
-     * Восстановить из последней сохраненной версии
-     */
+
     restoreFromStorage: (state) => {
-      const savedNodes = TodoStorage.loadNodes();
-      state.nodes = savedNodes;
+      try {
+        const savedTodos = TodoStorage.loadTodos();
+        state.nodes = savedTodos;
+        state.selectedNodeIds = [];
+        state.editingNodeId = null;
+      } catch (error) {
+        console.error('❌ Ошибка восстановления:', error);
+      }
+    },
+
+    manualSave: (state) => {
+      // Ручное сохранение тоже использует безопасную функцию
+      setTimeout(() => {
+        saveState(state);
+      }, 0);
+    },
+
+    // Импорт/экспорт
+    importNodes: (state, action: PayloadAction<Record<string, Todo>>) => {
+      state.nodes = action.payload;
       state.selectedNodeIds = [];
       state.editingNodeId = null;
     },
-    
-    /**
-     * Сохранить состояние вручную (например, перед закрытием)
-     */
-    manualSave: (state) => {
-      TodoStorage.saveNodes(state.nodes);
+
+    exportNodes: (state) => {
+      // Экспорт происходит через компонент
+      setTimeout(() => {
+        try {
+          const nodesToExport = JSON.parse(JSON.stringify(state.nodes));
+          TodoStorage.exportToFile(nodesToExport);
+        } catch (error) {
+          console.error('❌ Ошибка экспорта:', error);
+        }
+      }, 0);
     },
   },
 });
 
-// ... остальной код экспортов ...
-
-// Добавьте новые actions в экспорт
+// Экспорт всех actions
 export const {
   createTodo,
   createTodoAtPosition,
+  duplicateTodo,
   updateTodo,
   updateTodoPartial,
   deleteTodo,
   deleteSelectedTodos,
+  moveTodo,
+  resizeTodo,
+  setTodoStatus,
+  setTodoPriority,
+  addTodoTag,
+  removeTodoTag,
   selectNode,
   deselectNode,
   clearSelection,
   startEditingTodo,
   finishEditingTodo,
-  duplicateTodo,
-  moveTodo,
-  resizeTodo,
   bringToFront,
   sendToBack,
-  setTodoPriority,
-  setTodoStatus,
-  addTodoTag,
-  removeTodoTag,
-  // Новые actions для хранилища
-  importNodes,
-  exportNodes,
   clearAllNodes,
   restoreFromStorage,
   manualSave,
+  importNodes,
+  exportNodes,
 } = todoNodesSlice.actions;
 
-// Обновите todoNodesActions
-export const todoNodesActions = {
-  createTodo,
-  createTodoAtPosition,
-  updateTodo,
-  updateTodoPartial,
-  deleteTodo,
-  deleteSelectedTodos,
-  selectNode,
-  deselectNode,
-  clearSelection,
-  startEditingTodo,
-  finishEditingTodo,
-  duplicateTodo,
-  moveTodo,
-  resizeTodo,
-  bringToFront,
-  sendToBack,
-  setTodoPriority,
-  setTodoStatus,
-  addTodoTag,
-  removeTodoTag,
-  importNodes,
-  exportNodes,
-  clearAllNodes,
-  restoreFromStorage,
-  manualSave,
-};
+// Экспорт для удобного использования
+export const todoNodesActions = todoNodesSlice.actions;
 
 export default todoNodesSlice.reducer;

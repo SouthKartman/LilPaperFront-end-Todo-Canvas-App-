@@ -1,11 +1,12 @@
 // src/widgets/canvas-workspace/ui/CanvasWorkspace.tsx
-import React, { useEffect, useCallback, useRef } from 'react'
+import React, { useEffect, useCallback, useRef, useMemo } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useTodoNodes } from '@features/todo-nodes/lib/useTodoNode'
 import { TodoNode } from '@features/todo-nodes/ui/TodoNode/TodoNode'
 import { useCanvasDnd } from '@features/canvas-dnd/lib/useCanvasDnd'
-import { useContextMenu } from '@features/node-creations/lib/useContextMenu'
 import { ContextMenu } from '@features/node-creations/ui/ContextMenu'
+import { showMenu } from '@features/node-creations/model/slice'
+import { createNodeContextMenu, createCanvasContextMenu } from '@features/node-creations/lib/contextMenuHelpers'
 import { todoNodesActions } from '@features/todo-nodes/model/slice'
 import { selectViewportTransform } from '@features/canvas-viewport/model/selectors'
 import { selectAllTodoNodes, selectSelectedTodoNodes } from '@features/todo-nodes/model/selectors'
@@ -14,7 +15,7 @@ import { QuickTodoForm } from '@features/todo-form/ui/QuickTodoForm'
 import { TodoFormModal } from '@features/todo-form/ui/TodoFormModal'
 import styles from './CanvasWorkspace.module.css'
 import { RootState } from '@shared/lib/state/store'
-import { StorageManager } from '@features/storage/ui/StorageManager';
+import { StorageManager } from '@features/storage/ui/StorageManager'
 
 export const CanvasWorkspace: React.FC = () => {
   const { nodes } = useTodoNodes()
@@ -25,7 +26,6 @@ export const CanvasWorkspace: React.FC = () => {
   const todoNodes = useSelector(selectAllTodoNodes)
   const selectedNodes = useSelector(selectSelectedTodoNodes)
   const viewportTransform = useSelector(selectViewportTransform)
-  const { handleContextMenu, closeMenu, updateItems } = useContextMenu()
   const { openQuickForm, openForm } = useTodoForm()
 
   // Конвертация координат экрана в координаты канваса
@@ -43,355 +43,85 @@ export const CanvasWorkspace: React.FC = () => {
     return { x: canvasX, y: canvasY }
   }, [viewportTransform])
 
-  // Функция для получения контекстного меню для канваса
-  const getCanvasMenuItems = useCallback((screenPosition: { x: number; y: number }) => {
-    const canvasPosition = convertScreenToCanvas(screenPosition.x, screenPosition.y)
-    
-    const menuItems = [
-      {
-        id: 'add-todo',
-        label: 'Добавить задачу',
-        icon: '📝',
-        onClick: () => {
-          dispatch(todoNodesActions.createTodoAtPosition({
-            position: canvasPosition,
-            type: 'default',
-            title: 'Новая задача',
-            priority: 'medium',
-          }))
-          closeMenu()
-        },
-      },
-      {
-        id: 'add-checklist',
-        label: 'Добавить чек-лист',
-        icon: '✅',
-        onClick: () => {
-          dispatch(todoNodesActions.createTodoAtPosition({
-            position: canvasPosition,
-            type: 'checklist',
-            title: 'Новый чек-лист',
-            priority: 'medium',
-          }))
-          closeMenu()
-        },
-      },
-      {
-        id: 'add-urgent',
-        label: 'Добавить срочную задачу',
-        icon: '🚨',
-        onClick: () => {
-          dispatch(todoNodesActions.createTodoAtPosition({
-            position: canvasPosition,
-            type: 'urgent',
-            title: 'Срочная задача!',
-            priority: 'high',
-          }))
-          closeMenu()
-        },
-      },
-      {
-        id: 'add-with-form',
-        label: 'Создать с формой',
-        icon: '📋',
-        onClick: () => {
-          openQuickForm({ x: screenPosition.x, y: screenPosition.y })
-          closeMenu()
-        },
-      },
-      {
-        id: 'divider-1',
-        label: 'divider',
-        onClick: () => {},
-      },
-      {
-        id: 'paste',
-        label: 'Вставить',
-        icon: '📋',
-        shortcut: 'Ctrl+V',
-        disabled: true,
-        onClick: () => {
-          console.log('Вставить из буфера')
-          closeMenu()
-        },
-      },
-      {
-        id: 'divider-2',
-        label: 'divider',
-        onClick: () => {},
-      },
-      {
-        id: 'select-all',
-        label: 'Выделить всё',
-        icon: '☑️',
-        shortcut: 'Ctrl+A',
-        onClick: () => {
-          const allNodeIds = todoNodes.map(node => node.id)
-          allNodeIds.forEach(nodeId => {
-            dispatch(todoNodesActions.selectNode(nodeId))
-          })
-          closeMenu()
-        },
-      },
-      {
-        id: 'clear-selection',
-        label: 'Снять выделение',
-        icon: '✖️',
-        disabled: selectedNodes.length === 0,
-        onClick: () => {
-          dispatch(todoNodesActions.clearSelection())
-          closeMenu()
-        },
-      },
-      {
-        id: 'divider-3',
-        label: 'divider',
-        onClick: () => {},
-      },
-      {
-        id: 'delete-selected',
-        label: 'Удалить выделенные',
-        icon: '🗑️',
-        shortcut: 'Del',
-        disabled: selectedNodes.length === 0,
-        onClick: () => {
-          if (window.confirm(`Удалить ${selectedNodes.length} задач?`)) {
-            selectedNodes.forEach(node => {
-              dispatch(todoNodesActions.deleteTodo(node.id))
-            })
-          }
-          closeMenu()
-        },
-      },
-    ]
+  // Мемоизируем обработчики, чтобы не создавать новые функции при каждом рендере
+  const memoizedHandlers = useMemo(() => ({
+    // Обработчик контекстного меню для канваса
+    handleCanvasContextMenu: (e: React.MouseEvent<HTMLDivElement>) => {
+      e.preventDefault()
+      e.stopPropagation()
+      
+      const canvasPosition = convertScreenToCanvas(e.clientX, e.clientY)
+      const menuItems = createCanvasContextMenu(canvasPosition)
+      
+      dispatch(showMenu({
+        x: e.clientX,
+        y: e.clientY,
+        items: menuItems,
+        context: { position: canvasPosition },
+      }))
+    },
 
-    return menuItems
-  }, [dispatch, convertScreenToCanvas, closeMenu, todoNodes, selectedNodes, openQuickForm])
+    // Обработчик контекстного меню для ноды
+    handleNodeContextMenu: (e: React.MouseEvent, nodeId: string) => {
+      e.preventDefault()
+      e.stopPropagation()
+      
+      const menuItems = createNodeContextMenu(nodeId)
+      
+      dispatch(showMenu({
+        x: e.clientX,
+        y: e.clientY,
+        items: menuItems,
+        context: { nodeId },
+      }))
+    },
 
-  // Функция для получения контекстного меню для ноды
-  const getNodeMenuItems = useCallback((nodeId: string) => {
-    return [
-      {
-        id: 'edit',
-        label: 'Редактировать',
-        icon: '✏️',
-        onClick: () => {
-          dispatch(todoNodesActions.startEditingTodo(nodeId))
-          closeMenu()
-        },
-      },
-      {
-        id: 'duplicate',
-        label: 'Дублировать',
-        icon: '📄',
-        shortcut: 'Ctrl+D',
-        onClick: () => {
-          dispatch(todoNodesActions.duplicateTodo(nodeId))
-          closeMenu()
-        },
-      },
-      {
-        id: 'delete',
-        label: 'Удалить',
-        icon: '🗑️',
-        shortcut: 'Del',
-        onClick: () => {
-          if (window.confirm('Удалить задачу?')) {
-            dispatch(todoNodesActions.deleteTodo(nodeId))
-          }
-          closeMenu()
-        },
-      },
-      {
-        id: 'divider-1',
-        label: 'divider',
-        onClick: () => {},
-      },
-      {
-        id: 'set-critical',
-        label: 'Критический приоритет',
-        icon: '⭕',
-        onClick: () => {
-          dispatch(todoNodesActions.setTodoPriority({ id: nodeId, priority: 'critical' }))
-          closeMenu()
-        },
-      },
-      {
-        id: 'set-high',
-        label: 'Высокий приоритет',
-        icon: '🔴',
-        onClick: () => {
-          dispatch(todoNodesActions.setTodoPriority({ id: nodeId, priority: 'high' }))
-          closeMenu()
-        },
-      },
-      {
-        id: 'set-medium',
-        label: 'Средний приоритет',
-        icon: '🟡',
-        onClick: () => {
-          dispatch(todoNodesActions.setTodoPriority({ id: nodeId, priority: 'medium' }))
-          closeMenu()
-        },
-      },
-      {
-        id: 'set-low',
-        label: 'Низкий приоритет',
-        icon: '🟢',
-        onClick: () => {
-          dispatch(todoNodesActions.setTodoPriority({ id: nodeId, priority: 'low' }))
-          closeMenu()
-        },
-      },
-      {
-        id: 'divider-2',
-        label: 'divider',
-        onClick: () => {},
-      },
-      {
-        id: 'bring-to-front',
-        label: 'На передний план',
-        icon: '⬆️',
-        onClick: () => {
-          dispatch(todoNodesActions.bringToFront(nodeId))
-          closeMenu()
-        },
-      },
-      {
-        id: 'send-to-back',
-        label: 'На задний план',
-        icon: '⬇️',
-        onClick: () => {
-          dispatch(todoNodesActions.sendToBack(nodeId))
-          closeMenu()
-        },
-      },
-      {
-        id: 'divider-3',
-        label: 'divider',
-        onClick: () => {},
-      },
-      {
-        id: 'mark-todo',
-        label: 'Статус: К выполнению',
-        icon: '📝',
-        onClick: () => {
-          dispatch(todoNodesActions.setTodoStatus({ id: nodeId, status: 'todo' }))
-          closeMenu()
-        },
-      },
-      {
-        id: 'mark-in-progress',
-        label: 'Статус: В процессе',
-        icon: '⚙️',
-        onClick: () => {
-          dispatch(todoNodesActions.setTodoStatus({ id: nodeId, status: 'in-progress' }))
-          closeMenu()
-        },
-      },
-      {
-        id: 'mark-done',
-        label: 'Статус: Выполнено',
-        icon: '✅',
-        onClick: () => {
-          dispatch(todoNodesActions.setTodoStatus({ id: nodeId, status: 'done' }))
-          closeMenu()
-        },
-      },
-      {
-        id: 'mark-blocked',
-        label: 'Статус: Заблокировано',
-        icon: '⛔',
-        onClick: () => {
-          dispatch(todoNodesActions.setTodoStatus({ id: nodeId, status: 'blocked' }))
-          closeMenu()
-        },
-      },
-    ]
-  }, [dispatch, closeMenu])
-
-  // Обработчик контекстного меню для канваса
-  const handleCanvasContextMenu = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    e.stopPropagation()
-    
-    const menuItems = getCanvasMenuItems({ x: e.clientX, y: e.clientY })
-    updateItems(menuItems)
-    handleContextMenu(e)
-  }, [getCanvasMenuItems, updateItems, handleContextMenu])
-
-  // Обработчик контекстного меню для ноды
-  const handleNodeContextMenu = useCallback((e: React.MouseEvent, nodeId: string) => {
-    e.preventDefault()
-    e.stopPropagation()
-    
-    const menuItems = getNodeMenuItems(nodeId)
-    updateItems(menuItems)
-    handleContextMenu(e)
-  }, [getNodeMenuItems, updateItems, handleContextMenu])
-
-  // Обработчик клика по ноде для выделения
-  const handleNodeClick = useCallback((e: React.MouseEvent, nodeId: string) => {
-    e.stopPropagation()
-    
-    if (e.ctrlKey || e.metaKey) {
-      const node = todoNodes.find(n => n.id === nodeId)
-      if (node) {
+    // Обработчик клика по ноде для выделения
+    handleNodeClick: (e: React.MouseEvent, nodeId: string) => {
+      e.stopPropagation()
+      
+      if (e.ctrlKey || e.metaKey) {
         const isSelected = selectedNodes.some(n => n.id === nodeId)
         if (isSelected) {
           dispatch(todoNodesActions.deselectNode(nodeId))
         } else {
           dispatch(todoNodesActions.selectNode(nodeId))
         }
-      }
-    } else if (e.shiftKey) {
-      dispatch(todoNodesActions.selectNode(nodeId))
-    } else {
-      dispatch(todoNodesActions.clearSelection())
-      dispatch(todoNodesActions.selectNode(nodeId))
-    }
-    
-    closeMenu()
-  }, [dispatch, closeMenu, todoNodes, selectedNodes])
-
-  // Обработчик клика по канвасу для закрытия меню и снятия выделения
-  const handleCanvasClick = useCallback((e: React.MouseEvent) => {
-    if (e.button === 0) {
-      if (!e.ctrlKey && !e.metaKey && !e.shiftKey) {
+      } else if (e.shiftKey) {
+        dispatch(todoNodesActions.selectNode(nodeId))
+      } else {
         dispatch(todoNodesActions.clearSelection())
+        dispatch(todoNodesActions.selectNode(nodeId))
       }
-      closeMenu()
-    }
-  }, [dispatch, closeMenu])
+    },
 
-  // Обработчик двойного клика по канвасу для быстрого создания
-  const handleCanvasDoubleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const canvasRect = canvasRef.current?.getBoundingClientRect()
-    if (!canvasRect) return
-    
-    const relativeX = e.clientX - canvasRect.left
-    const relativeY = e.clientY - canvasRect.top
-    
-    // Конвертируем в координаты канваса
-    const canvasPosition = convertScreenToCanvas(e.clientX, e.clientY)
-    
-    // Создаем задачу в указанной позиции
-    dispatch(todoNodesActions.createTodoAtPosition({
-      position: canvasPosition,
-      type: 'default',
-      title: 'Новая задача',
-      priority: 'medium',
-    }))
-    
-    // Альтернативно можно открыть быструю форму:
-    // openQuickForm({ x: e.clientX, y: e.clientY })
-  }, [dispatch, convertScreenToCanvas])
+    // Обработчик клика по канвасу для снятия выделения
+    handleCanvasClick: (e: React.MouseEvent) => {
+      if (e.button === 0) {
+        if (!e.ctrlKey && !e.metaKey && !e.shiftKey) {
+          dispatch(todoNodesActions.clearSelection())
+        }
+      }
+    },
 
-  // Обработчик двойного клика по ноде для редактирования
-  const handleNodeDoubleClick = useCallback((e: React.MouseEvent, nodeId: string) => {
-    e.stopPropagation()
-    dispatch(todoNodesActions.startEditingTodo(nodeId))
-  }, [dispatch])
+    // Обработчик двойного клика по канвасу для быстрого создания
+    handleCanvasDoubleClick: (e: React.MouseEvent<HTMLDivElement>) => {
+      const canvasPosition = convertScreenToCanvas(e.clientX, e.clientY)
+      
+      dispatch(todoNodesActions.createTodoAtPosition({
+        position: canvasPosition,
+        type: 'default',
+        title: 'Новая задача',
+        priority: 'medium',
+      }))
+    },
+
+    // Обработчик двойного клика по ноде для редактирования
+    handleNodeDoubleClick: (e: React.MouseEvent, nodeId: string) => {
+      e.stopPropagation()
+      dispatch(todoNodesActions.startEditingTodo(nodeId))
+    },
+  }), [dispatch, convertScreenToCanvas, selectedNodes])
 
   // Обработчик клавиш
   useEffect(() => {
@@ -479,13 +209,13 @@ export const CanvasWorkspace: React.FC = () => {
   return (
     <div 
       className={styles.workspace}
-      onClick={handleCanvasClick}
+      onClick={memoizedHandlers.handleCanvasClick}
     >
       <div 
         ref={canvasRef}
         className={styles.canvas}
-        onContextMenu={handleCanvasContextMenu}
-        onDoubleClick={handleCanvasDoubleClick}
+        onContextMenu={memoizedHandlers.handleCanvasContextMenu}
+        onDoubleClick={memoizedHandlers.handleCanvasDoubleClick}
       >
         <div className={styles.grid} />
         
@@ -494,9 +224,9 @@ export const CanvasWorkspace: React.FC = () => {
           <TodoNode 
             key={node.id} 
             node={node}
-            onContextMenu={(e) => handleNodeContextMenu(e, node.id)}
-            onClick={(e) => handleNodeClick(e, node.id)}
-            onDoubleClick={(e) => handleNodeDoubleClick(e, node.id)}
+            onContextMenu={(e) => memoizedHandlers.handleNodeContextMenu(e, node.id)}
+            onClick={(e) => memoizedHandlers.handleNodeClick(e, node.id)}
+            onDoubleClick={(e) => memoizedHandlers.handleNodeDoubleClick(e, node.id)}
             isSelected={selectedNodes.some(n => n.id === node.id)}
           />
         ))}
@@ -515,7 +245,7 @@ export const CanvasWorkspace: React.FC = () => {
         )}
       </div>
       
-      {/* Глобальное контекстное меню */}
+      {/* Глобальное контекстное меню (теперь из features/context-menu) */}
       <ContextMenu />
       
       {/* Быстрая форма создания задачи */}
@@ -523,7 +253,8 @@ export const CanvasWorkspace: React.FC = () => {
       
       {/* Модальное окно с полной формой */}
       <TodoFormModal />
-
+      
+      {/* Кнопка для теста (опционально) */}
       <button 
         onClick={() => openQuickForm({ x: 100, y: 100 })}
         style={{
@@ -541,16 +272,6 @@ export const CanvasWorkspace: React.FC = () => {
       >
         Тест: Открыть форму
       </button>
-      
-      {/* Информация о выделении */}
-      {selectedNodes.length > 0 && (
-        <div className={styles.selectionInfo}>
-          {/* Выбрано: {selectedNodes.length} задач
-          <span className={styles.selectionHint}>
-            (Del - удалить, Ctrl+D - дублировать, Esc - снять выделение)
-          </span> */}
-        </div>
-      )}
       
       {/* Подсказки по горячим клавишам */}
       <div className={styles.hotkeyHint}>

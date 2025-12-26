@@ -1,5 +1,6 @@
+// src/features/context-menu/model/slice.ts
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { ContextMenuState, ShowMenuPayload, MenuItemType } from './types';
+import { ContextMenuState, MenuItemData } from './types';
 
 const initialState: ContextMenuState = {
   isVisible: false,
@@ -12,19 +13,26 @@ export const contextMenuSlice = createSlice({
   name: 'contextMenu',
   initialState,
   reducers: {
-    showMenu: (state, action: PayloadAction<ShowMenuPayload>) => {
+    showMenu: (state, action: PayloadAction<{
+      x: number;
+      y: number;
+      items: MenuItemData[];
+      context?: unknown;
+    }>) => {
       state.isVisible = true;
       state.position = { x: action.payload.x, y: action.payload.y };
+      state.items = action.payload.items;
       state.context = action.payload.context;
     },
     
     hideMenu: (state) => {
       state.isVisible = false;
       state.position = null;
+      state.items = [];
       state.context = undefined;
     },
     
-    setMenuItems: (state, action: PayloadAction<MenuItemType[]>) => {
+    setMenuItems: (state, action: PayloadAction<MenuItemData[]>) => {
       state.items = action.payload;
     },
     

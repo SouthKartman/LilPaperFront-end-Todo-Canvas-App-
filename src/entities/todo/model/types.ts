@@ -43,20 +43,20 @@ export interface UpdateTodoDto extends Partial<CreateTodoDto> {
 }
 
 export interface TodoNodesState {
-  nodes: Record<string, TodoNode>;
+  nodes: Record<string, Todo>;
   selectedNodeIds: string[];
   editingNodeId: string | null;
 }
 
-// Хелпер для создания даты в ISO формате
+export interface TodoNodesState {
+  nodes: Record<string, Todo>; // { [id]: TodoNode }
+  selectedNodeIds: string[];
+  editingNodeId: string | null;
+}
+
+// Хелпер для создания ISO даты
 export const createISODate = (date?: Date): string => {
   return (date || new Date()).toISOString();
 };
-
-// Хелпер для преобразования строки в Date
-export const parseISODate = (dateString: string): Date => {
-  return new Date(dateString);
-};
-
 // Реэкспорт
 export * from './types'

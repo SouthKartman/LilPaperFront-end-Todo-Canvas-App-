@@ -1,15 +1,78 @@
+// src/features/context-menu/ui/ContextMenu/ContextMenu.tsx
 import React, { useRef, useEffect } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@shared/lib/state/store';
+import { hideMenu } from '../model/slice';
 import { MenuItem } from './MenuItem';
 import { MenuDivider } from './MenuDivider';
 import './ContextMenu.css';
 
-export const ContextMenu: React.FC = () => {
-  const menuRef = useRef<HTMLDivElement>(null);
-  const { isVisible, position, items } = useSelector((state: RootState) => state.contextMenu);
+// Импортируем actions для обработки
+import { todoNodesActions } from '@features/todo-nodes/model/slice';
 
-  // Позиционирование меню (чтобы не выходило за границы экрана)
+export const ContextMenu: React.FC = () => {
+  const dispatch = useDispatch();
+  const menuRef = useRef<HTMLDivElement>(null);
+  const { isVisible, position, items, context } = useSelector((state: RootState) => state.contextMenu);
+
+  // Обработчик клика по пункту меню
+  const handleMenuItemClick = (item: any) => {
+    if (item.disabled) return;
+    
+    // Обрабатываем действие на основе actionType
+    switch (item.actionType) {
+      case 'EDIT_NODE':
+        if (context?.nodeId) {
+          dispatch(todoNodesActions.startEditingTodo(context.nodeId));
+        }
+        break;
+        
+      case 'DUPLICATE_NODE':
+        if (context?.nodeId) {
+          dispatch(todoNodesActions.duplicateTodo(context.nodeId));
+        }
+        break;
+        
+      case 'DELETE_NODE':
+        if (context?.nodeId) {
+          dispatch(todoNodesActions.deleteTodo(context.nodeId));
+        }
+        break;
+        
+      case 'SET_STATUS':
+        if (context?.nodeId && item.payload?.status) {
+          dispatch(todoNodesActions.setTodoStatus({
+            id: context.nodeId,
+            status: item.payload.status
+          }));
+        }
+        break;
+        
+      case 'SET_PRIORITY':
+        if (context?.nodeId && item.payload?.priority) {
+          dispatch(todoNodesActions.setTodoPriority({
+            id: context.nodeId,
+            priority: item.payload.priority
+          }));
+        }
+        break;
+        
+      case 'CREATE_TODO':
+        if (item.payload?.position) {
+          dispatch(todoNodesActions.createTodoAtPosition({
+            position: item.payload.position
+          }));
+        }
+        break;
+        
+      default:
+        console.warn('Unknown action type:', item.actionType);
+    }
+    
+    dispatch(hideMenu());
+  };
+
+  // Позиционирование
   useEffect(() => {
     if (menuRef.current && position) {
       const menu = menuRef.current;
@@ -20,12 +83,10 @@ export const ContextMenu: React.FC = () => {
       let x = position.x;
       let y = position.y;
 
-      // Корректировка по горизонтали
       if (x + rect.width > viewportWidth) {
         x = viewportWidth - rect.width - 10;
       }
 
-      // Корректировка по вертикали
       if (y + rect.height > viewportHeight) {
         y = viewportHeight - rect.height - 10;
       }
@@ -35,11 +96,24 @@ export const ContextMenu: React.FC = () => {
     }
   }, [position, isVisible]);
 
-  if (!isVisible || !position) return null;
+  // Закрытие при клике вне меню
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        dispatch(hideMenu());
+      }
+    };
 
-  const handleMenuItemClick = (onClick: () => void) => {
-    onClick();
-  };
+    if (isVisible) {
+      document.addEventListener('click', handleClickOutside);
+    }
+    
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [isVisible, dispatch]);
+
+  if (!isVisible || !position) return null;
 
   return (
     <div
@@ -66,7 +140,7 @@ export const ContextMenu: React.FC = () => {
               icon={item.icon}
               shortcut={item.shortcut}
               disabled={item.disabled}
-              onClick={() => handleMenuItemClick(item.onClick)}
+              onClick={() => handleMenuItemClick(item)}
               hasChildren={!!item.children}
             />
           );
