@@ -2,7 +2,7 @@
 import { nanoid } from 'nanoid';
 import { MenuItemData } from '../model/types';
 
-export const createNodeContextMenu = (nodeId: string): MenuItemData[] => {
+export const createNodeContextMenu = (): MenuItemData[] => {
   return [
     {
       id: nanoid(),
@@ -16,7 +16,7 @@ export const createNodeContextMenu = (nodeId: string): MenuItemData[] => {
       icon: '📋',
       actionType: 'DUPLICATE_NODE',
     },
-    { id: 'divider-1', id: 'divider' },
+    // { id: 'divider-1', id: 'divider' },
     {
       id: nanoid(),
       label: 'Статус: К выполнению',
@@ -38,7 +38,7 @@ export const createNodeContextMenu = (nodeId: string): MenuItemData[] => {
       actionType: 'SET_STATUS',
       payload: { status: 'done' },
     },
-    { id: 'divider-2', id: 'divider' },
+    // { id: 'divider-2', id: 'divider' },
     {
       id: nanoid(),
       label: 'Приоритет: Низкий',
@@ -67,7 +67,7 @@ export const createNodeContextMenu = (nodeId: string): MenuItemData[] => {
       actionType: 'SET_PRIORITY',
       payload: { priority: 'critical' },
     },
-    { id: 'divider-3', id: 'divider' },
+    // { id: 'divider-3', id: 'divider' },
     {
       id: nanoid(),
       label: 'Удалить',

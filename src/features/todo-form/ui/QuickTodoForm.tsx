@@ -8,7 +8,7 @@ export const QuickTodoForm: React.FC = () => {
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    console.log('QuickTodoForm mounted, isOpen:', isQuickFormOpen)
+    // console.log('QuickTodoForm mounted, isOpen:', isQuickFormOpen)
     if (isQuickFormOpen && inputRef.current) {
       console.log('Setting focus to input')
       inputRef.current.focus()
@@ -34,10 +34,10 @@ export const QuickTodoForm: React.FC = () => {
     }
   }
 
-  console.log('QuickTodoForm render, isOpen:', isQuickFormOpen)
+  // console.log('QuickTodoForm render, isOpen:', isQuickFormOpen)
 
   if (!isQuickFormOpen) {
-    console.log('QuickTodoForm: not rendering (isOpen false)')
+    // console.log('QuickTodoForm: not rendering (isOpen false)')
     return null
   }
 

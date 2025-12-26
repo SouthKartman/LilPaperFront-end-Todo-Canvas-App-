@@ -16,7 +16,7 @@
 .context-menu__content {
   padding: 4px 0;
   max-height: 80vh;
-  overflow-y: auto;
+  overflow-y: none;
 }
 
 .context-menu::-webkit-scrollbar {
