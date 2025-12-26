@@ -55,7 +55,7 @@ export const StorageManager: React.FC = () => {
 
     try {
       const importedNodes = await TodoStorage.importFromFile(file);
-      dispatch(importNodes(importNodes));
+      dispatch(importNodes(importedNodes));
       
       // Автосохранение после импорта
       TodoStorage.saveTodos(importedNodes);
