@@ -1,8 +1,8 @@
 // src/features/storage/ui/StorageManager/StorageManager.tsx
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { TodoStorage } from '@shared/api/storage/jsonStorage/todoStorage';
-import { importNodes, exportNodes, clearAllNodes } from '../../todo-nodes/model/slice';
+import { importNodes, clearAllNodes } from '../../todo-nodes/model/slice';
 import { RootState } from '@shared/lib/state/store';
 import './StorageManager.css';
 
@@ -10,27 +10,44 @@ export const StorageManager: React.FC = () => {
   const dispatch = useDispatch();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  
-  // Получаем количество нод из Redux
-  const nodeCount = useSelector((state: RootState) => 
-    Object.keys(state.todoNodes.nodes).length
-  );
-  
-  // Состояние для времени последнего сохранения
-  // Получаем данные один раз в начале компонента
+  // Получаем состояние один раз в хуке
   const nodes = useSelector((state: RootState) => state.todoNodes.nodes);
+  const nodeCount = Object.keys(nodes).length;
+  
   const [lastSave, setLastSave] = useState<Date | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Загружаем время последнего сохранения при монтировании
+  // Загружаем время последнего сохранения
   useEffect(() => {
     const savedDate = TodoStorage.getLastSave();
     setLastSave(savedDate);
   }, []);
 
-  const handleExport = () => {
-    // ✅ Теперь nodes уже получен через хук выше
+  // Функция для ручного сохранения
+  const handleSave = useCallback(() => {
+    setIsSaving(true);
+    const success = TodoStorage.saveTodos(nodes);
+    
+    if (success) {
+      setLastSave(new Date());
+      setTimeout(() => setIsSaving(false), 500);
+    } else {
+      setIsSaving(false);
+      alert('❌ Не удалось сохранить данные');
+    }
+  }, [nodes]);
+
+  // Автосохранение при размонтировании
+  useEffect(() => {
+    return () => {
+      // Сохраняем при закрытии/обновлении страницы
+      TodoStorage.saveTodos(nodes);
+    };
+  }, [nodes]);
+
+  const handleExport = useCallback(() => {
     TodoStorage.exportToFile(nodes);
-  };
+  }, [nodes]);
 
   const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -38,13 +55,14 @@ export const StorageManager: React.FC = () => {
 
     try {
       const importedNodes = await TodoStorage.importFromFile(file);
-      dispatch(importNodes(importedNodes));
-      alert(`✅ Импортировано ${Object.keys(importedNodes).length} задач`);
+      dispatch(importNodes(importNodes));
       
-      // Обновляем время последнего сохранения
+      // Автосохранение после импорта
+      TodoStorage.saveTodos(importedNodes);
       setLastSave(new Date());
       
-      // Очищаем input
+      alert(`✅ Импортировано ${Object.keys(importedNodes).length} задач`);
+      
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -56,14 +74,10 @@ export const StorageManager: React.FC = () => {
   const handleClearAll = () => {
     if (window.confirm('Вы уверены, что хотите удалить ВСЕ задачи? Это действие нельзя отменить.')) {
       dispatch(clearAllNodes());
+      TodoStorage.clearAll();
       setLastSave(null);
       alert('✅ Все задачи удалены');
     }
-  };
-
-  const handleBackup = () => {
-    const nodes = useSelector((state: RootState) => state.todoNodes.nodes);
-    TodoStorage.exportToFile(nodes);
   };
 
   const handleRefreshStats = () => {
@@ -71,17 +85,37 @@ export const StorageManager: React.FC = () => {
     setLastSave(savedDate);
   };
 
+  // Добавим автосохранение при изменении nodes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (nodeCount > 0) {
+        handleSave();
+      }
+    }, 3000); // Автосохранение каждые 3 секунды при изменениях
+
+    return () => clearTimeout(timer);
+  }, [nodes, handleSave, nodeCount]);
+
   return (
     <div className="storage-manager">
       <div className="storage-header">
         <h3>💾 Управление хранилищем</h3>
-        <button 
-          onClick={handleRefreshStats}
-          className="storage-btn storage-btn-refresh"
-          title="Обновить статистику"
-        >
-          🔄
-        </button>
+        <div className="storage-status">
+          {/* {isSaving ? (
+            <span className="saving-indicator">💾 Сохранение...</span>
+          ) : lastSave ? (
+            <span className="last-save">
+              ✓ Сохранено: {lastSave.toLocaleTimeString().slice(0, 5)}
+            </span>
+          ) : null} */}
+          <button 
+            onClick={handleRefreshStats}
+            className="storage-btn storage-btn-refresh"
+            title="Обновить статистику"
+          >
+            🔄
+          </button>
+        </div>
       </div>
       
       <div className="storage-stats">
@@ -92,7 +126,7 @@ export const StorageManager: React.FC = () => {
         
         <div className="stat-item">
           <span className="stat-label">Сохранено в браузере:</span>
-          <span className="stat-value">{TodoStorage.getSavedCount()}</span>
+          <span className="stat-value">{TodoStorage.getStats().nodeCount}</span>
         </div>
         
         {lastSave && (
@@ -106,6 +140,15 @@ export const StorageManager: React.FC = () => {
       </div>
 
       <div className="storage-actions">
+        <button 
+          onClick={handleSave}
+          className="storage-btn storage-btn-save"
+          disabled={isSaving}
+          title="Сохранить в браузер"
+        >
+          {isSaving ? '💾 Сохранение...' : '💾 Сохранить сейчас'}
+        </button>
+        
         <button 
           onClick={handleExport} 
           className="storage-btn storage-btn-export"
@@ -131,14 +174,6 @@ export const StorageManager: React.FC = () => {
         />
         
         <button 
-          onClick={handleBackup} 
-          className="storage-btn storage-btn-backup"
-          title="Создать резервную копию"
-        >
-          💾 Создать бэкап
-        </button>
-        
-        <button 
           onClick={handleClearAll} 
           className="storage-btn storage-btn-clear"
           title="Удалить все задачи"
@@ -149,12 +184,12 @@ export const StorageManager: React.FC = () => {
       
       <div className="storage-info">
         <small>
-          <strong>Как работает автосохранение:</strong>
+          <strong>Автосохранение работает:</strong>
           <ul>
-            <li>✓ Данные сохраняются в браузере при каждом изменении</li>
-            <li>✓ Сохраняются между сессиями и перезагрузками</li>
-            <li>✓ Экспортируйте бэкапы для переноса на другое устройство</li>
-            <li>✓ Импортируйте JSON файлы для восстановления данных</li>
+            <li>✓ Автоматически каждые 3 секунды при изменениях</li>
+            <li>✓ При закрытии страницы</li>
+            <li>✓ При любом изменении задач</li>
+            <li>✓ Данные хранятся только в вашем браузере</li>
           </ul>
         </small>
       </div>

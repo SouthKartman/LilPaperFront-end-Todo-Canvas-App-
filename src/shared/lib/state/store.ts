@@ -6,7 +6,7 @@ import todoNodesReducer from '@features/todo-nodes/model/slice'
 import canvasDndReducer from '@features/canvas-dnd/model/slice'
 import contextMenuReducer from '@features/node-creations/model/slice'
 import todoFormReducer from '@features/todo-form/model/slice'
-
+import { autoSaveMiddleware } from '@features/storage/model/autoSaveMiddleware';
 // Создаем заглушки для отсутствующих редьюсеров
 // TODO: Создайте реальные файлы для этих редьюсеров
 
@@ -20,6 +20,8 @@ const canvasViewportReducer = (state = {
       return state
   }
 }
+
+
 
 // Заглушка для canvas-toolbar
 const canvasToolbarReducer = (state = {
@@ -66,6 +68,7 @@ const canvasActionsReducer = (state = {
   }
 }
 
+
 // Единственный export store
 export const store = configureStore({
   reducer: {
@@ -79,23 +82,12 @@ export const store = configureStore({
     selection: selectionReducer,
     canvasActions: canvasActionsReducer,
   },
+  
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
-      serializableCheck: {
-        // Игнорируем non-serializable значения
-        ignoredActions: [
-          'canvasDnd/setDragState',
-          'contextMenu/showMenu',
-          'todoForm/openQuickForm',
-        ],
-        ignoredPaths: [
-          'canvasDnd.dragState',
-          'contextMenu.position',
-          'todoForm.position',
-          'todoForm.formData.dueDate',
-        ],
-      },
-    }),
+      serializableCheck: false, // Для работы с Date и другими несериализуемыми типами
+    }).concat(autoSaveMiddleware),
+
   devTools: process.env.NODE_ENV !== 'production',
 })
 

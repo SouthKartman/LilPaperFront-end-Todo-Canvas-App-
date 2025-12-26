@@ -3,205 +3,99 @@ import { Todo } from '@entities/todo/model/types';
 
 /**
  * Универсальный storage с несколькими уровнями fallback
- * ИСПРАВЛЕНА проблема с proxy
+ * Упрощенная версия с исправлением Proxy
  */
 export class TodoStorage {
   private static readonly STORAGE_KEY = 'todo-app-nodes-v1';
   private static readonly LAST_SAVE_KEY = 'todo-app-last-save';
-  private static readonly COOKIE_KEY = 'todo-nodes-backup';
-  private static readonly COOKIE_EXPIRY_DAYS = 7;
 
   /**
-   * КОНВЕРТАЦИЯ PROXY → ОБЫЧНЫЙ ОБЪЕКТ
-   * Это ключевое исправление!
+   * Конвертация любого объекта в обычный (включая Proxy от Immer)
    */
-  private static convertToPlainObject(todos: Record<string, Todo>): Record<string, Todo> {
+  private static toPlainObject<T>(obj: T): T {
     // Если это уже обычный объект, возвращаем как есть
-    if (!todos || typeof todos !== 'object') return {};
+    if (!obj || typeof obj !== 'object') return obj;
     
     try {
-      // Самый безопасный способ - через JSON.stringify/parse
-      const jsonString = JSON.stringify(todos);
-      return JSON.parse(jsonString);
-    } catch (error) {
-      console.warn('⚠️ Ошибка конвертации proxy:', error);
-      
-      // Альтернативный способ - ручное копирование
-      const plainObject: Record<string, Todo> = {};
-      
-      for (const [key, value] of Object.entries(todos)) {
-        if (value && typeof value === 'object') {
-          // Рекурсивно копируем каждый объект
-          plainObject[key] = { ...value };
-        }
+      // Лучший способ для Immer Proxy
+      if (typeof window !== 'undefined' && window.structuredClone) {
+        return window.structuredClone(obj);
       }
       
-      return plainObject;
+      // Fallback для старых браузеров
+      return JSON.parse(JSON.stringify(obj));
+    } catch (error) {
+      console.warn('⚠️ Ошибка конвертации:', error);
+      // Ручное копирование как последнее средство
+      if (Array.isArray(obj)) {
+        return obj.map(item => this.toPlainObject(item)) as T;
+      }
+      
+      const result: any = {};
+      for (const [key, value] of Object.entries(obj)) {
+        result[key] = this.toPlainObject(value);
+      }
+      return result;
     }
   }
 
   /**
-   * Проверка localStorage
+   * Проверка доступности localStorage
    */
-  private static isLocalStorageAvailable(): boolean {
+  private static isStorageAvailable(): boolean {
     try {
       const testKey = '__storage_test__';
       localStorage.setItem(testKey, testKey);
       localStorage.removeItem(testKey);
       return true;
     } catch {
-      console.warn('⚠️ localStorage недоступен');
       return false;
     }
   }
 
   /**
-   * Проверка sessionStorage
-   */
-  private static isSessionStorageAvailable(): boolean {
-    try {
-      const testKey = '__storage_test__';
-      sessionStorage.setItem(testKey, testKey);
-      sessionStorage.removeItem(testKey);
-      return true;
-    } catch {
-      console.warn('⚠️ sessionStorage недоступен');
-      return false;
-    }
-  }
-
-  /**
-   * Проверка cookies
-   */
-  private static areCookiesAvailable(): boolean {
-    try {
-      // Более безопасная проверка cookies
-      if (!navigator.cookieEnabled) return false;
-      
-      document.cookie = 'testCookie=1; SameSite=Strict; Max-Age=1';
-      const canSet = document.cookie.includes('testCookie');
-      document.cookie = 'testCookie=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      return canSet;
-    } catch {
-      console.warn('⚠️ Cookies недоступны');
-      return false;
-    }
-  }
-
-  /**
-   * Сохранить данные во все доступные хранилища
-   * ИСПРАВЛЕНО: конвертируем proxy перед сохранением
+   * Сохранить задачи
    */
   static saveTodos(todos: Record<string, Todo>): boolean {
-    // КОНВЕРТИРУЕМ ПРОКСИ В ОБЫЧНЫЙ ОБЪЕКТ!
-    const plainTodos = this.convertToPlainObject(todos);
-    
+    if (!this.isStorageAvailable()) {
+      console.warn('localStorage недоступен');
+      return false;
+    }
+
     try {
-      const data = JSON.stringify(plainTodos);
-      const savedTo: string[] = [];
+      // Конвертируем перед сохранением
+      const plainTodos = this.toPlainObject(todos);
       
-      // 1. Основное хранилище - localStorage
-      if (this.isLocalStorageAvailable()) {
-        try {
-          localStorage.setItem(this.STORAGE_KEY, data);
-          localStorage.setItem(this.LAST_SAVE_KEY, new Date().toISOString());
-          savedTo.push('localStorage');
-        } catch (storageError) {
-          console.warn('⚠️ Ошибка localStorage:', storageError);
-        }
-      }
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(plainTodos));
+      localStorage.setItem(this.LAST_SAVE_KEY, new Date().toISOString());
       
-      // 2. Резервное хранилище - sessionStorage
-      if (this.isSessionStorageAvailable()) {
-        try {
-          sessionStorage.setItem(this.STORAGE_KEY, data);
-          savedTo.push('sessionStorage');
-        } catch (storageError) {
-          console.warn('⚠️ Ошибка sessionStorage:', storageError);
-        }
-      }
-      
-      // 3. Дополнительное хранилище - cookies
-      if (this.areCookiesAvailable() && data.length < 2000) {
-        try {
-          const expiryDate = new Date();
-          expiryDate.setDate(expiryDate.getDate() + this.COOKIE_EXPIRY_DAYS);
-          
-          const cookieValue = encodeURIComponent(data);
-          document.cookie = `${this.COOKIE_KEY}=${cookieValue}; expires=${expiryDate.toUTCString()}; path=/; SameSite=Strict`;
-          savedTo.push('cookies');
-        } catch (cookieError) {
-          console.warn('⚠️ Ошибка cookies:', cookieError);
-        }
-      }
-      
-      if (savedTo.length > 0) {
-        console.log(`💾 Сохранено ${Object.keys(plainTodos).length} задач в: ${savedTo.join(', ')}`);
-        return true;
-      } else {
-        console.warn('⚠️ Не удалось сохранить ни в одно хранилище');
-        return false;
-      }
+      console.log(`💾 Сохранено ${Object.keys(plainTodos).length} задач`);
+      return true;
     } catch (error) {
-      console.error('❌ Критическая ошибка сохранения:', error);
+      console.error('❌ Ошибка сохранения:', error);
       return false;
     }
   }
 
   /**
-   * Загрузить данные (пробуем все хранилища по порядку)
+   * Загрузить задачи
    */
   static loadTodos(): Record<string, Todo> {
-    // Сначала пробуем localStorage
-    try {
-      if (this.isLocalStorageAvailable()) {
-        const stored = localStorage.getItem(this.STORAGE_KEY);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          console.log(`📂 Загружено ${Object.keys(parsed).length} задач из localStorage`);
-          return parsed;
-        }
-      }
-    } catch (error) {
-      console.warn('⚠️ Ошибка загрузки из localStorage:', error);
+    if (!this.isStorageAvailable()) {
+      return {};
     }
-    
-    // Потом sessionStorage
+
     try {
-      if (this.isSessionStorageAvailable()) {
-        const stored = sessionStorage.getItem(this.STORAGE_KEY);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          console.log(`📂 Загружено ${Object.keys(parsed).length} задач из sessionStorage`);
-          return parsed;
-        }
-      }
+      const stored = localStorage.getItem(this.STORAGE_KEY);
+      if (!stored) return {};
+      
+      const parsed = JSON.parse(stored);
+      console.log(`📂 Загружено ${Object.keys(parsed).length} задач`);
+      return parsed;
     } catch (error) {
-      console.warn('⚠️ Ошибка загрузки из sessionStorage:', error);
+      console.error('❌ Ошибка загрузки:', error);
+      return {};
     }
-    
-    // В крайнем случае cookies
-    try {
-      if (this.areCookiesAvailable()) {
-        const cookies = document.cookie.split(';');
-        for (const cookie of cookies) {
-          const trimmed = cookie.trim();
-          if (trimmed.startsWith(`${this.COOKIE_KEY}=`)) {
-            const value = trimmed.substring(this.COOKIE_KEY.length + 1);
-            if (value) {
-              const parsed = JSON.parse(decodeURIComponent(value));
-              console.log(`📂 Загружено ${Object.keys(parsed).length} задач из cookies`);
-              return parsed;
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.warn('⚠️ Ошибка загрузки из cookies:', error);
-    }
-    
-    // console.log('📭 Нет сохраненных данных ни в одном хранилище');
-    return {};
   }
 
   /**
@@ -209,55 +103,30 @@ export class TodoStorage {
    */
   static getLastSave(): Date | null {
     try {
-      if (this.isLocalStorageAvailable()) {
-        const dateStr = localStorage.getItem(this.LAST_SAVE_KEY);
-        if (dateStr) {
-          const date = new Date(dateStr);
-          // Проверяем, что дата валидна
-          if (!isNaN(date.getTime())) {
-            return date;
-          }
-        }
-      }
-    } catch (error) {
-      console.warn('⚠️ Ошибка получения даты сохранения:', error);
+      const dateStr = localStorage.getItem(this.LAST_SAVE_KEY);
+      return dateStr ? new Date(dateStr) : null;
+    } catch {
+      return null;
     }
-    
-    return null;
   }
 
   /**
-   * Очистить все хранилища
+   * Очистить сохраненные данные
    */
   static clearAll(): void {
     try {
-      // Очищаем localStorage
-      if (this.isLocalStorageAvailable()) {
-        localStorage.removeItem(this.STORAGE_KEY);
-        localStorage.removeItem(this.LAST_SAVE_KEY);
-      }
-      
-      // Очищаем sessionStorage
-      if (this.isSessionStorageAvailable()) {
-        sessionStorage.removeItem(this.STORAGE_KEY);
-      }
-      
-      // Очищаем cookies
-      if (this.areCookiesAvailable()) {
-        document.cookie = `${this.COOKIE_KEY}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
-        document.cookie = `${this.COOKIE_KEY}-last-save=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
-      }
-      
-      console.log('🗑️ Все хранилища очищены');
+      localStorage.removeItem(this.STORAGE_KEY);
+      localStorage.removeItem(this.LAST_SAVE_KEY);
+      console.log('🗑️ Данные очищены');
     } catch (error) {
-      console.error('❌ Ошибка очистки хранилищ:', error);
+      console.error('❌ Ошибка очистки:', error);
     }
   }
 
   /**
-   * Получить статистику хранилища
+   * Получить статистику
    */
-  static getStorageStats() {
+  static getStats() {
     const todos = this.loadTodos();
     const lastSave = this.getLastSave();
     
@@ -265,35 +134,16 @@ export class TodoStorage {
       hasData: Object.keys(todos).length > 0,
       nodeCount: Object.keys(todos).length,
       lastSave: lastSave ? lastSave.toISOString() : null,
-      localStorage: this.isLocalStorageAvailable(),
-      sessionStorage: this.isSessionStorageAvailable(),
-      cookies: this.areCookiesAvailable(),
+      storageAvailable: this.isStorageAvailable(),
     };
   }
 
   /**
-   * Проверить, есть ли сохраненные данные
-   */
-  static hasSavedData(): boolean {
-    return this.getSavedCount() > 0;
-  }
-
-  /**
-   * Получить количество сохраненных задач
-   */
-  static getSavedCount(): number {
-    const todos = this.loadTodos();
-    return Object.keys(todos).length;
-  }
-
-  /**
-   * Экспортировать задачи в файл
-   * ИСПРАВЛЕНО: конвертируем proxy перед экспортом
+   * Экспорт в файл
    */
   static exportToFile(nodes: Record<string, Todo>): void {
     try {
-      // КОНВЕРТИРУЕМ ПРОКСИ!
-      const plainNodes = this.convertToPlainObject(nodes);
+      const plainNodes = this.toPlainObject(nodes);
       
       const data = {
         version: '1.0',
@@ -310,11 +160,11 @@ export class TodoStorage {
       const a = document.createElement('a');
       a.href = url;
       a.download = `todo-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       
-      setTimeout(() => {
-        URL.revokeObjectURL(url);
-      }, 100);
+      setTimeout(() => URL.revokeObjectURL(url), 100);
       
       console.log('📤 Экспортировано задач:', Object.keys(plainNodes).length);
     } catch (error) {
@@ -324,7 +174,7 @@ export class TodoStorage {
   }
 
   /**
-   * Импортировать задачи из файла
+   * Импорт из файла
    */
   static async importFromFile(file: File): Promise<Record<string, Todo>> {
     return new Promise((resolve, reject) => {
@@ -336,7 +186,7 @@ export class TodoStorage {
           const data = JSON.parse(content);
           
           if (!data.nodes || typeof data.nodes !== 'object') {
-            throw new Error('Неверный формат файла: отсутствуют данные задач');
+            throw new Error('Неверный формат файла');
           }
 
           resolve(data.nodes);
@@ -348,70 +198,5 @@ export class TodoStorage {
       reader.onerror = () => reject(new Error('Ошибка чтения файла'));
       reader.readAsText(file);
     });
-  }
-
-  /**
-   * Проверить размер данных
-   */
-  static getDataSize(): { readable: string } {
-    try {
-      const todos = this.loadTodos();
-      const jsonString = JSON.stringify(todos);
-      const bytes = new Blob([jsonString]).size;
-      const kilobytes = bytes / 1024;
-      
-      if (kilobytes < 1024) {
-        return { readable: `${kilobytes.toFixed(1)} KB` };
-      } else {
-        return { readable: `${(kilobytes / 1024).toFixed(2)} MB` };
-      }
-    } catch {
-      return { readable: '0 KB' };
-    }
-  }
-
-  /**
-   * Прямое тестирование хранилища
-   */
-  static testStorage(): boolean {
-    try {
-      const testData = {
-        test: {
-          id: 'test',
-          title: 'Тестовая задача',
-          description: 'Тест сохранения',
-          status: 'todo' as const,
-          priority: 'medium' as const,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          tags: ['тест'],
-          position: { x: 0, y: 0 },
-          size: { width: 100, height: 100 },
-        }
-      };
-
-      // Сохраняем
-      const saved = this.saveTodos(testData);
-      if (!saved) {
-        console.error('❌ Тест не пройден: не удалось сохранить');
-        return false;
-      }
-
-      // Загружаем
-      const loaded = this.loadTodos();
-      if (!loaded || !loaded.test) {
-        console.error('❌ Тест не пройден: не удалось загрузить');
-        return false;
-      }
-
-      // Очищаем
-      this.clearAll();
-      
-      console.log('✅ Тест хранилища пройден успешно');
-      return true;
-    } catch (error) {
-      console.error('❌ Тест хранилища не пройден:', error);
-      return false;
-    }
   }
 }
