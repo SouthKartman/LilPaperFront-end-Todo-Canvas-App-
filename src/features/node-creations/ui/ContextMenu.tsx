@@ -123,7 +123,7 @@ export const ContextMenu: React.FC = () => {
         position: 'fixed',
         left: position.x,
         top: position.y,
-        zIndex: 1000,
+        zIndex: 10,
       }}
       onClick={(e) => e.stopPropagation()}
     >

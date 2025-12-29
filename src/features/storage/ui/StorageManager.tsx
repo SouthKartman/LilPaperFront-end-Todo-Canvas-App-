@@ -101,20 +101,6 @@ export const StorageManager: React.FC = () => {
       <div className="storage-header">
         <h3>💾 Управление хранилищем</h3>
         <div className="storage-status">
-          {/* {isSaving ? (
-            <span className="saving-indicator">💾 Сохранение...</span>
-          ) : lastSave ? (
-            <span className="last-save">
-              ✓ Сохранено: {lastSave.toLocaleTimeString().slice(0, 5)}
-            </span>
-          ) : null} */}
-          <button 
-            onClick={handleRefreshStats}
-            className="storage-btn storage-btn-refresh"
-            title="Обновить статистику"
-          >
-            🔄
-          </button>
         </div>
       </div>
       

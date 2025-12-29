@@ -127,7 +127,7 @@ export const CanvasWorkspace: React.FC = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ctrl+N - создать новую задачу
-      if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'H') {
         e.preventDefault()
         const canvasRect = canvasRef.current?.getBoundingClientRect()
         if (canvasRect) {
@@ -261,7 +261,7 @@ export const CanvasWorkspace: React.FC = () => {
           position: 'absolute',
           top: '10px',
           left: '10px',
-          zIndex: 10000,
+          zIndex: 5,
           padding: '10px',
           background: '#3b82f6',
           color: 'white',
@@ -270,12 +270,12 @@ export const CanvasWorkspace: React.FC = () => {
           cursor: 'pointer',
         }}
       >
-        Тест: Открыть форму
+        Создать задачу
       </button>
       
       {/* Подсказки по горячим клавишам */}
       <div className={styles.hotkeyHint}>
-        Двойной клик - создать задачу • Ctrl+N - новая задача • Ctrl+Shift+N - форма
+         Ctrl+H - новая задача
       </div>
     </div>
   )

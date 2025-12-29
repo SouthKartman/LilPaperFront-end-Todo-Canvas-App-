@@ -10,24 +10,27 @@ import { PropertiesPanel } from '@features/properties-panel/ui/PropertiesPanel'
 import { ContextMenu } from '@features/node-creations/ui/ContextMenu'
 import { TodoFormModal } from '@features/todo-form/ui/TodoFormModal'
 import './App.css'
+import { AppModalProvider } from '@shared/ui/kit/Modal/AppModal'
 
 export const App: React.FC = () => {
   return (
     <StoreProvider>
       <ThemeProvider>
         <DndProvider>
-          {/* Глобальное контекстное меню - вне WorkspaceLayout чтобы было поверх всего */}
-          <ContextMenu />
-          
-          {/* Модальное окно формы создания задач - также поверх всего */}
-          <TodoFormModal />
-          
-          <WorkspaceLayout
-            toolbar={<CanvasToolbar />}
-            sidebar={<PropertiesPanel />}
-          >
-            <CanvasWorkspace />
-          </WorkspaceLayout>
+          <AppModalProvider>
+            {/* Глобальное контекстное меню - вне WorkspaceLayout чтобы было поверх всего */}
+            <ContextMenu />
+            
+            {/* Модальное окно формы создания задач - также поверх всего */}
+            <TodoFormModal />
+            
+            <WorkspaceLayout
+              toolbar={<CanvasToolbar />}
+              sidebar={<PropertiesPanel />}
+            >
+              <CanvasWorkspace />
+            </WorkspaceLayout>
+          </AppModalProvider>
         </DndProvider>
       </ThemeProvider>
     </StoreProvider>
