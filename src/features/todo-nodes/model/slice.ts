@@ -74,15 +74,6 @@ const saveState = (state: TodoNodesState) => {
   }
 };
 
-// АВТОСОХРАНЕНИЕ С ЗАЩИТОЙ ОТ PROXY
-const autoSave = (state: TodoNodesState) => {
-  // Используем setTimeout чтобы дать Redux завершить обновление состояния
-  // и избежать работы с уже отозванным proxy
-  setTimeout(() => {
-    saveState(state);
-  }, 0);
-};
-
 // МИДЛВАРЕ ДЛЯ АВТОСОХРАНЕНИЯ (опционально, но надежнее)
 export const createAutoSaveMiddleware = () => (store: any) => (next: any) => (action: any) => {
   const result = next(action);
@@ -141,7 +132,7 @@ export const todoNodesSlice = createSlice({
       state.nodes[id] = newTodo;
     },
 
-    // Создание задачи на определенной позиции
+    // Создание задачи на определенной позиции (УЖЕ ЕСТЬ!)
     createTodoAtPosition: (
       state, 
       action: PayloadAction<{

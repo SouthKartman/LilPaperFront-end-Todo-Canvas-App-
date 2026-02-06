@@ -1,5 +1,5 @@
 // src/widgets/canvas-workspace/ui/CanvasWorkspace.tsx
-import React, { useEffect, useCallback, useRef, useMemo } from 'react'
+import React, { useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useTodoNodes } from '@features/todo-nodes/lib/useTodoNode'
 import { TodoNode } from '@features/todo-nodes/ui/TodoNode/TodoNode'
@@ -8,7 +8,6 @@ import { ContextMenu } from '@features/node-creations/ui/ContextMenu'
 import { showMenu } from '@features/node-creations/model/slice'
 import { createNodeContextMenu, createCanvasContextMenu } from '@features/node-creations/lib/contextMenuHelpers'
 import { todoNodesActions } from '@features/todo-nodes/model/slice'
-import { selectViewportTransform } from '@features/canvas-viewport/model/selectors'
 import { selectAllTodoNodes, selectSelectedTodoNodes } from '@features/todo-nodes/model/selectors'
 import { useTodoForm } from '@features/todo-form/lib/useTodoForm'
 import { QuickTodoForm } from '@features/todo-form/ui/QuickTodoForm'
@@ -17,178 +16,99 @@ import styles from './CanvasWorkspace.module.css'
 import { RootState } from '@shared/lib/state/store'
 import { StorageManager } from '@features/storage/ui/StorageManager'
 
+// Импортируем новый хук
+import { useEnhancedViewport } from '@features/canvas-viewport/lib/useTransformViewport'
+import { ZoomControls } from '@features/canvas-viewport/ui/ZoomControls'
+
 export const CanvasWorkspace: React.FC = () => {
   const { nodes } = useTodoNodes()
   const { dragState, isDragging } = useCanvasDnd()
   const dispatch = useDispatch()
-  const canvasRef = useRef<HTMLDivElement>(null)
   
   const todoNodes = useSelector(selectAllTodoNodes)
   const selectedNodes = useSelector(selectSelectedTodoNodes)
-  const viewportTransform = useSelector(selectViewportTransform)
   const { openQuickForm, openForm } = useTodoForm()
 
-  // Конвертация координат экрана в координаты канваса
-  const convertScreenToCanvas = useCallback((screenX: number, screenY: number) => {
-    const canvasRect = canvasRef.current?.getBoundingClientRect()
-    if (!canvasRect || !viewportTransform) return { x: 0, y: 0 }
-    
-    const relativeX = screenX - canvasRect.left
-    const relativeY = screenY - canvasRect.top
+  // Используем новый хук для viewport
+  const {
+    viewport,
+    handleWheel,
+    handlePanStart,
+    handlePanMove,
+    handlePanEnd,
+    handleKeyDown,
+    handleZoomIn,
+    handleZoomOut,
+    handleResetViewport,
+    handleToggleGrid,
+    getTransformStyle,
+    getGridStyle,
+  } = useEnhancedViewport()
+
+  // Конвертация координат с учетом viewport
+  const convertScreenToCanvas = (screenX: number, screenY: number, element: HTMLElement) => {
+    const rect = element.getBoundingClientRect()
+    const relativeX = screenX - rect.left
+    const relativeY = screenY - rect.top
     
     // Конвертируем с учетом зума и панорамирования
-    const canvasX = (relativeX - viewportTransform.x) / viewportTransform.zoom
-    const canvasY = (relativeY - viewportTransform.y) / viewportTransform.zoom
+    const canvasX = (relativeX - viewport.position.x) / viewport.scale
+    const canvasY = (relativeY - viewport.position.y) / viewport.scale
     
     return { x: canvasX, y: canvasY }
-  }, [viewportTransform])
+  }
 
-  // Мемоизируем обработчики, чтобы не создавать новые функции при каждом рендере
-  const memoizedHandlers = useMemo(() => ({
-    // Обработчик контекстного меню для канваса
-    handleCanvasContextMenu: (e: React.MouseEvent<HTMLDivElement>) => {
-      e.preventDefault()
-      e.stopPropagation()
-      
-      const canvasPosition = convertScreenToCanvas(e.clientX, e.clientY)
-      const menuItems = createCanvasContextMenu(canvasPosition)
-      
-      dispatch(showMenu({
-        x: e.clientX,
-        y: e.clientY,
-        items: menuItems,
-        context: { position: canvasPosition },
-      }))
-    },
+  // Обработчики событий (оставляем вашу существующую логику, но обновляем convertScreenToCanvas)
+  const handleCanvasContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    const canvasPosition = convertScreenToCanvas(e.clientX, e.clientY, e.currentTarget)
+    const menuItems = createCanvasContextMenu(canvasPosition)
+    
+    dispatch(showMenu({
+      x: e.clientX,
+      y: e.clientY,
+      items: menuItems,
+      context: { position: canvasPosition },
+    }))
+  }
 
-    // Обработчик контекстного меню для ноды
-    handleNodeContextMenu: (e: React.MouseEvent, nodeId: string) => {
-      e.preventDefault()
-      e.stopPropagation()
-      
-      const menuItems = createNodeContextMenu(nodeId)
-      
-      dispatch(showMenu({
-        x: e.clientX,
-        y: e.clientY,
-        items: menuItems,
-        context: { nodeId },
-      }))
-    },
+  const handleCanvasDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const canvasPosition = convertScreenToCanvas(e.clientX, e.clientY, e.currentTarget)
+    
+    dispatch(todoNodesActions.createTodoAtPosition({
+      position: canvasPosition,
+      title: 'Новая задача',
+      priority: 'medium',
+    }))
+  }
 
-    // Обработчик клика по ноде для выделения
-    handleNodeClick: (e: React.MouseEvent, nodeId: string) => {
-      e.stopPropagation()
-      
-      if (e.ctrlKey || e.metaKey) {
-        const isSelected = selectedNodes.some(n => n.id === nodeId)
-        if (isSelected) {
-          dispatch(todoNodesActions.deselectNode(nodeId))
-        } else {
-          dispatch(todoNodesActions.selectNode(nodeId))
-        }
-      } else if (e.shiftKey) {
-        dispatch(todoNodesActions.selectNode(nodeId))
-      } else {
-        dispatch(todoNodesActions.clearSelection())
-        dispatch(todoNodesActions.selectNode(nodeId))
-      }
-    },
-
-    // Обработчик клика по канвасу для снятия выделения
-    handleCanvasClick: (e: React.MouseEvent) => {
-      if (e.button === 0) {
-        if (!e.ctrlKey && !e.metaKey && !e.shiftKey) {
-          dispatch(todoNodesActions.clearSelection())
-        }
-      }
-    },
-
-    // Обработчик двойного клика по канвасу для быстрого создания
-    handleCanvasDoubleClick: (e: React.MouseEvent<HTMLDivElement>) => {
-      const canvasPosition = convertScreenToCanvas(e.clientX, e.clientY)
-      
-      dispatch(todoNodesActions.createTodoAtPosition({
-        position: canvasPosition,
-        type: 'default',
-        title: 'Новая задача',
-        priority: 'medium',
-      }))
-    },
-
-    // Обработчик двойного клика по ноде для редактирования
-    handleNodeDoubleClick: (e: React.MouseEvent, nodeId: string) => {
-      e.stopPropagation()
-      dispatch(todoNodesActions.startEditingTodo(nodeId))
-    },
-  }), [dispatch, convertScreenToCanvas, selectedNodes])
-
-  // Обработчик клавиш
+  // Глобальные обработчики для панорамирования
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl+N - создать новую задачу
-      if ((e.ctrlKey || e.metaKey) && e.key === 'H') {
-        e.preventDefault()
-        const canvasRect = canvasRef.current?.getBoundingClientRect()
-        if (canvasRect) {
-          const centerX = canvasRect.left + canvasRect.width / 2
-          const centerY = canvasRect.top + canvasRect.height / 2
-          const canvasPosition = convertScreenToCanvas(centerX, centerY)
-          
-          dispatch(todoNodesActions.createTodoAtPosition({
-            position: canvasPosition,
-            type: 'default',
-            title: 'Новая задача',
-            priority: 'medium',
-          }))
-        }
-      }
-      
-      // Ctrl+Shift+N - открыть форму создания
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'N') {
-        e.preventDefault()
-        openForm()
-      }
-      
-      // Delete - удалить выделенные ноды
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedNodes.length > 0) {
-        if (window.confirm(`Удалить ${selectedNodes.length} задач?`)) {
-          selectedNodes.forEach(node => {
-            dispatch(todoNodesActions.deleteTodo(node.id))
-          })
-        }
-        e.preventDefault()
-      }
-      
-      // Ctrl+A - выделить всё
-      if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
-        e.preventDefault()
-        const allNodeIds = todoNodes.map(node => node.id)
-        allNodeIds.forEach(nodeId => {
-          dispatch(todoNodesActions.selectNode(nodeId))
-        })
-      }
-      
-      // Ctrl+D - дублировать выделенные
-      if ((e.ctrlKey || e.metaKey) && e.key === 'd' && selectedNodes.length > 0) {
-        e.preventDefault()
-        selectedNodes.forEach(node => {
-          dispatch(todoNodesActions.duplicateTodo(node.id))
-        })
-      }
-      
-      // Escape - снять выделение
-      if (e.key === 'Escape' && selectedNodes.length > 0) {
-        dispatch(todoNodesActions.clearSelection())
-        e.preventDefault()
-      }
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      handlePanMove(e)
     }
-
-    document.addEventListener('keydown', handleKeyDown)
+    
+    const handleGlobalMouseUp = () => {
+      handlePanEnd()
+      document.body.style.cursor = ''
+    }
+    
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      handleKeyDown(e)
+    }
+    
+    document.addEventListener('mousemove', handleGlobalMouseMove)
+    document.addEventListener('mouseup', handleGlobalMouseUp)
+    document.addEventListener('keydown', handleGlobalKeyDown)
+    
     return () => {
-      document.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('mousemove', handleGlobalMouseMove)
+      document.removeEventListener('mouseup', handleGlobalMouseUp)
+      document.removeEventListener('keydown', handleGlobalKeyDown)
     }
-  }, [dispatch, todoNodes, selectedNodes, convertScreenToCanvas, openForm])
+  }, [handlePanMove, handlePanEnd, handleKeyDown])
 
   // Блокируем скролл страницы при перетаскивании
   useEffect(() => {
@@ -207,29 +127,75 @@ export const CanvasWorkspace: React.FC = () => {
   }, [isDragging])
 
   return (
-    <div 
-      className={styles.workspace}
-      onClick={memoizedHandlers.handleCanvasClick}
-    >
+    <div className={styles.workspace}>
+      
       <div 
-        ref={canvasRef}
         className={styles.canvas}
-        onContextMenu={memoizedHandlers.handleCanvasContextMenu}
-        onDoubleClick={memoizedHandlers.handleCanvasDoubleClick}
+        onWheel={handleWheel}
+        onMouseDown={handlePanStart}
+        onClick={(e) => {
+          if (e.button === 0 && !e.altKey) {
+            dispatch(todoNodesActions.clearSelection())
+          }
+        }}
+        onDoubleClick={handleCanvasDoubleClick}
+        onContextMenu={handleCanvasContextMenu}
       >
-        <div className={styles.grid} />
-        
-        {/* Отображаем все ноды */}
-        {nodes.map((node: any) => (
-          <TodoNode 
-            key={node.id} 
-            node={node}
-            onContextMenu={(e) => memoizedHandlers.handleNodeContextMenu(e, node.id)}
-            onClick={(e) => memoizedHandlers.handleNodeClick(e, node.id)}
-            onDoubleClick={(e) => memoizedHandlers.handleNodeDoubleClick(e, node.id)}
-            isSelected={selectedNodes.some(n => n.id === node.id)}
+        {/* Сетка с учетом viewport */}
+        {viewport.showGrid && (
+          <div 
+            className={styles.grid}
+            style={getGridStyle}
           />
-        ))}
+        )}
+        
+        {/* Контент с трансформацией */}
+        <div 
+          className={styles.content}
+          style={getTransformStyle}
+        >
+          {/* Отображаем все ноды */}
+          {nodes.map((node: any) => (
+            <TodoNode 
+              key={node.id} 
+              node={node}
+              onContextMenu={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                
+                const menuItems = createNodeContextMenu()
+                dispatch(showMenu({
+                  x: e.clientX,
+                  y: e.clientY,
+                  items: menuItems,
+                  context: { nodeId: node.id },
+                }))
+              }}
+              onClick={(e, nodeId) => {
+                e.stopPropagation()
+                
+                if (e.ctrlKey || e.metaKey) {
+                  const isSelected = selectedNodes.some(n => n.id === nodeId)
+                  if (isSelected) {
+                    dispatch(todoNodesActions.deselectNode(nodeId))
+                  } else {
+                    dispatch(todoNodesActions.selectNode(nodeId))
+                  }
+                } else if (e.shiftKey) {
+                  dispatch(todoNodesActions.selectNode(nodeId))
+                } else {
+                  dispatch(todoNodesActions.clearSelection())
+                  dispatch(todoNodesActions.selectNode(nodeId))
+                }
+              }}
+              onDoubleClick={(e, nodeId) => {
+                e.stopPropagation()
+                dispatch(todoNodesActions.startEditingTodo(nodeId))
+              }}
+              isSelected={selectedNodes.some(n => n.id === node.id)}
+            />
+          ))}
+        </div>
 
         {/* Индикатор перетаскивания */}
         {isDragging && dragState?.draggedNodeId && (
@@ -238,6 +204,7 @@ export const CanvasWorkspace: React.FC = () => {
             style={{
               left: dragState.currentPosition.x - dragState.offset.x,
               top: dragState.currentPosition.y - dragState.offset.y,
+              transform: `scale(${viewport.scale})`,
             }}
           >
             Перемещение...
@@ -245,16 +212,13 @@ export const CanvasWorkspace: React.FC = () => {
         )}
       </div>
       
-      {/* Глобальное контекстное меню (теперь из features/context-menu) */}
+      {/* Существующие компоненты */}
       <ContextMenu />
-      
-      {/* Быстрая форма создания задачи */}
       <QuickTodoForm />
-      
-      {/* Модальное окно с полной формой */}
       <TodoFormModal />
+      {/* <ZoomControls /> */}
       
-      {/* Кнопка для теста (опционально) */}
+      {/* Кнопка создания задачи */}
       <button 
         onClick={() => openQuickForm({ x: 100, y: 100 })}
         style={{
@@ -275,7 +239,7 @@ export const CanvasWorkspace: React.FC = () => {
       
       {/* Подсказки по горячим клавишам */}
       <div className={styles.hotkeyHint}>
-         Ctrl+H - новая задача
+        Ctrl+колесо — масштаб • Колесо — панорамирование • Alt+ЛКМ — панорамирование
       </div>
     </div>
   )

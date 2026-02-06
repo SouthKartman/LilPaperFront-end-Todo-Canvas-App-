@@ -8,7 +8,15 @@
   cursor: default;
 }
 
-.canvasGrid {
+.canvas {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  touch-action: none; /* Отключаем браузерный скролл */
+}
+
+.grid {
   position: absolute;
   top: 0;
   left: 0;
@@ -17,11 +25,19 @@
   background-image: 
     linear-gradient(90deg, #e0e0e0 1px, transparent 1px),
     linear-gradient(#e0e0e0 1px, transparent 1px);
-  background-size: 40px 40px;
-  opacity: 0.3;
   pointer-events: none;
+  transition: opacity 0.2s ease, background-size 0.2s ease;
 }
-/* Добавьте в src/widgets/canvas-workspace/ui/CanvasWorkspace.module.css */
+
+.content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  will-change: transform; /* Оптимизация для браузера */
+  transform-origin: 0 0;
+}
+
+/* Существующие стили оставляем без изменений */
 .dragPreview {
   position: absolute;
   background: rgba(59, 130, 246, 0.1);
@@ -34,9 +50,9 @@
   font-size: 12px;
   color: #3b82f6;
   font-weight: 500;
+  transition: transform 0.1s ease-out;
 }
 
-/* Добавьте эти стили в конец файла */
 .selectionHint {
   margin-left: 12px;
   font-size: 12px;
@@ -61,15 +77,18 @@
   z-index: 10;
 }
 
-/* Адаптация для темной темы */
-@media (prefers-color-scheme: dark) {
-  .hotkeyHint {
-    background: rgba(31, 41, 55, 0.9);
-    color: #d1d5db;
-    border-color: rgba(55, 65, 81, 0.5);
-  }
-  
-  .selectionHint {
-    color: #9ca3af;
-  }
+/* Оптимизация для анимаций */
+.content > * {
+  transform: translateZ(0); /* Аппаратное ускорение */
+  backface-visibility: hidden;
+}
+
+/* Плавные transition для transform */
+.content {
+  transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Отключаем transition при панорамировании */
+.canvas.panning .content {
+  transition: none;
 }

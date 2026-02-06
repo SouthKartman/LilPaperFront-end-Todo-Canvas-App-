@@ -1,6 +1,5 @@
 // src/features/canvas-viewport/lib/useCanvasViewport.ts
 import { useState, useCallback } from 'react'
-import { StageConfig } from 'konva/lib/Stage'
 
 interface ViewportState {
   x: number

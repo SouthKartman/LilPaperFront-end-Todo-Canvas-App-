@@ -54,31 +54,4 @@
   }
 }
 
-/* Темная тема */
-@media (prefers-color-scheme: dark) {
-  .context-menu {
-    background: #1f2937;
-    border-color: #374151;
-    color: #f9fafb;
-  }
-  
-  .menu-item {
-    color: #f9fafb;
-  }
-  
-  .menu-item:hover:not(.menu-item--disabled) {
-    background-color: #374151;
-  }
-  
-  .menu-item:focus {
-    background-color: #4b5563;
-  }
-  
-  .menu-item__shortcut {
-    color: #d1d5db;
-  }
-  
-  .menu-divider {
-    background-color: #374151;
-  }
-}
+

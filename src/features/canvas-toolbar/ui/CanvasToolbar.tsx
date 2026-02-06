@@ -6,6 +6,7 @@ import { StorageManager } from '@features/storage/ui/StorageManager';
 import { TodoStorage } from '@shared/api/storage/jsonStorage/todoStorage';
 import { useSelector } from 'react-redux';
 import { useAppModal } from '@shared/ui/kit/Modal/AppModal';
+import ZoomControls from '@features/canvas-viewport/ui/ZoomControls';
 
 export const CanvasToolbar: React.FC = () => {
   // Получаем состояние один раз в хуке
@@ -56,12 +57,9 @@ export const CanvasToolbar: React.FC = () => {
       <div className={styles.tools}>
         
       </div>
-      
-      <div style={{ marginLeft: 'auto', display: 'flex', gap: '10px', alignItems: 'center' }}>
-        
-        <span style={{ fontSize: '14px', color: '#666' }}>Масштаб: 100%</span>
-        <button className={styles.toolButton}>Сетка</button>
-        <button className={styles.toolButton}>Отменить</button>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <span style={{ fontSize: '14px', color: '#666' }}>Масштаб:</span>
+        <ZoomControls />
         <button 
           onClick={handleSave}
           className="storage-btn storage-btn-save"

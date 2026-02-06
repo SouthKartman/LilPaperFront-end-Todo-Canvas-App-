@@ -3,6 +3,7 @@ export type TodoStatus = 'todo' | 'in-progress' | 'done' | 'blocked'
 export type TodoPriority = 'low' | 'medium' | 'high' | 'critical'
 
 export interface Todo {
+  type: any
   id: string
   title: string
   description: string

@@ -11,6 +11,7 @@ import { ContextMenu } from '@features/node-creations/ui/ContextMenu'
 import { TodoFormModal } from '@features/todo-form/ui/TodoFormModal'
 import './App.css'
 import { AppModalProvider } from '@shared/ui/kit/Modal/AppModal'
+import { KonvaCanvasWorkspace } from '@widgets/canvas-workspace/ui/KonvaCanvasWorkspace'
 
 export const App: React.FC = () => {
   return (
@@ -29,6 +30,7 @@ export const App: React.FC = () => {
               sidebar={<PropertiesPanel />}
             >
               <CanvasWorkspace />
+              {/* <KonvaCanvasWorkspace/> */}
             </WorkspaceLayout>
           </AppModalProvider>
         </DndProvider>
