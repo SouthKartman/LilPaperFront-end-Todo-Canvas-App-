@@ -251,7 +251,6 @@ export const TodoNode: React.FC<TodoNodeProps> = ({
         left: node.position.x,
         top: node.position.y,
         width: node.size?.width || 200,
-        height: node.size?.height || 150,
         borderColor: getStatusColor(node.status),
         opacity: isBeingDragged ? 0.7 : 1,
         transform: isBeingDragged ? 'scale(1.05)' : 'scale(1)',

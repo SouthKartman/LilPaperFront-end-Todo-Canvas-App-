@@ -158,7 +158,7 @@ export const todoNodesSlice = createSlice({
         parentId: undefined,
         assignee: undefined,
         position,
-        size: { width: 280, height: 180 },
+        size: { width: 280},
       };
       
       state.nodes[id] = newTodo;

@@ -11,6 +11,7 @@
   user-select: none;
   transition: all 0.2s ease;
   z-index: 1;
+
 }
 
 .node:hover {
@@ -56,6 +57,7 @@
   color: #6b7280;
   line-height: 1.4;
   min-height: 34px;
+  height: 100%;
   word-break: break-word;
 }
 
