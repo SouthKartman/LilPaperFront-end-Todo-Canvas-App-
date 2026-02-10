@@ -1,5 +1,9 @@
 // src/widgets/workspace-layout/ui/WorkspaceLayout.tsx
-import React from 'react'
+import React, { useEffect } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import { createProject } from '@features/project-management/model/slice'
+import { selectCurrentProject } from '@shared/lib/state/store'
+import { PagesSidebar } from '@widgets/pages-workspace/ui/PagesSidebar'
 import styles from './WorkspaceLayout.module.css'
 
 interface WorkspaceLayoutProps {
@@ -13,6 +17,21 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
   sidebar,
   children,
 }) => {
+  const dispatch = useDispatch()
+  const currentProject = useSelector(selectCurrentProject)
+  
+  // 🆕 АВТОМАТИЧЕСКОЕ СОЗДАНИЕ ПРОЕКТА ПРИ ЗАГРУЗКЕ
+  useEffect(() => {
+    if (!currentProject) {
+      // Даем небольшую задержку для загрузки сохраненного состояния
+      const timer = setTimeout(() => {
+        dispatch(createProject({ name: 'Мой Проект' }))
+      }, 100)
+      
+      return () => clearTimeout(timer)
+    }
+  }, [currentProject, dispatch])
+  
   return (
     <div className={styles.layout}>
       {toolbar && (
@@ -21,9 +40,17 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         </header>
       )}
       <div className={styles.content}>
+        {/* 🆕 ЛЕВАЯ ПАНЕЛЬ СО СТРАНИЦАМИ */}
+        <aside className={styles.pagesSidebar}>
+          <PagesSidebar />
+        </aside>
+        
+        {/* ОСНОВНАЯ ОБЛАСТЬ С КАНВАСОМ */}
         <main className={styles.main}>
           {children}
         </main>
+        
+        {/* ПРАВАЯ ПАНЕЛЬ */}
         {sidebar && (
           <aside className={styles.sidebar}>
             {sidebar}

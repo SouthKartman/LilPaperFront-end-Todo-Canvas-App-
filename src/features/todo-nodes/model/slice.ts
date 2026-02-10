@@ -19,7 +19,6 @@ export interface TodoNodesState {
 
 // БЕЗОПАСНАЯ загрузка начального состояния
 const loadInitialState = (): TodoNodesState => {
-  // Проверяем, что мы в браузере (не SSR)
   if (typeof window === 'undefined') {
     return {
       nodes: {},
@@ -49,36 +48,36 @@ const loadInitialState = (): TodoNodesState => {
 
 const initialState: TodoNodesState = loadInitialState();
 
-// ФУНКЦИЯ ДЛЯ СОХРАНЕНИЯ - КОНВЕРТИРУЕМ PROXY В ОБЫЧНЫЙ ОБЪЕКТ
-const saveState = (state: TodoNodesState) => {
-  // Важно: конвертируем proxy Immer в обычный объект
+// 🆕 НОВАЯ ФУНКЦИЯ: Получаем текущую страницу из проекта
+const getCurrentPageId = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  
   try {
-    // Способ 1: Используем JSON.stringify/parse для глубокого копирования
+    const projectState = localStorage.getItem('project_state');
+    if (projectState) {
+      const parsed = JSON.parse(projectState);
+      const currentProject = parsed.projects[parsed.currentProjectId];
+      return currentProject?.currentPageId || null;
+    }
+  } catch (error) {
+    console.error('❌ Ошибка получения текущей страницы:', error);
+  }
+  return null;
+};
+
+// ФУНКЦИЯ ДЛЯ СОХРАНЕНИЯ
+const saveState = (state: TodoNodesState) => {
+  try {
     const nodesToSave = JSON.parse(JSON.stringify(state.nodes));
     TodoStorage.saveTodos(nodesToSave);
   } catch (error) {
     console.error('❌ Ошибка автосохранения:', error);
-    
-    // Способ 2: Ручное копирование как fallback
-    try {
-      const manualCopy: Record<string, Todo> = {};
-      for (const [key, value] of Object.entries(state.nodes)) {
-        if (value && typeof value === 'object') {
-          manualCopy[key] = { ...value };
-        }
-      }
-      TodoStorage.saveTodos(manualCopy);
-    } catch (fallbackError) {
-      console.error('❌ Ошибка и в fallback сохранении:', fallbackError);
-    }
   }
 };
 
-// МИДЛВАРЕ ДЛЯ АВТОСОХРАНЕНИЯ (опционально, но надежнее)
 export const createAutoSaveMiddleware = () => (store: any) => (next: any) => (action: any) => {
   const result = next(action);
   
-  // Сохраняем только после определенных действий
   const saveActions = [
     'todoNodes/createTodo',
     'todoNodes/updateTodo',
@@ -90,10 +89,12 @@ export const createAutoSaveMiddleware = () => (store: any) => (next: any) => (ac
     'todoNodes/importNodes',
     'todoNodes/duplicateTodo',
     'todoNodes/deleteSelectedTodos',
+    'project/addPage', // 🆕 ДОБАВЛЕНО
+    'project/switchPage', // 🆕 ДОБАВЛЕНО
+    'project/removePage', // 🆕 ДОБАВЛЕНО
   ];
   
   if (saveActions.includes(action.type)) {
-    // Используем setTimeout чтобы состояние уже обновилось
     setTimeout(() => {
       const state = store.getState();
       saveState(state.todoNodes);
@@ -108,10 +109,11 @@ export const todoNodesSlice = createSlice({
   initialState,
   reducers: {
     // Создание новой задачи
-    createTodo: (state, action: PayloadAction<CreateTodoDto>) => {
+    createTodo: (state, action: PayloadAction<CreateTodoDto & { pageId?: string }>) => {
       const id = nanoid();
       const now = createISODate();
       const payload = action.payload;
+      const currentPageId = getCurrentPageId();
       
       const newTodo: Todo = {
         id,
@@ -127,23 +129,26 @@ export const todoNodesSlice = createSlice({
         assignee: undefined,
         position: payload.position || { x: 100, y: 100 },
         size: { width: 200, height: 150 },
+        pageId: payload.pageId || currentPageId || 'default_page', // 🆕 ДОБАВЛЕНО
       };
       
       state.nodes[id] = newTodo;
     },
 
-    // Создание задачи на определенной позиции (УЖЕ ЕСТЬ!)
+    // Создание задачи на определенной позиции
     createTodoAtPosition: (
       state, 
       action: PayloadAction<{
         position: { x: number; y: number };
         title?: string;
         priority?: TodoPriority;
+        pageId?: string; // 🆕 ДОБАВЛЕНО
       }>
     ) => {
       const id = nanoid();
       const now = createISODate();
-      const { position, title = 'Новая задача', priority = 'medium' } = action.payload;
+      const { position, title = 'Новая задача', priority = 'medium', pageId } = action.payload;
+      const currentPageId = getCurrentPageId();
       
       const newTodo: Todo = {
         id,
@@ -158,7 +163,8 @@ export const todoNodesSlice = createSlice({
         parentId: undefined,
         assignee: undefined,
         position,
-        size: { width: 280},
+        size: { width: 280, height: 150 },
+        pageId: pageId || currentPageId || 'default_page', // 🆕 ДОБАВЛЕНО
       };
       
       state.nodes[id] = newTodo;
@@ -166,7 +172,70 @@ export const todoNodesSlice = createSlice({
       state.editingNodeId = id;
     },
 
-    // Дублирование задачи
+    // 🆕 НОВЫЙ ЭКШЕН: Создание задачи для конкретной страницы
+    createTodoForPage: (
+      state, 
+      action: PayloadAction<{
+        pageId: string;
+        position: { x: number; y: number };
+        title?: string;
+      }>
+    ) => {
+      const id = nanoid();
+      const now = createISODate();
+      const { pageId, position, title = 'Новая задача' } = action.payload;
+      
+      const newTodo: Todo = {
+        id,
+        title,
+        description: '',
+        status: 'todo',
+        priority: 'medium',
+        createdAt: now,
+        updatedAt: now,
+        dueDate: undefined,
+        tags: [],
+        parentId: undefined,
+        assignee: undefined,
+        position,
+        size: { width: 280, height: 150 },
+        pageId, // 🆕 ЯВНО УКАЗЫВАЕМ pageId
+      };
+      
+      state.nodes[id] = newTodo;
+      state.selectedNodeIds = [id];
+      state.editingNodeId = id;
+    },
+
+    // 🆕 НОВЫЙ ЭКШЕН: Перенос ноды на другую страницу
+    moveTodoToPage: (
+      state, 
+      action: PayloadAction<{
+        nodeId: string;
+        targetPageId: string;
+      }>
+    ) => {
+      const { nodeId, targetPageId } = action.payload;
+      const node = state.nodes[nodeId];
+      
+      if (node) {
+        node.pageId = targetPageId;
+        node.updatedAt = createISODate();
+      }
+    },
+
+    // 🆕 НОВЫЙ ЭКШЕН: Фильтрация нод по странице
+    filterNodesByPage: (
+      state, 
+      action: PayloadAction<{
+        pageId: string | null; // null = все страницы
+      }>
+    ) => {
+      // Этот экшен может использоваться для UI логики
+      // Основная фильтрация происходит в селекторах
+    },
+
+    // Дублирование задачи (с сохранением pageId)
     duplicateTodo: (state, action: PayloadAction<string>) => {
       const originalId = action.payload;
       const originalNode = state.nodes[originalId];
@@ -185,6 +254,7 @@ export const todoNodesSlice = createSlice({
           },
           createdAt: now,
           updatedAt: now,
+          pageId: originalNode.pageId, // 🆕 СОХРАНЯЕМ pageId
         };
         
         state.selectedNodeIds = [id];
@@ -192,7 +262,7 @@ export const todoNodesSlice = createSlice({
       }
     },
 
-    // Обновление задачи
+    // Остальные экшены остаются без изменений, но добавляем pageId в типы при необходимости
     updateTodo: (state, action: PayloadAction<UpdateTodoDto>) => {
       const { id, ...updates } = action.payload;
       const node = state.nodes[id];
@@ -213,7 +283,6 @@ export const todoNodesSlice = createSlice({
       }
     },
 
-    // Частичное обновление
     updateTodoPartial: (
       state, 
       action: PayloadAction<{
@@ -232,7 +301,6 @@ export const todoNodesSlice = createSlice({
       }
     },
 
-    // Удаление задачи
     deleteTodo: (state, action: PayloadAction<string>) => {
       const nodeId = action.payload;
       const node = state.nodes[nodeId];
@@ -247,7 +315,6 @@ export const todoNodesSlice = createSlice({
       }
     },
 
-    // Удаление выделенных задач
     deleteSelectedTodos: (state) => {
       const selectedIds = [...state.selectedNodeIds];
       
@@ -262,7 +329,6 @@ export const todoNodesSlice = createSlice({
       state.selectedNodeIds = [];
     },
 
-    // Перемещение задачи
     moveTodo: (
       state, 
       action: PayloadAction<{
@@ -279,7 +345,6 @@ export const todoNodesSlice = createSlice({
       }
     },
 
-    // Изменение размера
     resizeTodo: (
       state, 
       action: PayloadAction<{
@@ -296,7 +361,34 @@ export const todoNodesSlice = createSlice({
       }
     },
 
-    // Установка статуса
+    // 🆕 НОВЫЙ ЭКШЕН: Удаление всех нод страницы
+    deletePageNodes: (
+      state, 
+      action: PayloadAction<{
+        pageId: string;
+      }>
+    ) => {
+      const { pageId } = action.payload;
+      
+      // Удаляем все ноды этой страницы
+      Object.keys(state.nodes).forEach(nodeId => {
+        if (state.nodes[nodeId].pageId === pageId) {
+          delete state.nodes[nodeId];
+        }
+      });
+      
+      // Очищаем selection
+      state.selectedNodeIds = state.selectedNodeIds.filter(id => {
+        const node = state.nodes[id];
+        return node ? node.pageId !== pageId : true;
+      });
+      
+      if (state.editingNodeId && state.nodes[state.editingNodeId]?.pageId === pageId) {
+        state.editingNodeId = null;
+      }
+    },
+
+    // Остальные экшены без изменений...
     setTodoStatus: (
       state, 
       action: PayloadAction<{
@@ -313,7 +405,6 @@ export const todoNodesSlice = createSlice({
       }
     },
 
-    // Установка приоритета
     setTodoPriority: (
       state, 
       action: PayloadAction<{
@@ -330,7 +421,6 @@ export const todoNodesSlice = createSlice({
       }
     },
 
-    // Добавление тега
     addTodoTag: (
       state, 
       action: PayloadAction<{
@@ -347,7 +437,6 @@ export const todoNodesSlice = createSlice({
       }
     },
 
-    // Удаление тега
     removeTodoTag: (
       state, 
       action: PayloadAction<{
@@ -364,7 +453,6 @@ export const todoNodesSlice = createSlice({
       }
     },
 
-    // Выделение/снятие выделения
     selectNode: (state, action: PayloadAction<string>) => {
       const nodeId = action.payload;
       
@@ -382,7 +470,6 @@ export const todoNodesSlice = createSlice({
       state.selectedNodeIds = [];
     },
 
-    // Управление редактированием
     startEditingTodo: (state, action: PayloadAction<string>) => {
       const nodeId = action.payload;
       if (state.nodes[nodeId]) {
@@ -397,7 +484,6 @@ export const todoNodesSlice = createSlice({
       }
     },
 
-    // Z-index операции
     bringToFront: (state, action: PayloadAction<string>) => {
       const node = state.nodes[action.payload];
       
@@ -422,7 +508,6 @@ export const todoNodesSlice = createSlice({
       }
     },
 
-    // Управление хранилищем
     clearAllNodes: (state) => {
       state.nodes = {};
       state.selectedNodeIds = [];
@@ -441,13 +526,11 @@ export const todoNodesSlice = createSlice({
     },
 
     manualSave: (state) => {
-      // Ручное сохранение тоже использует безопасную функцию
       setTimeout(() => {
         saveState(state);
       }, 0);
     },
 
-    // Импорт/экспорт
     importNodes: (state, action: PayloadAction<Record<string, Todo>>) => {
       state.nodes = action.payload;
       state.selectedNodeIds = [];
@@ -455,7 +538,6 @@ export const todoNodesSlice = createSlice({
     },
 
     exportNodes: (state) => {
-      // Экспорт происходит через компонент
       setTimeout(() => {
         try {
           const nodesToExport = JSON.parse(JSON.stringify(state.nodes));
@@ -468,10 +550,14 @@ export const todoNodesSlice = createSlice({
   },
 });
 
-// Экспорт всех actions
+// Экспорт всех actions с новыми
 export const {
   createTodo,
   createTodoAtPosition,
+  createTodoForPage, // 🆕 НОВЫЙ
+  moveTodoToPage, // 🆕 НОВЫЙ
+  filterNodesByPage, // 🆕 НОВЫЙ
+  deletePageNodes, // 🆕 НОВЫЙ
   duplicateTodo,
   updateTodo,
   updateTodoPartial,
@@ -497,7 +583,6 @@ export const {
   exportNodes,
 } = todoNodesSlice.actions;
 
-// Экспорт для удобного использования
 export const todoNodesActions = todoNodesSlice.actions;
 
 export default todoNodesSlice.reducer;

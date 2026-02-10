@@ -2,7 +2,8 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { TodoStorage } from '@shared/api/storage/jsonStorage/todoStorage';
-import { importNodes, clearAllNodes } from '../../todo-nodes/model/slice';
+import { importNodes, clearAllNodes } from '@features/todo-nodes/model/slice';
+import { loadProjectState } from '@features/project-management/model/slice';
 import { RootState } from '@shared/lib/state/store';
 import './StorageManager.css';
 
@@ -10,9 +11,11 @@ export const StorageManager: React.FC = () => {
   const dispatch = useDispatch();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Получаем состояние один раз в хуке
+  // Получаем состояние
   const nodes = useSelector((state: RootState) => state.todoNodes.nodes);
+  const project = useSelector((state: RootState) => state.project);
   const nodeCount = Object.keys(nodes).length;
+  const pageCount = Object.keys(project.pages).length;
   
   const [lastSave, setLastSave] = useState<Date | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -23,45 +26,89 @@ export const StorageManager: React.FC = () => {
     setLastSave(savedDate);
   }, []);
 
-  // Функция для ручного сохранения
+  // Функция для ручного сохранения всего
   const handleSave = useCallback(() => {
     setIsSaving(true);
-    const success = TodoStorage.saveTodos(nodes);
     
-    if (success) {
-      setLastSave(new Date());
+    try {
+      // Сохраняем задачи
+      const successTodos = TodoStorage.saveTodos(nodes);
+      
+      // 🆕 Сохраняем проект
+      const projectState = {
+        currentProjectId: project.currentProjectId,
+        projects: project.projects,
+        pages: project.pages,
+        canvases: project.canvases || {},
+      };
+      const successProject = TodoStorage.saveProjectState(projectState);
+      
+      if (successTodos || successProject) {
+        setLastSave(new Date());
+        alert('✅ Все данные сохранены');
+      } else {
+        alert('❌ Не удалось сохранить данные');
+      }
+    } catch (error) {
+      alert('❌ Ошибка при сохранении');
+    } finally {
       setTimeout(() => setIsSaving(false), 500);
-    } else {
-      setIsSaving(false);
-      alert('❌ Не удалось сохранить данные');
     }
-  }, [nodes]);
+  }, [nodes, project]);
 
   // Автосохранение при размонтировании
   useEffect(() => {
     return () => {
-      // Сохраняем при закрытии/обновлении страницы
       TodoStorage.saveTodos(nodes);
     };
   }, [nodes]);
 
   const handleExport = useCallback(() => {
-    TodoStorage.exportToFile(nodes);
-  }, [nodes]);
+    const exportData = {
+      version: '1.1',
+      exportDate: new Date().toISOString(),
+      todoNodes: nodes,
+      project: {
+        currentProjectId: project.currentProjectId,
+        projects: project.projects,
+        pages: project.pages,
+        canvases: project.canvases || {},
+      },
+    };
+    
+    TodoStorage.exportToFile(exportData);
+  }, [nodes, project]);
 
   const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     try {
-      const importedNodes = await TodoStorage.importFromFile(file);
-      dispatch(importNodes(importedNodes));
+      const importedData = await TodoStorage.importFromFile(file);
       
-      // Автосохранение после импорта
-      TodoStorage.saveTodos(importedNodes);
+      // Импортируем задачи
+      if (importedData.todoNodes) {
+        dispatch(importNodes(importedData.todoNodes));
+      }
+      
+      // 🆕 Импортируем проект
+      if (importedData.project) {
+        dispatch(loadProjectState(importedData.project));
+      }
+      
+      // Сохраняем импортированные данные
+      if (importedData.todoNodes) {
+        TodoStorage.saveTodos(importedData.todoNodes);
+      }
+      if (importedData.project) {
+        TodoStorage.saveProjectState(importedData.project);
+      }
+      
       setLastSave(new Date());
       
-      alert(`✅ Импортировано ${Object.keys(importedNodes).length} задач`);
+      const nodeCount = importedData.todoNodes ? Object.keys(importedData.todoNodes).length : 0;
+      const projectCount = importedData.project ? 1 : 0;
+      alert(`✅ Импортировано: ${nodeCount} задач, ${projectCount} проектов`);
       
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -72,54 +119,57 @@ export const StorageManager: React.FC = () => {
   };
 
   const handleClearAll = () => {
-    if (window.confirm('Вы уверены, что хотите удалить ВСЕ задачи? Это действие нельзя отменить.')) {
+    if (window.confirm('Вы уверены, что хотите удалить ВСЕ данные? Это действие нельзя отменить.')) {
       dispatch(clearAllNodes());
       TodoStorage.clearAll();
       setLastSave(null);
-      alert('✅ Все задачи удалены');
+      alert('✅ Все данные удалены');
     }
   };
 
-  const handleRefreshStats = () => {
-    const savedDate = TodoStorage.getLastSave();
-    setLastSave(savedDate);
-  };
+  // 🆕 Получаем информацию о проекте
+  const projectInfo = TodoStorage.getProjectInfo();
 
-  // Добавим автосохранение при изменении nodes
+  // Добавим автосохранение при изменении
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (nodeCount > 0) {
+      if (nodeCount > 0 || pageCount > 0) {
         handleSave();
       }
-    }, 3000); // Автосохранение каждые 3 секунды при изменениях
+    }, 3000);
 
     return () => clearTimeout(timer);
-  }, [nodes, handleSave, nodeCount]);
+  }, [nodes, project, handleSave, nodeCount, pageCount]);
 
   return (
     <div className="storage-manager">
       <div className="storage-header">
         <h3>💾 Управление хранилищем</h3>
-        <div className="storage-status">
-        </div>
       </div>
       
       <div className="storage-stats">
         <div className="stat-item">
-          <span className="stat-label">Задач в памяти:</span>
+          <span className="stat-label">Задач:</span>
           <span className="stat-value">{nodeCount}</span>
         </div>
         
         <div className="stat-item">
-          <span className="stat-label">Сохранено в браузере:</span>
-          <span className="stat-value">{TodoStorage.getStats().nodeCount}</span>
+          <span className="stat-label">Страниц:</span>
+          <span className="stat-value">{pageCount}</span>
         </div>
+        
+        {projectInfo?.currentProject && (
+          <div className="stat-item">
+            <span className="stat-label">Проект:</span>
+            <span className="stat-value">{projectInfo.currentProject.name}</span>
+          </div>
+        )}
         
         {lastSave && (
           <div className="stat-item">
-            <span className="stat-label">Последнее сохранение:</span>
+            <span className="stat-label">Сохранено:</span>
             <span className="stat-value">
-              {lastSave.toLocaleDateString()} {lastSave.toLocaleTimeString().slice(0, 5)}
+              {lastSave.toLocaleTimeString().slice(0, 5)}
             </span>
           </div>
         )}
@@ -130,25 +180,25 @@ export const StorageManager: React.FC = () => {
           onClick={handleSave}
           className="storage-btn storage-btn-save"
           disabled={isSaving}
-          title="Сохранить в браузер"
+          title="Сохранить все данные в браузер"
         >
-          {isSaving ? '💾 Сохранение...' : '💾 Сохранить сейчас'}
+          {isSaving ? '💾 Сохранение...' : '💾 Сохранить все'}
         </button>
         
         <button 
           onClick={handleExport} 
           className="storage-btn storage-btn-export"
-          title="Скачать все задачи в JSON файл"
+          title="Скачать все данные в JSON файл"
         >
-          📤 Экспорт в JSON
+          📤 Экспорт
         </button>
         
         <button 
           onClick={() => fileInputRef.current?.click()} 
           className="storage-btn storage-btn-import"
-          title="Импортировать задачи из JSON файла"
+          title="Импортировать данные из JSON файла"
         >
-          📥 Импорт из JSON
+          📥 Импорт
         </button>
         
         <input
@@ -162,9 +212,9 @@ export const StorageManager: React.FC = () => {
         <button 
           onClick={handleClearAll} 
           className="storage-btn storage-btn-clear"
-          title="Удалить все задачи"
+          title="Удалить все данные"
         >
-          🗑️ Очистить всё
+          🗑️ Очистить
         </button>
       </div>
       
@@ -172,10 +222,10 @@ export const StorageManager: React.FC = () => {
         <small>
           <strong>Автосохранение работает:</strong>
           <ul>
-            <li>✓ Автоматически каждые 3 секунды при изменениях</li>
+            <li>✓ Автоматически каждые 3 секунды</li>
+            <li>✓ Сохраняет задачи и проекты</li>
             <li>✓ При закрытии страницы</li>
-            <li>✓ При любом изменении задач</li>
-            <li>✓ Данные хранятся только в вашем браузере</li>
+            <li>✓ Данные хранятся в браузере</li>
           </ul>
         </small>
       </div>

@@ -39,3 +39,48 @@
 .sidebarCollapsed {
   width: 60px;
 }
+/* 🆕 СТИЛИ ДЛЯ ПАНЕЛИ СТРАНИЦ */
+.pagesSidebar {
+  flex: 0 0 250px;
+  background: #f8f9fa;
+  border-right: 1px solid #e9ecef;
+  overflow-y: auto;
+  transition: flex-basis 0.2s;
+}
+@media (max-width: 768px) {
+  .pagesSidebar {
+    position: absolute;
+    left: -200px;
+    z-index: 100;
+    height: 100%;
+    transition: left 0.3s;
+  }
+  
+  .pagesSidebar.open {
+    left: 0;
+  }
+  
+  .sidebar {
+    position: absolute;
+    right: -250px;
+    z-index: 100;
+    height: 100%;
+    transition: right 0.3s;
+  }
+  
+  .sidebar.open {
+    right: 0;
+  }
+}
+
+/* УТИЛИТЫ */
+.resizer {
+  flex: 0 0 4px;
+  background: #e9ecef;
+  cursor: col-resize;
+  transition: background 0.2s;
+}
+
+.resizer:hover {
+  background: #4361ee;
+}

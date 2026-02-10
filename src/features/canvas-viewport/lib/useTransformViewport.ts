@@ -13,7 +13,7 @@ import {
 } from '../model/slice';
 import { selectViewport } from '../model/selectors';
 
-export const useEnhancedViewport = () => {
+export const useEnhancedViewport = (p0: { initialViewport: { x: number; y: number; zoom: number; }; initialGrid: { size: number; color: string; isVisible: boolean; }; }) => {
   const dispatch = useAppDispatch();
   const viewport = useAppSelector(selectViewport);
   const isPanning = useRef(false);
