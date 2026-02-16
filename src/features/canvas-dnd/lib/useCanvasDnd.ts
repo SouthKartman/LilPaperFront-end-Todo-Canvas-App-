@@ -1,4 +1,3 @@
-// src/features/canvas-dnd/lib/useCanvasDnd.ts
 import { useCallback } from 'react'
 import { useAppDispatch, useAppSelector } from '@shared/lib/state'
 import { startDrag, updateDrag, endDrag } from '../model/slice'
@@ -6,7 +5,6 @@ import { startDrag, updateDrag, endDrag } from '../model/slice'
 export const useCanvasDnd = () => {
   const dispatch = useAppDispatch()
   const dragState = useAppSelector((state: any) => state.canvasDnd?.drag)
-  const dropZones = useAppSelector((state: any) => state.canvasDnd?.dropZones || [])
 
   const handleDragStart = useCallback((
     nodeId: string,
@@ -26,6 +24,8 @@ export const useCanvasDnd = () => {
     const offsetX = clientX - elementRect.left
     const offsetY = clientY - elementRect.top
 
+    console.log('🎯 Drag start:', { nodeId, clientX, clientY, offsetX, offsetY })
+
     dispatch(startDrag({
       nodeId,
       startX: clientX,
@@ -34,8 +34,9 @@ export const useCanvasDnd = () => {
       offsetY,
     }))
 
-    // Добавляем обработчики для документа
     const handleMouseMove = (e: MouseEvent | TouchEvent) => {
+      e.preventDefault()
+      
       let moveX, moveY
       
       if ('touches' in e) {
@@ -50,40 +51,37 @@ export const useCanvasDnd = () => {
     }
 
     const handleMouseUp = () => {
+      console.log('🎯 Drag end')
       dispatch(endDrag())
-      document.removeEventListener('mousemove', handleMouseMove as EventListener)
-      document.removeEventListener('touchmove', handleMouseMove as EventListener)
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('touchmove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
       document.removeEventListener('touchend', handleMouseUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
     }
 
-    document.addEventListener('mousemove', handleMouseMove as EventListener)
-    document.addEventListener('touchmove', handleMouseMove as EventListener)
+    document.body.style.userSelect = 'none'
+    document.body.style.cursor = 'grabbing'
+    
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('touchmove', handleMouseMove, { passive: false })
     document.addEventListener('mouseup', handleMouseUp)
     document.addEventListener('touchend', handleMouseUp)
 
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove as EventListener)
-      document.removeEventListener('touchmove', handleMouseMove as EventListener)
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('touchmove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
       document.removeEventListener('touchend', handleMouseUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
     }
   }, [dispatch])
 
-  const getDropZoneAtPoint = useCallback((x: number, y: number) => {
-    return dropZones.find(zone => {
-      return x >= zone.x && 
-             x <= zone.x + zone.width && 
-             y >= zone.y && 
-             y <= zone.y + zone.height
-    })
-  }, [dropZones])
-
   return {
     dragState,
-    dropZones,
     handleDragStart,
-    getDropZoneAtPoint,
     isDragging: dragState?.isDragging || false,
     draggedNodeId: dragState?.draggedNodeId,
     dragPosition: dragState?.currentPosition || { x: 0, y: 0 },

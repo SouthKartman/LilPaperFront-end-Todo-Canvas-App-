@@ -1,5 +1,4 @@
-// src/widgets/canvas-workspace/ui/CanvasWorkspace.tsx
-import React, { useEffect, useCallback } from 'react'
+import React, { useEffect, useCallback, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useTodoNodes } from '@features/todo-nodes/lib/useTodoNode'
 import { TodoNode } from '@features/todo-nodes/ui/TodoNode/TodoNode'
@@ -13,9 +12,7 @@ import { useTodoForm } from '@features/todo-form/lib/useTodoForm'
 import { QuickTodoForm } from '@features/todo-form/ui/QuickTodoForm'
 import { TodoFormModal } from '@features/todo-form/ui/TodoFormModal'
 import styles from './CanvasWorkspace.module.css'
-import { RootState } from '@shared/lib/state/store'
 
-// 🆕 Импортируем селекторы для полотна
 import {
   selectCurrentCanvas,
   selectCurrentCanvasViewport,
@@ -24,10 +21,7 @@ import {
   selectCurrentPage
 } from '@features/project-management/model/selectors'
 
-// 🆕 Импортируем экшены для обновления полотна
 import { updateCanvas } from '@features/project-management/model/slice'
-
-// Импортируем новый хук для viewport
 import { useEnhancedViewport } from '@features/canvas-viewport/lib/useTransformViewport'
 import { ZoomControls } from '@features/canvas-viewport/ui/ZoomControls'
 
@@ -35,19 +29,19 @@ export const CanvasWorkspace: React.FC = () => {
   const { nodes } = useTodoNodes()
   const { dragState, isDragging } = useCanvasDnd()
   const dispatch = useDispatch()
+  const canvasRef = useRef<HTMLDivElement>(null)
+  const lastUpdateRef = useRef<number>(0) // 👈 Добавляем для throttle
   
   const todoNodes = useSelector(selectAllTodoNodes)
   const selectedNodes = useSelector(selectSelectedTodoNodes)
   const { openQuickForm, openForm } = useTodoForm()
 
-  // 🆕 Получаем данные текущего полотна
   const currentPage = useSelector(selectCurrentPage)
   const currentCanvas = useSelector(selectCurrentCanvas)
   const canvasViewport = useSelector(selectCurrentCanvasViewport)
   const canvasGrid = useSelector(selectCurrentCanvasGrid)
   const canvasBackground = useSelector(selectCurrentCanvasBackground)
 
-  // 🆕 Используем viewport с настройками из полотна
   const {
     viewport,
     handleWheel,
@@ -59,14 +53,47 @@ export const CanvasWorkspace: React.FC = () => {
     handleZoomOut,
     handleResetViewport,
     handleToggleGrid,
-    getTransformStyle,
-    getGridStyle,
-  } = useEnhancedViewport({
-    initialViewport: canvasViewport,
-    initialGrid: canvasGrid,
-  })
+  } = useEnhancedViewport()
 
-  // 🆕 Сохраняем изменения viewport в полотне
+  // 🆕 ИСПРАВЛЕННЫЙ useEffect с throttle
+  useEffect(() => {
+    if (!isDragging || !dragState?.draggedNodeId || !dragState?.currentPosition || !canvasRef.current) {
+      return
+    }
+    
+    // Throttle - обновляем не чаще чем раз в 16ms (~60fps)
+    const now = Date.now()
+    if (now - lastUpdateRef.current < 16) {
+      return
+    }
+    lastUpdateRef.current = now
+    
+    const rect = canvasRef.current.getBoundingClientRect()
+    
+    const mouseX = dragState.currentPosition.x - dragState.offset.x
+    const mouseY = dragState.currentPosition.y - dragState.offset.y
+    
+    const relativeX = mouseX - rect.left
+    const relativeY = mouseY - rect.top
+    
+    const canvasX = (relativeX - viewport.position.x) / viewport.scale
+    const canvasY = (relativeY - viewport.position.y) / viewport.scale
+    
+    const node = todoNodes.find(n => n.id === dragState.draggedNodeId)
+    if (!node) return
+    
+    const nodeWidth = node.size?.width || 200
+    const nodeHeight = node.size?.height || 150
+    
+    dispatch(todoNodesActions.moveTodo({
+      id: dragState.draggedNodeId,
+      position: {
+        x: canvasX - nodeWidth / 2,
+        y: canvasY - nodeHeight / 2,
+      }
+    }))
+  }, [isDragging, dragState?.draggedNodeId, dragState?.currentPosition?.x, dragState?.currentPosition?.y, dragState?.offset?.x, dragState?.offset?.y, viewport, todoNodes])
+
   useEffect(() => {
     if (currentCanvas && 
         (viewport.position.x !== canvasViewport.x || 
@@ -86,55 +113,32 @@ export const CanvasWorkspace: React.FC = () => {
     }
   }, [viewport, currentCanvas, canvasViewport, dispatch])
 
-  // 🆕 Сохраняем изменения сетки в полотне
-  const handleGridChange = useCallback((newGrid: typeof canvasGrid) => {
-    if (currentCanvas) {
-      dispatch(updateCanvas({
-        canvasId: currentCanvas.id,
-        updates: { grid: newGrid },
-      }))
-    }
-  }, [currentCanvas, dispatch])
-
-  // 🆕 Сохраняем изменения фона в полотне
-  const handleBackgroundChange = useCallback((newBackground: string) => {
-    if (currentCanvas) {
-      dispatch(updateCanvas({
-        canvasId: currentCanvas.id,
-        updates: { background: newBackground },
-      }))
-    }
-  }, [currentCanvas, dispatch])
-
-  // Конвертация координат с учетом viewport
-  const convertScreenToCanvas = (screenX: number, screenY: number, element: HTMLElement) => {
-    const rect = element.getBoundingClientRect()
+  const convertScreenToCanvas = useCallback((screenX: number, screenY: number) => {
+    if (!canvasRef.current) return { x: 0, y: 0 }
+    
+    const rect = canvasRef.current.getBoundingClientRect()
     const relativeX = screenX - rect.left
     const relativeY = screenY - rect.top
     
-    // Конвертируем с учетом зума и панорамирования
     const canvasX = (relativeX - viewport.position.x) / viewport.scale
     const canvasY = (relativeY - viewport.position.y) / viewport.scale
     
     return { x: canvasX, y: canvasY }
-  }
+  }, [viewport])
 
-  // 🆕 Обработчик создания ноды с привязкой к текущему полотну
   const handleCreateNode = (position: { x: number; y: number }, title: string = 'Новая задача') => {
     dispatch(todoNodesActions.createTodoAtPosition({
       position,
       title,
       priority: 'medium',
     }))
-    
-    // Нода автоматически добавится на полотно через middleware
   }
 
   const handleCanvasContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault()
     e.stopPropagation()
     
-    const canvasPosition = convertScreenToCanvas(e.clientX, e.clientY, e.currentTarget)
+    const canvasPosition = convertScreenToCanvas(e.clientX, e.clientY)
     const menuItems = createCanvasContextMenu(canvasPosition)
     
     dispatch(showMenu({
@@ -146,11 +150,10 @@ export const CanvasWorkspace: React.FC = () => {
   }
 
   const handleCanvasDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const canvasPosition = convertScreenToCanvas(e.clientX, e.clientY, e.currentTarget)
+    const canvasPosition = convertScreenToCanvas(e.clientX, e.clientY)
     handleCreateNode(canvasPosition, 'Новая задача')
   }
 
-  // Глобальные обработчики для панорамирования
   useEffect(() => {
     const handleGlobalMouseMove = (e: MouseEvent) => {
       handlePanMove(e)
@@ -176,7 +179,6 @@ export const CanvasWorkspace: React.FC = () => {
     }
   }, [handlePanMove, handlePanEnd, handleKeyDown])
 
-  // Блокируем скролл страницы при перетаскивании
   useEffect(() => {
     if (isDragging) {
       document.body.style.overflow = 'hidden'
@@ -192,44 +194,48 @@ export const CanvasWorkspace: React.FC = () => {
     }
   }, [isDragging])
 
-  // 🆕 Фильтруем ноды для текущего полотна
   const currentCanvasNodes = React.useMemo(() => {
     if (!currentCanvas) return []
     
-    return nodes.filter((node: any) => 
+    return todoNodes.filter((node: any) => 
       currentCanvas.nodes.includes(node.id)
     )
-  }, [nodes, currentCanvas])
+  }, [todoNodes, currentCanvas])
 
   return (
     <div className={styles.workspace}>
       <div 
-        className={styles.canvas}
-        style={{ background: canvasBackground }} // 🆕 Используем фон из полотна
+        ref={canvasRef}
+        className={`${styles.canvas} ${viewport.isPanning ? styles.panning : ''}`}
+        style={{ background: canvasBackground }}
         onWheel={handleWheel}
         onMouseDown={handlePanStart}
         onClick={(e) => {
-          if (e.button === 0 && !e.altKey) {
+          if (e.button === 0 && !e.altKey && !isDragging) {
             dispatch(todoNodesActions.clearSelection())
           }
         }}
         onDoubleClick={handleCanvasDoubleClick}
         onContextMenu={handleCanvasContextMenu}
       >
-        {/* Сетка с учетом viewport */}
         {canvasGrid.isVisible && (
           <div 
             className={styles.grid}
-            style={getGridStyle}
+            style={{
+              backgroundImage: `linear-gradient(90deg, #e0e0e0 1px, transparent 1px),
+                linear-gradient(#e0e0e0 1px, transparent 1px)`,
+              backgroundSize: `${canvasGrid.size * viewport.scale}px ${canvasGrid.size * viewport.scale}px`,
+              backgroundPosition: `${viewport.position.x}px ${viewport.position.y}px`,
+            }}
           />
         )}
         
-        {/* Контент с трансформацией */}
         <div 
           className={styles.content}
-          style={getTransformStyle}
+          style={{
+            transform: `translate(${viewport.position.x}px, ${viewport.position.y}px) scale(${viewport.scale})`,
+          }}
         >
-          {/* Отображаем только ноды текущего полотна */}
           {currentCanvasNodes.map((node: any) => (
             <TodoNode 
               key={node.id} 
@@ -272,14 +278,14 @@ export const CanvasWorkspace: React.FC = () => {
           ))}
         </div>
 
-        {/* Индикатор перетаскивания */}
         {isDragging && dragState?.draggedNodeId && (
           <div
             className={styles.dragPreview}
             style={{
               left: dragState.currentPosition.x - dragState.offset.x,
               top: dragState.currentPosition.y - dragState.offset.y,
-              transform: `scale(${viewport.scale})`,
+              transform: 'none',
+              position: 'fixed',
             }}
           >
             Перемещение...
@@ -287,12 +293,10 @@ export const CanvasWorkspace: React.FC = () => {
         )}
       </div>
       
-      {/* Существующие компоненты */}
       <ContextMenu />
       <QuickTodoForm />
       <TodoFormModal />
       
-      {/* 🆕 Кнопка создания задачи */}
       <button 
         onClick={() => {
           if (currentPage) {
@@ -316,23 +320,8 @@ export const CanvasWorkspace: React.FC = () => {
         Создать задачу
       </button>
       
-      {/* 🆕 Управление полотном */}
-      <div className={styles.canvasControls}>
-        <ZoomControls 
-          onZoomIn={handleZoomIn}
-          onZoomOut={handleZoomOut}
-          onReset={handleResetViewport}
-          scale={viewport.scale}
-        />
-        <button 
-          onClick={() => handleToggleGrid()}
-          className={styles.gridToggle}
-        >
-          {canvasGrid.isVisible ? 'Скрыть сетку' : 'Показать сетку'}
-        </button>
-      </div>
       
-      {/* Подсказки по горячим клавишам */}
+      
       <div className={styles.hotkeyHint}>
         Ctrl+колесо — масштаб • Колесо — панорамирование • Alt+ЛКМ — панорамирование
       </div>

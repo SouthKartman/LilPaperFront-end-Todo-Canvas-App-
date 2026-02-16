@@ -1,4 +1,3 @@
-// src/features/canvas-dnd/model/slice.ts
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
 import { CanvasDndState } from './types'
 
@@ -28,6 +27,7 @@ export const canvasDndSlice = createSlice({
       }>
     ) => {
       const { nodeId, startX, startY, offsetX, offsetY } = action.payload
+      console.log('📦 Redux startDrag:', { nodeId, startX, startY })
       state.drag = {
         isDragging: true,
         draggedNodeId: nodeId,
@@ -47,6 +47,7 @@ export const canvasDndSlice = createSlice({
     },
 
     endDrag: (state) => {
+      console.log('📦 Redux endDrag')
       state.drag = {
         isDragging: false,
         draggedNodeId: null,
