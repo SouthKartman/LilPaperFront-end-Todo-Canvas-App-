@@ -1,4 +1,3 @@
-// src/features/todo-nodes/ui/TodoNode/TodoNode.tsx
 import React, { useRef, useEffect, useState } from 'react'
 import { createISODate, Todo } from '@entities/todo/model/types'
 import { useCanvasDnd } from '@features/canvas-dnd/lib/useCanvasDnd'
@@ -8,7 +7,6 @@ import {
   setTodoPriority,
   setTodoStatus,
   duplicateTodo,
-  moveTodo,
   removeTodoTag
 } from '../../model/slice'
 import styles from './TodoNode.module.css'
@@ -42,7 +40,6 @@ export const TodoNode: React.FC<TodoNodeProps> = ({
   
   const { handleDragStart, isDragging, draggedNodeId } = useCanvasDnd()
 
-  // Активируем редактирование при изменении isEditing
   useEffect(() => {
     if (node.isEditing && !isEditingTitle) {
       setIsEditingTitle(true)
@@ -52,7 +49,6 @@ export const TodoNode: React.FC<TodoNodeProps> = ({
     }
   }, [node.isEditing, isEditingTitle])
 
-  // Сохраняем изменения при потере фокуса
   const handleTitleBlur = () => {
     if (editedTitle !== node.title && editedTitle.trim()) {
       dispatch(updateTodo({
@@ -134,11 +130,14 @@ export const TodoNode: React.FC<TodoNodeProps> = ({
   }
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    console.log('🐭 MouseDown on node:', node.id)
+    
     if (e.button !== 0) return
     
     if ((e.target as HTMLElement).closest('.editable') || 
         (e.target as HTMLElement).closest('input') ||
-        (e.target as HTMLElement).closest('textarea')) {
+        (e.target as HTMLElement).closest('textarea') ||
+        (e.target as HTMLElement).closest('button')) {
       return
     }
     
@@ -151,6 +150,7 @@ export const TodoNode: React.FC<TodoNodeProps> = ({
     
     if (!isEditingTitle && !isEditingDesc && nodeRef.current) {
       const rect = nodeRef.current.getBoundingClientRect()
+      console.log('📦 Starting drag with rect:', rect)
       handleDragStart(node.id, e, rect)
     }
   }
@@ -195,52 +195,6 @@ export const TodoNode: React.FC<TodoNodeProps> = ({
     }
   }
 
-  // Обновляем позицию ноды при перемещении
-  useEffect(() => {
-    if (isDragging && draggedNodeId === node.id) {
-      const handleGlobalMouseMove = (e: MouseEvent) => {
-        dispatch(moveTodo({
-          id: node.id,
-          position: {
-            x: e.clientX - (node.size?.width || 200) / 2,
-            y: e.clientY - (node.size?.height || 150) / 2,
-          }
-        }))
-      }
-
-      const handleGlobalTouchMove = (e: TouchEvent) => {
-        if (e.touches.length > 0) {
-          dispatch(moveTodo({
-            id: node.id,
-            position: {
-              x: e.touches[0].clientX - (node.size?.width || 200) / 2,
-              y: e.touches[0].clientY - (node.size?.height || 150) / 2,
-            }
-          }))
-        }
-      }
-
-      const handleDragEnd = () => {
-        document.removeEventListener('mousemove', handleGlobalMouseMove)
-        document.removeEventListener('touchmove', handleGlobalTouchMove)
-        document.removeEventListener('mouseup', handleDragEnd)
-        document.removeEventListener('touchend', handleDragEnd)
-      }
-
-      document.addEventListener('mousemove', handleGlobalMouseMove)
-      document.addEventListener('touchmove', handleGlobalTouchMove)
-      document.addEventListener('mouseup', handleDragEnd, { once: true })
-      document.addEventListener('touchend', handleDragEnd, { once: true })
-
-      return () => {
-        document.removeEventListener('mousemove', handleGlobalMouseMove)
-        document.removeEventListener('touchmove', handleGlobalTouchMove)
-        document.removeEventListener('mouseup', handleDragEnd)
-        document.removeEventListener('touchend', handleDragEnd)
-      }
-    }
-  }, [isDragging, draggedNodeId, node.id, dispatch, node.size])
-
   const isBeingDragged = isDragging && draggedNodeId === node.id
 
   return (
@@ -264,10 +218,7 @@ export const TodoNode: React.FC<TodoNodeProps> = ({
       onDoubleClick={handleDoubleClick}
       data-node-id={node.id}
     >
-      {/* Индикатор выделения */}
-      {isSelected && (
-        <div className={styles.selectionIndicator} />
-      )}
+      {isSelected && <div className={styles.selectionIndicator} />}
       
       <div className={styles.header}>
         <div className={styles.titleContainer}>
@@ -275,7 +226,7 @@ export const TodoNode: React.FC<TodoNodeProps> = ({
           
           {isEditingTitle ? (
             <input
-              ref={titleRef}
+              ref={titleRef as any}
               className={`${styles.titleInput} editable`}
               value={editedTitle}
               onChange={(e) => setEditedTitle(e.target.value)}
@@ -408,10 +359,10 @@ export const TodoNode: React.FC<TodoNodeProps> = ({
         </div>
       )}
       
-      {/* Индикатор перемещения */}
       <div 
         className={styles.dragHandle}
         onMouseDown={(e) => {
+          e.stopPropagation()
           if (nodeRef.current) {
             const rect = nodeRef.current.getBoundingClientRect()
             handleDragStart(node.id, e, rect)
@@ -421,7 +372,6 @@ export const TodoNode: React.FC<TodoNodeProps> = ({
         ⋮⋮
       </div>
       
-      {/* Кнопка быстрых действий */}
       <div className={styles.quickActions}>
         <button
           className={styles.quickAction}
