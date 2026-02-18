@@ -1,0 +1,214 @@
+.imageNode {
+  position: absolute;
+  cursor: move;
+  user-select: none;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: box-shadow 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.imageNode:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.imageNode.dragging {
+  opacity: 0.7;
+  cursor: grabbing;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.imageNode.selected {
+  border-color: #3b82f6;
+}
+
+.imageNode.resizing {
+  cursor: default;
+}
+
+.selectionIndicator {
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border: 2px solid #3b82f6;
+  border-radius: 8px;
+  pointer-events: none;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* Ресайз хендлы */
+.resizeHandle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: white;
+  border: 2px solid #3b82f6;
+  border-radius: 2px;
+  z-index: 10;
+}
+
+.resizeHandle.nw {
+  top: -5px;
+  left: -5px;
+  cursor: nw-resize;
+}
+
+.resizeHandle.ne {
+  top: -5px;
+  right: -5px;
+  cursor: ne-resize;
+}
+
+.resizeHandle.sw {
+  bottom: -5px;
+  left: -5px;
+  cursor: sw-resize;
+}
+
+.resizeHandle.se {
+  bottom: -5px;
+  right: -5px;
+  cursor: se-resize;
+}
+
+.resizeHandle.n {
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: n-resize;
+}
+
+.resizeHandle.s {
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: s-resize;
+}
+
+.resizeHandle.e {
+  right: -5px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: e-resize;
+}
+
+.resizeHandle.w {
+  left: -5px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: w-resize;
+}
+
+/* Панель действий */
+.actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 20;
+}
+
+.imageNode:hover .actions,
+.imageNode.selected .actions {
+  opacity: 1;
+}
+
+.actionButton {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  background: white;
+  color: #1f2937;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.actionButton:hover {
+  background: #f3f4f6;
+  transform: scale(1.1);
+}
+
+.actionButton.delete:hover {
+  background: #ef4444;
+  color: white;
+}
+
+
+/* Добавьте в конец файла */
+
+.imageNode {
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  will-change: transform, left, top; /* Оптимизация для анимаций */
+}
+
+.imageNode.dragging {
+  transition: none; /* Отключаем transition во время перетаскивания */
+  cursor: grabbing;
+  opacity: 0.9;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.2));
+}
+
+.imageNode:not(.dragging) {
+  transition: left 0.1s ease, top 0.1s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+/* Плавное появление информации о файле */
+.fileInfo {
+  animation: slideUp 0.2s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Плавное появление кнопок действий */
+.actions {
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Плавное изменение размера при ресайзе */
+.imageNode.resizing {
+  transition: none;
+}
+
+.resizeHandle {
+  transition: transform 0.1s ease, background-color 0.1s ease;
+}
+
+.resizeHandle:hover {
+  transform: scale(1.2);
+  background-color: #3b82f6;
+}

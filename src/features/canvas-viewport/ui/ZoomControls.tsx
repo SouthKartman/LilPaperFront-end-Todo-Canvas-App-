@@ -1,3 +1,4 @@
+// src/features/canvas-viewport/ui/ZoomControls.tsx
 import React from 'react';
 import { useEffect } from 'react';
 import { useEnhancedViewport } from '../lib/useTransformViewport';

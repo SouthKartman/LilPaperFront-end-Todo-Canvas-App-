@@ -1,3 +1,4 @@
+// features/canvas-viewport/model/slice.ts
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 export interface ViewportState {
