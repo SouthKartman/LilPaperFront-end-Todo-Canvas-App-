@@ -13,6 +13,21 @@ import { QuickTodoForm } from '@features/todo-form/ui/QuickTodoForm'
 import { TodoFormModal } from '@features/todo-form/ui/TodoFormModal'
 import styles from './CanvasWorkspace.module.css'
 
+// Импорты для изображений
+import { 
+  selectAllImageNodes,
+  selectSelectedImageNodes 
+} from '@features/image-upload/model/selectors'
+import { 
+  clearImageSelection,
+  selectImageNode,
+  deselectImageNode 
+} from '@features/image-upload/model/slice'
+import { ImageNode } from '@features/image-upload/ui/ImageNode'
+import { useImageDrop } from '@features/image-upload/lib/useImageDrop'
+import { ImageDropOverlay } from '@features/image-upload/ui/ImageDropOverlay'
+import { ImageUploadButton } from '@features/image-upload/ui/ImageUploadButton'
+
 import {
   selectCurrentCanvas,
   selectCurrentCanvasViewport,
@@ -30,10 +45,15 @@ export const CanvasWorkspace: React.FC = () => {
   const { dragState, isDragging } = useCanvasDnd()
   const dispatch = useDispatch()
   const canvasRef = useRef<HTMLDivElement>(null)
-  const lastUpdateRef = useRef<number>(0) // 👈 Добавляем для throttle
+  const lastUpdateRef = useRef<number>(0)
   
   const todoNodes = useSelector(selectAllTodoNodes)
   const selectedNodes = useSelector(selectSelectedTodoNodes)
+  
+  // Селекторы для изображений
+  const imageNodes = useSelector(selectAllImageNodes)
+  const selectedImageNodes = useSelector(selectSelectedImageNodes)
+  
   const { openQuickForm, openForm } = useTodoForm()
 
   const currentPage = useSelector(selectCurrentPage)
@@ -55,13 +75,55 @@ export const CanvasWorkspace: React.FC = () => {
     handleToggleGrid,
   } = useEnhancedViewport()
 
-  // 🆕 ИСПРАВЛЕННЫЙ useEffect с throttle
+  // Хук для DnD изображений
+  const {
+    isDraggingOver: isDraggingImage,
+    dropError: imageDropError,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+    clearError: clearImageError,
+  } = useImageDrop()
+
+  // БЛОКИРОВКА МАСШТАБИРОВАНИЯ БРАУЗЕРА
+  useEffect(() => {
+    const preventBrowserZoom = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '-' || e.key === '=' || e.key === '0')) {
+        e.preventDefault()
+      }
+    }
+
+    const preventWheelZoom = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault()
+      }
+    }
+
+    const preventGestureZoom = (e: Event) => {
+      e.preventDefault()
+    }
+
+    document.addEventListener('keydown', preventBrowserZoom, { passive: false })
+    document.addEventListener('wheel', preventWheelZoom, { passive: false })
+    document.addEventListener('gesturestart', preventGestureZoom, { passive: false })
+    document.addEventListener('gesturechange', preventGestureZoom, { passive: false })
+    document.addEventListener('gestureend', preventGestureZoom, { passive: false })
+
+    return () => {
+      document.removeEventListener('keydown', preventBrowserZoom)
+      document.removeEventListener('wheel', preventWheelZoom)
+      document.removeEventListener('gesturestart', preventGestureZoom)
+      document.removeEventListener('gesturechange', preventGestureZoom)
+      document.removeEventListener('gestureend', preventGestureZoom)
+    }
+  }, [])
+
+  // Эффект для перемещения ноды с throttle
   useEffect(() => {
     if (!isDragging || !dragState?.draggedNodeId || !dragState?.currentPosition || !canvasRef.current) {
       return
     }
     
-    // Throttle - обновляем не чаще чем раз в 16ms (~60fps)
     const now = Date.now()
     if (now - lastUpdateRef.current < 16) {
       return
@@ -92,8 +154,9 @@ export const CanvasWorkspace: React.FC = () => {
         y: canvasY - nodeHeight / 2,
       }
     }))
-  }, [isDragging, dragState?.draggedNodeId, dragState?.currentPosition?.x, dragState?.currentPosition?.y, dragState?.offset?.x, dragState?.offset?.y, viewport, todoNodes])
+  }, [isDragging, dragState?.draggedNodeId, dragState?.currentPosition?.x, dragState?.currentPosition?.y, dragState?.offset?.x, dragState?.offset?.y, viewport, todoNodes, dispatch])
 
+  // Сохраняем изменения viewport в полотне
   useEffect(() => {
     if (currentCanvas && 
         (viewport.position.x !== canvasViewport.x || 
@@ -154,6 +217,12 @@ export const CanvasWorkspace: React.FC = () => {
     handleCreateNode(canvasPosition, 'Новая задача')
   }
 
+  // Обработчик drop для изображений
+  const handleCanvasDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    const canvasPosition = convertScreenToCanvas(e.clientX, e.clientY)
+    handleDrop(e, canvasPosition)
+  }, [convertScreenToCanvas, handleDrop])
+
   useEffect(() => {
     const handleGlobalMouseMove = (e: MouseEvent) => {
       handlePanMove(e)
@@ -210,21 +279,26 @@ export const CanvasWorkspace: React.FC = () => {
         style={{ background: canvasBackground }}
         onWheel={handleWheel}
         onMouseDown={handlePanStart}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleCanvasDrop}
         onClick={(e) => {
           if (e.button === 0 && !e.altKey && !isDragging) {
             dispatch(todoNodesActions.clearSelection())
+            dispatch(clearImageSelection())
           }
         }}
         onDoubleClick={handleCanvasDoubleClick}
         onContextMenu={handleCanvasContextMenu}
       >
-        {canvasGrid.isVisible && (
+        {/* Сетка */}
+        {viewport.showGrid && (
           <div 
             className={styles.grid}
             style={{
               backgroundImage: `linear-gradient(90deg, #e0e0e0 1px, transparent 1px),
                 linear-gradient(#e0e0e0 1px, transparent 1px)`,
-              backgroundSize: `${canvasGrid.size * viewport.scale}px ${canvasGrid.size * viewport.scale}px`,
+              backgroundSize: `${viewport.gridSize * viewport.scale}px ${viewport.gridSize * viewport.scale}px`,
               backgroundPosition: `${viewport.position.x}px ${viewport.position.y}px`,
             }}
           />
@@ -236,6 +310,7 @@ export const CanvasWorkspace: React.FC = () => {
             transform: `translate(${viewport.position.x}px, ${viewport.position.y}px) scale(${viewport.scale})`,
           }}
         >
+          {/* Рендер задач */}
           {currentCanvasNodes.map((node: any) => (
             <TodoNode 
               key={node.id} 
@@ -262,10 +337,9 @@ export const CanvasWorkspace: React.FC = () => {
                   } else {
                     dispatch(todoNodesActions.selectNode(nodeId))
                   }
-                } else if (e.shiftKey) {
-                  dispatch(todoNodesActions.selectNode(nodeId))
                 } else {
                   dispatch(todoNodesActions.clearSelection())
+                  dispatch(clearImageSelection())
                   dispatch(todoNodesActions.selectNode(nodeId))
                 }
               }}
@@ -276,8 +350,55 @@ export const CanvasWorkspace: React.FC = () => {
               isSelected={selectedNodes.some(n => n.id === node.id)}
             />
           ))}
+
+          {/* Рендер изображений */}
+          {imageNodes.map((node: any) => (
+            <ImageNode
+              key={node.id}
+              node={node}
+              isSelected={selectedImageNodes.some(n => n.id === node.id)}
+              viewport={viewport}
+              onContextMenu={(e, nodeId) => {
+                e.preventDefault()
+                e.stopPropagation()
+                
+                const menuItems = [
+                  { label: 'Удалить', action: 'delete' },
+                  { label: 'Связать с задачей', action: 'link' },
+                ]
+                
+                dispatch(showMenu({
+                  x: e.clientX,
+                  y: e.clientY,
+                  items: menuItems,
+                  context: { nodeId, type: 'image' },
+                }))
+              }}
+              onClick={(e, nodeId) => {
+                e.stopPropagation()
+                
+                if (e.ctrlKey || e.metaKey) {
+                  if (selectedImageNodes.some(n => n.id === nodeId)) {
+                    dispatch(deselectImageNode(nodeId))
+                  } else {
+                    dispatch(selectImageNode(nodeId))
+                  }
+                } else {
+                  dispatch(todoNodesActions.clearSelection())
+                  dispatch(clearImageSelection())
+                  dispatch(selectImageNode(nodeId))
+                }
+              }}
+              onDoubleClick={(e, nodeId) => {
+                e.stopPropagation()
+                // Здесь можно открыть полноэкранный просмотр
+                console.log('Open image fullscreen:', nodeId)
+              }}
+            />
+          ))}
         </div>
 
+        {/* Preview при перетаскивании задач */}
         {isDragging && dragState?.draggedNodeId && (
           <div
             className={styles.dragPreview}
@@ -291,39 +412,38 @@ export const CanvasWorkspace: React.FC = () => {
             Перемещение...
           </div>
         )}
+
+        {/* Оверлей для DnD изображений */}
+        <ImageDropOverlay 
+          isVisible={isDraggingImage} 
+          error={imageDropError}
+          onClearError={clearImageError}
+        />
       </div>
       
       <ContextMenu />
       <QuickTodoForm />
       <TodoFormModal />
       
-      <button 
-        onClick={() => {
-          if (currentPage) {
-            handleCreateNode({ x: 100, y: 100 }, 'Новая задача')
-          }
-        }}
-        style={{
-          position: 'absolute',
-          top: '10px',
-          left: '10px',
-          zIndex: 5,
-          padding: '10px',
-          background: '#3b82f6',
-          color: 'white',
-          border: 'none',
-          borderRadius: '4px',
-          cursor: 'pointer',
-        }}
-        disabled={!currentPage}
-      >
-        Создать задачу
-      </button>
+
       
-      
+      {/* Панель управления */}
+      <div style={{
+        position: 'absolute',
+        bottom: '20px',
+        right: '20px',
+        zIndex: 5,
+        display: 'flex',
+        gap: '8px',
+        background: 'white',
+        padding: '8px',
+        borderRadius: '8px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+      }}>
+      </div>
       
       <div className={styles.hotkeyHint}>
-        Ctrl+колесо — масштаб • Колесо — панорамирование • Alt+ЛКМ — панорамирование
+        Ctrl+колесо — масштаб • Колесо — панорамирование • Alt+ЛКМ — панорамирование • Перетащите изображения для загрузки
       </div>
     </div>
   )

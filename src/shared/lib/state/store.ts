@@ -10,6 +10,7 @@ import contextMenuReducer from '@features/node-creations/model/slice'
 import todoFormReducer from '@features/todo-form/model/slice'
 import viewportReducer from '@features/canvas-viewport/model/slice'
 import { autoSaveMiddleware } from '@features/storage/model/autoSaveMiddleware';
+import imageNodesReducer from '@features/image-upload/model/slice'; // ✅ ИМПОРТ ДОБАВЛЕН
 
 // 🆕 ИМПОРТИРУЕМ РЕДЬЮСЕР ПРОЕКТА
 import projectReducer from '@features/project-management/model/slice'
@@ -67,6 +68,7 @@ const rootReducer = combineReducers({
   todoForm: todoFormReducer,
   viewport: viewportReducer,
   project: projectReducer, // 🆕 ДОБАВЛЕНО
+  imageNodes: imageNodesReducer, // ✅ ДОБАВЛЕНО - редьюсер для изображений
   canvasToolbar: canvasToolbarReducer,
   propertiesPanel: propertiesPanelReducer,
   selection: selectionReducer,
@@ -222,6 +224,8 @@ export const store = configureStore({
           'project/switchPage', // 🆕 ДОБАВЛЕНО
           'project/updateCanvas', // 🆕 ДОБАВЛЕНО
           'project/setPageName', // 🆕 ДОБАВЛЕНО
+          'imageNodes/addImageNode', // ✅ ДОБАВЛЕНО - игнорируем base64
+          'imageNodes/addImageNodes', // ✅ ДОБАВЛЕНО
         ],
         ignoredPaths: [
           'viewport.lastZoomPoint',
@@ -235,6 +239,8 @@ export const store = configureStore({
           'project.projects.*.metadata.updatedAt', // 🆕 ДОБАВЛЕНО
           'project.canvases.*.metadata.createdAt', // 🆕 ДОБАВЛЕНО
           'project.canvases.*.metadata.updatedAt', // 🆕 ДОБАВЛЕНО
+          'imageNodes.nodes', // ✅ ДОБАВЛЕНО - игнорируем все изображения
+          'imageNodes.nodes.*.src', // ✅ ДОБАВЛЕНО - игнорируем base64 строки
         ],
       },
     })
@@ -261,40 +267,41 @@ export const selectCanvasDnd = (state: RootState) => state.canvasDnd
 export const selectContextMenu = (state: RootState) => state.contextMenu
 export const selectTodoForm = (state: RootState) => state.todoForm
 export const selectProject = (state: RootState) => state.project // 🆕 ДОБАВЛЕНО
+export const selectImageNodes = (state: RootState) => state.imageNodes // ✅ ДОБАВЛЕНО - селектор для изображений
 
 // 🆕 Селектор для текущего проекта
 export const selectCurrentProject = (state: RootState) => {
   const project = state.project;
-  return project.currentProjectId 
-    ? project.projects[project.currentProjectId] 
+  return project?.currentProjectId 
+    ? project.projects?.[project.currentProjectId] 
     : null;
 }
 
 // 🆕 Селектор для текущей страницы
 export const selectCurrentPage = (state: RootState) => {
   const project = state.project;
-  const currentProject = project.currentProjectId 
-    ? project.projects[project.currentProjectId] 
+  const currentProject = project?.currentProjectId 
+    ? project.projects?.[project.currentProjectId] 
     : null;
   
   if (!currentProject || !currentProject.currentPageId) return null;
   
-  return project.pages[currentProject.currentPageId] || null;
+  return project.pages?.[currentProject.currentPageId] || null;
 }
 
 // 🆕 Селектор для текущего полотна
 export const selectCurrentCanvas = (state: RootState) => {
   const project = state.project;
-  const currentProject = project.currentProjectId 
-    ? project.projects[project.currentProjectId] 
+  const currentProject = project?.currentProjectId 
+    ? project.projects?.[project.currentProjectId] 
     : null;
   
   if (!currentProject || !currentProject.currentPageId) return null;
   
-  const currentPage = project.pages[currentProject.currentPageId];
+  const currentPage = project.pages?.[currentProject.currentPageId];
   if (!currentPage || !currentPage.canvasId) return null;
   
-  return project.canvases[currentPage.canvasId] || null;
+  return project.canvases?.[currentPage.canvasId] || null;
 }
 
 // 🆕 Селектор для ID нод текущего полотна
@@ -326,31 +333,31 @@ export const selectProjectPages = (state: RootState) => {
   const currentProject = selectCurrentProject(state);
   if (!currentProject) return [];
   
-  return currentProject.pageIds
-    .map(pageId => state.project.pages[pageId])
+  return (currentProject.pageIds || [])
+    .map(pageId => state.project.pages?.[pageId])
     .filter(Boolean)
-    .sort((a: any, b: any) => a.metadata.order - b.metadata.order);
+    .sort((a: any, b: any) => (a.metadata?.order || 0) - (b.metadata?.order || 0));
 }
 
 // 🆕 Селектор для проекта по ID
 export const selectProjectById = (projectId: string) => 
-  (state: RootState) => state.project.projects[projectId];
+  (state: RootState) => state.project?.projects?.[projectId];
 
 // 🆕 Селектор для страницы по ID
 export const selectPageById = (pageId: string) => 
-  (state: RootState) => state.project.pages[pageId];
+  (state: RootState) => state.project?.pages?.[pageId];
 
 // 🆕 Селектор для полотна по ID страницы
 export const selectCanvasByPageId = (pageId: string) => 
   (state: RootState) => {
-    const page = state.project.pages[pageId];
+    const page = state.project?.pages?.[pageId];
     if (!page?.canvasId) return null;
-    return state.project.canvases[page.canvasId] || null;
+    return state.project?.canvases?.[page.canvasId] || null;
   };
 
 // 🆕 Селектор для полотна по ID
 export const selectCanvasById = (canvasId: string) => 
-  (state: RootState) => state.project.canvases[canvasId];
+  (state: RootState) => state.project?.canvases?.[canvasId];
 
 // Утилита для создания селекторов
 export const createSelector = <T, R>(
@@ -366,7 +373,7 @@ export const initializeProject = () => {
     const state = getState();
     
     // Если нет текущего проекта, создаем новый
-    if (!state.project.currentProjectId || Object.keys(state.project.projects).length === 0) {
+    if (!state.project?.currentProjectId || Object.keys(state.project?.projects || {}).length === 0) {
       dispatch(require('@features/project-management/model/slice').createProject({ name: 'Мой Проект' }));
       console.log('🚀 Создан новый проект');
     } else {

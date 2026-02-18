@@ -1,3 +1,4 @@
+// src/features/canvas-viewport/ui/GridRenderer.tsx
 import React, { useMemo } from 'react';
 import { Layer, Line } from 'react-konva';
 

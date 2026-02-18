@@ -1,51 +1,26 @@
-# 📖 Architecture Documentation for Canvas Todo App
+<h1 align="center">🎨 Canvas Todo App</h1>
 
-🏗️ Простая модульная архитектура для Canvas Todo приложения
-Это приложение использует Feature-Sliced Design (FSD) архитектуру - современный подход к организации React-приложений, который делает код понятным, масштабируемым и поддерживаемым.
+<p align="center">
+  <strong>Интерактивное приложение для управления задачами на бесконечном холсте</strong><br />
+  с поддержкой изображений, проектов и продвинутым Drag & Drop
+</p>
 
-## Структура проекта
+<p align="center">
+  <img src="https://img.shields.io/badge/React-18-blue" alt="React 18" />
+  <img src="https://img.shields.io/badge/TypeScript-5.0-blue" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Redux_Toolkit-2.0-purple" alt="Redux Toolkit" />
+  <img src="https://img.shields.io/badge/Konva.js-9.0-orange" alt="Konva.js" />
+  <img src="https://img.shields.io/badge/FSD-Architecture-green" alt="FSD Architecture" />
+</p>
 
-```bash
-src/
-├── app/                   # 🏠 Ядро приложения
-│   ├── providers/         # Провайдеры (Redux, DnD, Themes)
-│   └── styles/            # Глобальные стили
-├── entities/              # 🏢 Бизнес-сущности
-│   └── todo/              # Сущность "Задача"
-│       ├── model/         # Типы и модели данных
-│       ├── lib/           # Утилиты для работы с сущностью
-│       └── ui/            # Базовые UI компоненты сущности
-├── features/              # 🎯 Пользовательские сценарии
-│   ├── todo-nodes/        # Работа с нодами-задачами
-│   ├── canvas-dnd/        # Drag & Drop на холсте
-│   ├── canvas-toolbar/    # Панель инструментов
-│   ├── properties-panel/  # Панель свойств
-│   ├── canvas-viewport/   # Зум и панорамирование
-│   ├── node-creations/    # Создание Todo Task
-│   ├── todo-form/         # Форма создания Todo Task
-│   └── selection/         # Выделение элементов
-│   └── storage/           # UI компанент статистики для хранилища (сохранения)
-├── widgets/               # 🧩 Независимые UI блоки
-│   ├── workspace-layout/  # Макет рабочей области
-│   └── canvas-workspace/  # Холст для работы
-├── processes/             # 🔄 Сложные бизнес-процессы
-│   └── canvas-actions/    # Комплексные действия с холстом
-└── shared/                # 🤝 Общий переиспользуемый код
-    ├── api/               # HTTP клиент и API
-    │   └── storage/       # Хранилище данных
-    │       └── jsonStorage/ # Json формат
-    ├── lib/               # Утилиты и хелперы
-    ├── ui/                # Общие UI компоненты
-    │   └── kit/
-    │   └── icons/ 
-    └── config/            # Конфигурации приложения
-```
+<hr />
+
 
 ## Наполнение проекта
 
 ```bash
     src/
-├── 📂 app/                    # 🏠 ЯДРО ПРИЛОЖЕНИЯ (настройки и запуск)
+├── 📂 app/                   # 🏠 ЯДРО ПРИЛОЖЕНИЯ (настройки и запуск)
 │   ├── 📂 providers/         # 🔌 ПРОВОДКА (обертки для библиотек)
 │   │   ├── StoreProvider/    # 🗃️ Redux хранилище данных
 │   │   ├── ThemeProvider/    # 🎨 Темы (светлая/темная)
@@ -64,16 +39,21 @@ src/
 │   │   │   └── todoUtils.ts  # ⚙️ Функции для работы с задачами
 │   │   └── 📂 ui/            # 👁️ БАЗОВЫЙ ВИД ЗАДАЧИ
 │   │        └── TodoCard/     # 🎴 Карточка задачи (минимум стилей)
-│   └── 📂 canvas/   # 🔍 ЗУМ И ПАНОРАМИРОВАНИЕ
+│   ├── 📂 canvas/   # 🔍 ЗУМ И ПАНОРАМИРОВАНИЕ
+│   │   └── 📂 model/         # 💾 ДАННЫЕ И СОСТОЯНИЕ
+│   │   │   ├── api.ts        # 🔍 Api для листов и проектов
+│   │   │   └── types.ts      # 🗃️ Типы данных для canvas листов
+│   │   └── 📂 lib/         # 🧰 ИНСТРУМЕНТЫ ДЛЯ Проектов
+│   └── 📂 image/   # 🔍 РАБОТА С Изображениями
 │       └── 📂 model/         # 💾 ДАННЫЕ И СОСТОЯНИЕ
-│       │   ├── api.ts        # 🔍 Api для листов и проектов
-│       │   └── types.ts      # 🗃️ Типы данных для canvas листов
+│       │   ├── api.ts        # 🔍 Api для images
+│       │   └── types.ts      # 🗃️ Типы данных для images
 │       └── 📂 lib/         # 🧰 ИНСТРУМЕНТЫ ДЛЯ Проектов
-│
+│           └── imageHelpers.ts        
 ├── 📂 features/              # 🎯 ФИЧИ (что можно делать)
 │   ├── 📂 todo-nodes/        # 🎯 НОДЫ-ЗАДАЧИ НА ХОЛСТЕ
 │   │   ├── 📂 lib/           # 🧠 ЛОГИКА
-│   │   │   └── useTodoNode.ts     # 🪝 Хук для работы с нодой
+│   │   │   └── useTodoNode=.ts     # 🪝 Хук для работы с нодой
 │   │   │   └── todoNodeHelpers.ts # 🔧 Вспомогательные функции
 │   │   ├── 📂 model/         # 💾 ДАННЫЕ И СОСТОЯНИЕ
 │   │   │   ├── types.ts      # 📐 Типы для нод
@@ -82,6 +62,18 @@ src/
 │   │   └── 📂 ui/            # 👁️ ИНТЕРФЕЙС
 │   │       ├── KanvaTodoNode/ # 🎴 Компонент ноды для канвас холста
 │   │       └── TodoNode/     # 🎴 Компонент ноды
+│   ├── 📂 image-upload/        # 🎯 Изображения НА ХОЛСТЕ
+│   │   ├── 📂 lib/           # 🧠 ЛОГИКА
+│   │   │   └── imageProcessprs.ts # загрузка изображений
+│   │   │   └── useImageDrop.ts # D&D изображений
+│   │   │   └── useImageUpload.ts # загрузка на холст изображений
+│   │   ├── 📂 model/         # 💾 ДАННЫЕ И СОСТОЯНИЕ
+│   │   │   ├── slice.ts      # 🗃️ Redux slice (хранилище)
+│   │   │   └── selectors.ts  # 🔍 Функции для получения данных
+│   │   └── 📂 ui/            # 👁️ ИНТЕРФЕЙС
+│   │       ├── ImageDropOverlay/ # 🎴 Компонент ноды для загрузки d&d
+│   │       └── ImageNode/     # 🎴 Компонент ноды изображений
+│   │       └── ImageUploadButton/     # 🎴 Компонент кнопки загрузки изображений
 │   ├── 📂 nodes-creations/   # 🎯 НОДЫ-ЗАДАЧИ НА ХОЛСТЕ
 │   │   ├── 📂 lib/           # 🧠 ЛОГИКА
 │   │   │   ├── contextMenuHelpers.ts  # 🪝 Хук для работы с меню пунктами
@@ -181,7 +173,9 @@ src/
     │   │   │   ├── UniversalModal.tsx
     │   │   │   ├── useUniversalModal.ts 
     │   │   │   └── AppModal.tsx # ⚙️ Модальное окно
-    │   │   └── DatePicker/  # 📦 Элемент отслеживающий последнее сохранение
+    │   │   ├── DatePicker/  # 📦 Элемент отслеживающий последнее сохранение
+    │   │   ├── ImagePreview/        # 🪟 Модальное окно
+    │   │   │   └── ImagePreview.tsx #  Перетаскиваемое окно
     │   └── 📂 icons/         # 🎨 ИКОНКИ
     │
     └── 📂 config/            # ⚙️ КОНФИГУРАЦИИ
@@ -189,140 +183,511 @@ src/
         └── env.ts            # 🌍 ПЕРЕМЕННЫЕ ОКРУЖЕНИЯ
 ```
 
-# 🎯 Назначение каждого слоя
 
-## 1. app/ - Фундамент приложения
-Назначение: Инициализация, провайдеры, глобальные настройки
 
-### Что содержит:
 
-providers/ - обертки для внешних библиотек (Redux, DnD Kit)
+<h2>📋 О приложении</h2>
 
-styles/ - глобальные CSS переменные и стили
+<p>
+  <strong>Canvas Todo App</strong> — это не просто очередной список задач, а полноценное визуальное рабочее пространство, 
+  вдохновленное такими инструментами как Miro, Figma и Notion. Вместо скучных списков вы получаете <strong>бесконечный холст</strong>, 
+  на котором можно размещать задачи, изображения, создавать связи между ними и организовывать проекты любым удобным способом.
+</p>
 
-App.tsx - корневой компонент приложения
+<h3>🚀 Ключевые возможности</h3>
 
-Когда использовать: Для добавления новых провайдеров, глобальных стилей
+<table>
+  <thead>
+    <tr>
+      <th>Функциональность</th>
+      <th>Описание</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>🖱️ Интерактивный холст</strong></td>
+      <td>Бесконечное рабочее пространство с зумом и панорамированием (как в Figma)</td>
+    </tr>
+    <tr>
+      <td><strong>📝 Умные задачи</strong></td>
+      <td>Задачи с приоритетами, статусами, тегами и сроками. Можно редактировать прямо на холсте</td>
+    </tr>
+    <tr>
+      <td><strong>🖼️ Поддержка изображений</strong></td>
+      <td>Drag & Drop изображений из проводника, ресайз, группировка с задачами</td>
+    </tr>
+    <tr>
+      <td><strong>📁 Управление проектами</strong></td>
+      <td>Несколько проектов, страницы внутри проектов, навигация между ними</td>
+    </tr>
+    <tr>
+      <td><strong>🎯 Продвинутый Drag & Drop</strong></td>
+      <td>Перетаскивание задач и изображений, авто-панорамирование при перетаскивании к краю</td>
+    </tr>
+    <tr>
+      <td><strong>⚡ Производительность</strong></td>
+      <td>Оптимизация через requestAnimationFrame, виртуализация, ленивая загрузка</td>
+    </tr>
+    <tr>
+      <td><strong>💾 Автосохранение</strong></td>
+      <td>Мгновенное сохранение всех изменений в localStorage</td>
+    </tr>
+  </tbody>
+</table>
 
-## 2. entities/ - Бизнес-сущности
-Назначение: Описание бизнес-логики и данных
+<hr />
 
-### Что содержит:
+<h2>🏗️ Архитектура приложения</h2>
 
-model/ - TypeScript типы, интерфейсы, DTO
+<h3>🎯 Почему Feature-Sliced Design?</h3>
 
-lib/ - бизнес-логика, утилиты для работы с сущностью
+<p>
+  Мы выбрали <strong>Feature-Sliced Design (FSD)</strong> — современный подход к организации React-приложений, 
+  который обеспечивает:
+</p>
 
-ui/ - базовые компоненты отображения сущности
+<ul>
+  <li><strong>Масштабируемость</strong> — приложение может расти без потери качества кода</li>
+  <li><strong>Поддерживаемость</strong> — четкие границы между модулями упрощают поиск кода</li>
+  <li><strong>Переиспользуемость</strong> — общие компоненты вынесены в shared</li>
+  <li><strong>Тестируемость</strong> — изолированные фичи легко тестировать</li>
+  <li><strong>Командная работа</strong> — разработчики могут работать над разными фичами без конфликтов</li>
+</ul>
 
-Пример: entities/todo/ - описание задачи, ее структуры и базового отображения
+<h3>🔧 Технические детали реализации</h3>
 
-Когда использовать: При добавлении новых типов данных (пользователи, проекты, комментарии)
+<h4>1. Canvas рендеринг</h4>
+<p>
+  В приложении используется <strong>гибридный подход</strong> к рендерингу холста:
+</p>
+<ul>
+  <li><strong>CSS трансформации</strong> — для позиционирования HTML-элементов (задачи, изображения)</li>
+  <li><strong>React-Konva</strong> — для рисования сетки и сложных графических элементов (в разработке)</li>
+</ul>
+<p>Это позволяет сочетать простоту разработки с производительностью.</p>
 
-## 3. features/ - Пользовательские сценарии
-Назначение: Реализация конкретных функций для пользователя
+<h4>2. Система координат</h4>
+<p>
+  Одна из ключевых сложностей Canvas-приложений — работа с координатами. В приложении реализована 
+  <strong>двухуровневая система координат</strong>:
+</p>
+<pre><code>Экранные координаты (clientX, clientY) → Относительные координаты canvas → Canvas координаты</code></pre>
+<p>
+  Все перемещения элементов конвертируются с учетом текущего зума и панорамирования, что обеспечивает 
+  точное позиционирование при любом масштабе.
+</p>
 
-Структура каждого feature:
+<h4>3. Управление состоянием</h4>
+<p>
+  <strong>Redux Toolkit</strong> используется с разделением на предметные области (slices):
+</p>
+<ul>
+  <li><code>todoNodes</code> — состояние задач</li>
+  <li><code>imageNodes</code> — состояние изображений</li>
+  <li><code>viewport</code> — зум и панорамирование</li>
+  <li><code>canvasDnd</code> — состояние перетаскивания</li>
+  <li><code>project</code> — управление проектами и страницами</li>
+</ul>
 
-```bash
-feature-name/
-├── lib/          # Логика (React хуки, утилиты)
-├── model/        # Состояние (Redux slices, типы)
-└── ui/           # Компоненты (React компоненты)
-```
+<h4>4. Drag & Drop система</h4>
+<p>
+  Реализована <strong>кастомная DnD система</strong> с поддержкой:
+</p>
+<ul>
+  <li>Перетаскивания задач и изображений</li>
+  <li>Авто-панорамирования при перетаскивании к краю</li>
+  <li>Throttling через requestAnimationFrame для плавности</li>
+  <li>Визуального preview при перетаскивании</li>
+</ul>
 
-### Примеры:
+<h4>5. Работа с изображениями</h4>
+<p>
+  Изображения проходят через <strong>конвейер обработки</strong>:
+</p>
+<ol>
+  <li>Валидация формата и размера (до 10MB)</li>
+  <li>Чтение FileReader API</li>
+  <li>Оптимизация размеров (макс. 400x300)</li>
+  <li>Конвертация в base64</li>
+  <li>Создание ноды изображения на холсте</li>
+</ol>
 
-todo-nodes/ - создание, редактирование, удаление нод
+<h4>6. Проекты и страницы</h4>
+<p>
+  Реализована <strong>иерархическая структура</strong>:
+</p>
+<pre><code>Проект → Страницы → Холсты → Элементы (задачи + изображения)</code></pre>
+<p>
+  Каждая страница имеет свой холст с независимым viewport, сеткой и фоном. 
+  Элементы могут перемещаться между страницами через drag & drop.
+</p>
 
-canvas-dnd/ - перетаскивание элементов на холсте
+<hr />
 
-selection/ - выделение и работа с выделенными элементами
+<h2>📁 Полная структура проекта</h2>
 
-Когда использовать: Для добавления новой функциональности
+<pre><code>src/
+├── 📂 app/                    # 🏠 ЯДРО ПРИЛОЖЕНИЯ
+│   ├── 📂 providers/          # 🔌 ПРОВАЙДЕРЫ
+│   │   ├── StoreProvider/     # 🗃️ Redux хранилище
+│   │   ├── ThemeProvider/     # 🎨 Темы (светлая/темная)
+│   │   └── DndProvider/       # 🖱️ Drag & Drop
+│   ├── 📂 styles/             # 🖌️ ГЛОБАЛЬНЫЕ СТИЛИ
+│   │   ├── global.css
+│   │   └── variables.css
+│   └── App.tsx                # 🚪 ГЛАВНЫЙ КОМПОНЕНТ
+│
+├── 📂 entities/                # 🏢 БИЗНЕС-СУЩНОСТИ
+│   ├── 📂 todo/                # 📝 СУЩНОСТЬ "ЗАДАЧА"
+│   │   ├── 📂 model/
+│   │   │   ├── types.ts
+│   │   │   └── api.ts
+│   │   ├── 📂 lib/
+│   │   │   └── todoUtils.ts
+│   │   └── 📂 ui/
+│   │       └── TodoCard/
+│   │
+│   ├── 📂 canvas/              # 🖼️ СУЩНОСТЬ "КАНВАС"
+│   │   ├── 📂 model/
+│   │   │   ├── types.ts
+│   │   │   └── api.ts
+│   │   └── 📂 lib/
+│   │       └── canvasHelpers.ts
+│   │
+│   └── 📂 image/               # 🖼️ СУЩНОСТЬ "ИЗОБРАЖЕНИЕ"
+│       ├── 📂 model/
+│       │   └── types.ts
+│       └── 📂 lib/
+│           └── imageHelpers.ts
+│
+├── 📂 features/                # 🎯 ПОЛЬЗОВАТЕЛЬСКИЕ СЦЕНАРИИ
+│   ├── 📂 todo-nodes/          # 🎯 НОДЫ-ЗАДАЧИ
+│   │   ├── 📂 lib/
+│   │   │   ├── useTodoNode.ts
+│   │   │   └── todoNodeHelpers.ts
+│   │   ├── 📂 model/
+│   │   │   ├── types.ts
+│   │   │   ├── slice.ts
+│   │   │   └── selectors.ts
+│   │   └── 📂 ui/
+│   │       ├── KanvaTodoNode/
+│   │       └── TodoNode/
+│   │
+│   ├── 📂 image-upload/        # 🎯 ЗАГРУЗКА ИЗОБРАЖЕНИЙ
+│   │   ├── 📂 lib/
+│   │   │   ├── imageProcessor.ts
+│   │   │   ├── useImageDrop.ts
+│   │   │   └── useImageUpload.ts
+│   │   ├── 📂 model/
+│   │   │   ├── slice.ts
+│   │   │   └── selectors.ts
+│   │   └── 📂 ui/
+│   │       ├── ImageNode/
+│   │       ├── ImageDropOverlay/
+│   │       └── ImageUploadButton/
+│   │
+│   ├── 📂 nodes-creations/     # 🎯 СОЗДАНИЕ НОД
+│   │   ├── 📂 lib/
+│   │   │   ├── contextMenuHelpers.ts
+│   │   │   └── useContextMenu.ts
+│   │   ├── 📂 model/
+│   │   │   ├── types.ts
+│   │   │   └── slice.ts
+│   │   └── 📂 ui/
+│   │       ├── ContextMenu/
+│   │       ├── MenuDivider/
+│   │       └── MenuItem/
+│   │
+│   ├── 📂 todo-form/           # 🎯 ФОРМА ЗАДАЧ
+│   │   ├── 📂 lib/
+│   │   │   └── useTodoForm.ts
+│   │   ├── 📂 model/
+│   │   │   ├── types.ts
+│   │   │   └── slice.ts
+│   │   └── 📂 ui/
+│   │       ├── QuickTodoForm/
+│   │       ├── TodoForm/
+│   │       └── TodoFormModal/
+│   │
+│   ├── 📂 storage/             # 💾 АВТОСОХРАНЕНИЕ
+│   │   ├── 📂 lib/
+│   │   │   └── useAutoSave.ts
+│   │   ├── 📂 model/
+│   │   │   └── autoSaveMiddleware.ts
+│   │   └── 📂 ui/
+│   │       └── StorageManager/
+│   │
+│   ├── 📂 canvas-dnd/          # 🖱️ DRAG & DROP
+│   │   ├── 📂 lib/
+│   │   │   └── useCanvasDnd.ts
+│   │   ├── 📂 model/
+│   │   │   ├── slice.ts
+│   │   │   └── types.ts
+│   │   └── 📂 ui/
+│   │
+│   ├── 📂 canvas-toolbar/      # 🛠️ ПАНЕЛЬ ИНСТРУМЕНТОВ
+│   │   └── 📂 ui/
+│   │       └── Toolbar.tsx
+│   │
+│   ├── 📂 properties-panel/    # ⚙️ ПАНЕЛЬ СВОЙСТВ
+│   │   └── 📂 ui/
+│   │       └── PropertiesPanel.tsx
+│   │
+│   ├── 📂 canvas-viewport/     # 🔍 ЗУМ И ПАНОРАМИРОВАНИЕ
+│   │   ├── 📂 lib/
+│   │   │   ├── useCanvasViewport.ts
+│   │   │   ├── useEnhancedViewport.ts
+│   │   │   └── useAutoPan.ts
+│   │   ├── 📂 model/
+│   │   │   ├── slice.ts
+│   │   │   ├── types.ts
+│   │   │   └── selectors.ts
+│   │   └── 📂 ui/
+│   │       ├── GridRenderer/
+│   │       └── ZoomControls/
+│   │
+│   ├── 📂 project-management/  # 📁 УПРАВЛЕНИЕ ПРОЕКТАМИ
+│   │   └── 📂 model/
+│   │       ├── slice.ts
+│   │       └── selectors.ts
+│   │
+│   └── 📂 selection/           # ☑️ ВЫДЕЛЕНИЕ
+│       └── 📂 lib/
+│           └── useSelection.ts
+│
+├── 📂 widgets/                 # 🧩 ГОТОВЫЕ UI БЛОКИ
+│   ├── 📂 workspace-layout/    # 📐 МАКЕТ
+│   │   └── 📂 ui/
+│   │       └── WorkspaceLayout.tsx
+│   │
+│   ├── 📂 pages-workspace/     # 📄 ПАНЕЛЬ СТРАНИЦ
+│   │   └── 📂 ui/
+│   │       ├── PageItem/
+│   │       └── PagesSidebar/
+│   │
+│   └── 📂 canvas-workspace/    # 🎨 ХОЛСТ
+│       └── 📂 ui/
+│           ├── CanvasWorkspace/
+│           └── KonvaCanvasWorkspace/
+│
+├── 📂 processes/               # 🔄 СЛОЖНЫЕ ПРОЦЕССЫ
+│   ├── 📂 canvas-actions/      # ✨ ДЕЙСТВИЯ С ХОЛСТОМ
+│   │   └── 📂 lib/
+│   │
+│   └── 📂 canvas-sync/         # 🔄 СИНХРОНИЗАЦИЯ
+│       └── 📂 lib/
+│           └── canvasSyncMiddleware/
+│
+└── 📂 shared/                  # 🤝 ОБЩИЙ КОД
+    ├── 📂 api/                  # 🌐 API
+    │   └── 📂 storage/
+    │       └── 📂 jsonStorage/
+    │           ├── localStorage.ts
+    │           └── todoStorage.ts
+    │
+    ├── 📂 lib/                  # 🧰 УТИЛИТЫ
+    │   ├── 📂 geometry/
+    │   ├── 📂 dom/
+    │   └── 📂 state/
+    │       ├── store.ts
+    │       └── index.ts
+    │
+    ├── 📂 ui/                    # 🎨 ОБЩИЕ КОМПОНЕНТЫ
+    │   ├── 📂 kit/
+    │   │   ├── 📂 Modal/
+    │   │   │   ├── DraggableModal.tsx
+    │   │   │   ├── UniversalModal.tsx
+    │   │   │   ├── useUniversalModal.ts
+    │   │   │   └── AppModal.tsx
+    │   │   ├── 📂 DatePicker/
+    │   │   └── 📂 ImagePreview/
+    │   │       └── ImagePreview.tsx
+    │   └── 📂 icons/
+    │
+    └── 📂 config/               # ⚙️ КОНФИГУРАЦИЯ
+        ├── routes.ts
+        └── env.ts</code></pre>
 
-## 4. widgets/ - Композитные UI блоки
-Назначение: Сборные компоненты, объединяющие несколько features
+<hr />
 
-Примеры:
+<h2>🎯 Назначение каждого слоя</h2>
 
-workspace-layout/ - макет с тулбаром, холстом и сайдбаром
+<h3>1️⃣ <strong>app/</strong> — Фундамент приложения</h3>
+<p><strong>Назначение:</strong> Инициализация, провайдеры, глобальные настройки</p>
 
-canvas-workspace/ - холст с нодами и инструментами
+<pre><code>app/
+├── providers/     # Обертки для библиотек (Redux, Theme, DnD)
+├── styles/        # Глобальные CSS переменные
+└── App.tsx        # Корневой компонент</code></pre>
 
-Когда использовать: Для создания сложных UI компонентов, используемых в нескольких местах
+<h3>2️⃣ <strong>entities/</strong> — Бизнес-сущности</h3>
+<p><strong>Назначение:</strong> Описание бизнес-логики и данных</p>
 
-## 5. processes/ - Сложные бизнес-процессы
-Назначение: Координация нескольких features для сложных операций
+<pre><code>entities/{entity}/
+├── model/    # Типы, интерфейсы, DTO
+├── lib/      # Чистые функции, утилиты
+└── ui/       # Базовые компоненты (опционально)</code></pre>
 
-Пример: canvas-actions/ - операции, требующие взаимодействия DnD, выделения и нод
+<p><strong>Сущности проекта:</strong></p>
+<ul>
+  <li><code>todo/</code> — задачи</li>
+  <li><code>canvas/</code> — холсты и листы</li>
+  <li><code>image/</code> — изображения</li>
+</ul>
 
-Когда использовать: Для сложных сценариев, затрагивающих несколько модулей
+<h3>3️⃣ <strong>features/</strong> — Пользовательские сценарии</h3>
+<p><strong>Назначение:</strong> Реализация конкретных функций</p>
 
-## 6. shared/ - Общий код
-Назначение: Переиспользуемые утилиты, компоненты, настройки
+<pre><code>features/{feature}/
+├── lib/     # React хуки, логика
+├── model/   # Redux slice, типы, селекторы
+└── ui/      # Компоненты фичи</code></pre>
 
-### Что содержит:
+<p><strong>Основные фичи:</strong></p>
+<ul>
+  <li><code>todo-nodes/</code> — работа с задачами на холсте</li>
+  <li><code>image-upload/</code> — загрузка и работа с изображениями</li>
+  <li><code>canvas-viewport/</code> — зум и панорамирование</li>
+  <li><code>canvas-dnd/</code> — перетаскивание элементов</li>
+  <li><code>project-management/</code> — управление проектами</li>
+</ul>
 
-api/ - HTTP клиент, конфигурация API
+<h3>4️⃣ <strong>widgets/</strong> — Композитные UI блоки</h3>
+<p><strong>Назначение:</strong> Сборка нескольких features в готовые блоки</p>
 
-lib/ - утилиты (геометрия, DOM, state management)
+<pre><code>widgets/{widget}/
+└── ui/     # Компоненты</code></pre>
 
-ui/ - компоненты дизайн-системы (кнопки, инпуты, модалки)
+<p><strong>Виджеты:</strong></p>
+<ul>
+  <li><code>workspace-layout/</code> — макет рабочей области</li>
+  <li><code>canvas-workspace/</code> — холст с инструментами</li>
+  <li><code>pages-workspace/</code> — панель страниц</li>
+</ul>
 
-config/ - конфигурационные файлы
+<h3>5️⃣ <strong>processes/</strong> — Сложные бизнес-процессы</h3>
+<p><strong>Назначение:</strong> Координация нескольких features</p>
 
-### 🔄 Правила зависимостей
-```
-app/ ← processes/ ← features/ ← entities/ ← shared/
-       widgets/ могут зависеть от всех слоев
-```
-Основное правило: Зависимости могут идти только от более высоких слоев к более низким.
+<pre><code>processes/{process}/
+└── lib/     # Логика процессов</code></pre>
 
-🚀 Как добавить новую функциональность
-Пример: Добавление системы комментариев
-Определите сущность (если ее нет):
+<p><strong>Процессы:</strong></p>
+<ul>
+  <li><code>canvas-sync/</code> — синхронизация холстов</li>
+  <li><code>canvas-actions/</code> — комплексные действия</li>
+</ul>
 
-bash
-mkdir -p src/entities/comment/{model,lib,ui}
-Создайте feature для работы с комментариями:
+<h3>6️⃣ <strong>shared/</strong> — Общий код</h3>
+<p><strong>Назначение:</strong> Переиспользуемые утилиты и компоненты</p>
 
-bash
-mkdir -p src/features/comments/{lib,model,ui}
-Создайте widget для отображения комментариев (если нужно):
+<pre><code>shared/
+├── api/          # HTTP клиент, работа с хранилищем
+├── lib/          # Утилиты (geometry, dom, state)
+├── ui/kit/       # Дизайн-система (Modal, DatePicker, ImagePreview)
+├── ui/icons/     # Иконки
+└── config/       # Конфигурации (routes, env)</code></pre>
 
-bash
-mkdir -p src/widgets/comments-panel/{lib,model,ui}
+<hr />
 
-text
-### Настройте зависимости:
+<h2>🔄 Правила зависимостей</h2>
 
-features/comments/ зависит от entities/comment/
+<pre><code>app/ ← processes/ ← features/ ← entities/ ← shared/
+       widgets/ могут зависеть от всех слоев</code></pre>
 
-widgets/comments-panel/ зависит от features/comments/
+<p><strong>Основное правило:</strong> Зависимости могут идти только от более высоких слоев к более низким.</p>
 
-## 📦 Установленные зависимости
-Основные:
-React 18 - UI библиотека
+<p>❌ <strong>Неправильно:</strong> <code>features/</code> импортирует из <code>widgets/</code><br />
+✅ <strong>Правильно:</strong> <code>widgets/</code> импортирует из <code>features/</code></p>
 
-TypeScript - типизация
+<hr />
 
-Redux Toolkit - управление состоянием
+<h2>🚀 Как добавить новую функциональность</h2>
 
-React-Konva - работа с Canvas
+<h3>Пример: Добавление системы комментариев</h3>
 
-@dnd-kit - drag & drop функциональность
+<p><strong>1. Создайте сущность</strong> (если ее нет):</p>
 
-Утилиты:
-date-fns - работа с датами
+<pre><code>mkdir -p src/entities/comment/{model,lib,ui}</code></pre>
 
-nanoid - генерация уникальных ID
+<p><strong>2. Создайте feature</strong> для работы с комментариями:</p>
 
-clsx - условные CSS классы
+<pre><code>mkdir -p src/features/comments/{lib,model,ui}</code></pre>
 
-🛠️ Команды разработки
-bash
-# Запуск в режиме разработки
+<p><strong>3. Создайте widget</strong> для отображения (если нужно):</p>
+
+<pre><code>mkdir -p src/widgets/comments-panel/{lib,model,ui}</code></pre>
+
+<p><strong>4. Настройте зависимости:</strong></p>
+<ul>
+  <li><code>features/comments/</code> зависит от <code>entities/comment/</code></li>
+  <li><code>widgets/comments-panel/</code> зависит от <code>features/comments/</code></li>
+</ul>
+
+<hr />
+
+<h2>📦 Стек технологий</h2>
+
+<h3>Основные</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Технология</th>
+      <th>Назначение</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>React 18</td>
+      <td>UI библиотека</td>
+    </tr>
+    <tr>
+      <td>TypeScript</td>
+      <td>Типизация</td>
+    </tr>
+    <tr>
+      <td>Redux Toolkit</td>
+      <td>Управление состоянием</td>
+    </tr>
+    <tr>
+      <td>React-Konva</td>
+      <td>Работа с Canvas</td>
+    </tr>
+    <tr>
+      <td>@dnd-kit</td>
+      <td>Drag & Drop</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Утилиты</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Технология</th>
+      <th>Назначение</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>date-fns</td>
+      <td>Работа с датами</td>
+    </tr>
+    <tr>
+      <td>nanoid</td>
+      <td>Генерация ID</td>
+    </tr>
+    <tr>
+      <td>clsx</td>
+      <td>Условные CSS классы</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2>🛠️ Команды разработки</h2>
+
+<pre><code># Запуск в режиме разработки
 npm run dev
 
 # Сборка для production
@@ -335,19 +700,119 @@ npm run type-check
 npm run lint
 
 # Форматирование кода
-npm run format
-🎨 Особенности реализации
-1. Canvas рендеринг
-Используется React-Konva для эффективного рендеринга графических элементов.
+npm run format</code></pre>
 
-2. Состояние приложения
-Centralized state management через Redux Toolkit с разделением на feature slices.
+<hr />
 
-3. Drag & Drop
-Реализовано с помощью @dnd-kit с поддержкой мыши и тач-устройств.
+<h2>📊 Статус реализации</h2>
 
-4. Модульность
-Каждая фича изолирована и может разрабатываться независимо.
+<table>
+  <thead>
+    <tr>
+      <th>Компонент</th>
+      <th>Статус</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Задачи (Todo)</td>
+      <td>✅ Готово</td>
+    </tr>
+    <tr>
+      <td>Холст (Canvas)</td>
+      <td>✅ Готово</td>
+    </tr>
+    <tr>
+      <td>Зум и панорамирование</td>
+      <td>✅ Готово</td>
+    </tr>
+    <tr>
+      <td>Drag & Drop задач</td>
+      <td>✅ Готово</td>
+    </tr>
+    <tr>
+      <td>Загрузка изображений</td>
+      <td>✅ Готово</td>
+    </tr>
+    <tr>
+      <td>Drag & Drop изображений</td>
+      <td>✅ Готово</td>
+    </tr>
+    <tr>
+      <td>Ресайз изображений</td>
+      <td>✅ Готово</td>
+    </tr>
+    <tr>
+      <td>Управление проектами</td>
+      <td>✅ Готово</td>
+    </tr>
+    <tr>
+      <td>Автосохранение</td>
+      <td>✅ Готово</td>
+    </tr>
+    <tr>
+      <td>Konva.js версия</td>
+      <td>🚧 В разработке</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2>👨‍💻 Для разработчиков</h2>
+
+<h3>Ключевые концепции для понимания</h3>
+
+<ol>
+  <li>
+    <strong>Система координат</strong> — всегда конвертируйте экранные координаты в canvas координаты через <code>convertScreenToCanvas</code>
+  </li>
+  <li>
+    <strong>Состояние</strong> — используйте селекторы для доступа к данным, никогда не обращайтесь к store напрямую в компонентах
+  </li>
+  <li>
+    <strong>Производительность</strong> — при частых обновлениях (drag) используйте throttle или requestAnimationFrame
+  </li>
+  <li>
+    <strong>Архитектура</strong> — соблюдайте правила зависимостей, не импортируйте из верхних слоев в нижние
+  </li>
+</ol>
+
+<h3>Полезные хуки</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Хук</th>
+      <th>Назначение</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>useCanvasDnd()</code></td>
+      <td>Базовый Drag & Drop для любых элементов</td>
+    </tr>
+    <tr>
+      <td><code>useEnhancedViewport()</code></td>
+      <td>Зум, панорамирование, работа с viewport</td>
+    </tr>
+    <tr>
+      <td><code>useImageDrop()</code></td>
+      <td>Обработка перетаскивания изображений из проводника</td>
+    </tr>
+    <tr>
+      <td><code>useAutoPan()</code></td>
+      <td>Автоматическое панорамирование при перетаскивании к краю</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<p align="center">
+  <sub>Документация поддерживается в актуальном состоянии командой разработки.</sub><br />
+  <sub>Последнее обновление: 2024</sub>
+</p>
 
 
 
@@ -357,76 +822,10 @@ Centralized state management через Redux Toolkit с разделением 
 
 
 
-# React + TypeScript + Vite
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-Currently, two official plugins are available:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-## React Compiler
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-## Expanding the ESLint configuration
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
