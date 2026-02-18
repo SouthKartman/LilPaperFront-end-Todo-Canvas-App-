@@ -17,6 +17,10 @@
   <img src="https://img.shields.io/badge/FSD-Architecture-green" alt="FSD Architecture" />
 </p>
 
+<p align="center">
+  <img src="./public/example.png" alt="Example" />
+</p>
+
 <hr />
 
 
