@@ -825,7 +825,7 @@ npm run format</code></pre>
 
 <p align="center">
   <sub>Документация поддерживается в актуальном состоянии командой разработки.</sub><br />
-  <sub>Последнее обновление: 2024</sub>
+  <sub>Последнее обновление: 2026</sub>
 </p>
 >>>>>>> db62428 (update readme, add pages, add images)
 
