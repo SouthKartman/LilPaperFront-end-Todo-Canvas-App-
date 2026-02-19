@@ -1,6 +1,7 @@
 // src/features/storage/model/autoSaveMiddleware.ts
 import { Middleware } from '@reduxjs/toolkit';
 import { TodoStorage } from '@shared/api/storage/jsonStorage/todoStorage';
+import { ImageStorage } from '@shared/api/storage/jsonStorage/imageStorage'; // 🆕 Импортируем
 import { RootState } from '@shared/lib/state/store';
 
 // Действия, которые требуют автосохранения todoNodes
@@ -23,7 +24,20 @@ const TODO_SAVE_ACTIONS = [
   'todoNodes/clearAllNodes',
 ];
 
-// 🆕 Действия, которые требуют автосохранения проекта и полотен
+// 🆕 Действия для изображений
+const IMAGE_SAVE_ACTIONS = [
+  'imageNodes/addImageNode',
+  'imageNodes/addImageNodes',
+  'imageNodes/updateImageNode',
+  'imageNodes/moveImageNode',
+  'imageNodes/resizeImageNode',
+  'imageNodes/setImageZIndex',
+  'imageNodes/deleteImageNode',
+  'imageNodes/deleteImageNodes',
+  'imageNodes/clearAllImages',
+];
+
+// Действия для проекта
 const PROJECT_SAVE_ACTIONS = [
   'project/createProject',
   'project/addPage',
@@ -45,24 +59,33 @@ export const autoSaveMiddleware: Middleware = store => next => action => {
   
   const state = store.getState() as RootState;
 
-  // 🆕 Сохраняем todoNodes
+  // Сохраняем todoNodes
   if (TODO_SAVE_ACTIONS.includes(action.type)) {
     setTimeout(() => {
       try {
-        const nodesToSave = JSON.parse(JSON.stringify(state.todoNodes.nodes));
-        TodoStorage.saveTodos(nodesToSave);
-        console.log(`💾 Автосохранение ${Object.keys(nodesToSave).length} todoNodes`);
+        TodoStorage.saveTodos(state.todoNodes.nodes);
       } catch (error) {
         console.error('❌ Ошибка автосохранения todoNodes:', error);
       }
     }, 0);
   }
   
-  // 🆕 Сохраняем проект и полотна
+  // 🆕 Сохраняем изображения
+  if (IMAGE_SAVE_ACTIONS.includes(action.type)) {
+    setTimeout(() => {
+      try {
+        ImageStorage.saveImages(state.imageNodes.nodes);
+        console.log(`🖼️ Автосохранение ${Object.keys(state.imageNodes.nodes).length} изображений`);
+      } catch (error) {
+        console.error('❌ Ошибка автосохранения изображений:', error);
+      }
+    }, 0);
+  }
+  
+  // Сохраняем проект
   if (PROJECT_SAVE_ACTIONS.includes(action.type)) {
     setTimeout(() => {
       try {
-        // Сохраняем все состояние проекта
         const projectState = {
           currentProjectId: state.project.currentProjectId,
           projects: state.project.projects,
@@ -74,19 +97,7 @@ export const autoSaveMiddleware: Middleware = store => next => action => {
           },
         };
         
-        // Сериализуем с обработкой Date объектов
-        const serializedState = JSON.stringify(projectState, (key, value) => {
-          if (value instanceof Date) {
-            return { __type: 'Date', value: value.toISOString() };
-          }
-          return value;
-        });
-        
-        localStorage.setItem('project_state', serializedState);
-        
-        const pageCount = Object.keys(state.project.pages).length;
-        const canvasCount = Object.keys(state.project.canvases || {}).length;
-        console.log(`💾 Автосохранение проекта: ${pageCount} страниц, ${canvasCount} полотен`);
+        localStorage.setItem('project_state', JSON.stringify(projectState));
       } catch (error) {
         console.error('❌ Ошибка автосохранения проекта:', error);
       }

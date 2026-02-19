@@ -1,3 +1,4 @@
+// features/image-upload/model/slice.ts
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { ImageNode } from '@entities/image/model/types';
 import { ImageNodesState } from './types';
@@ -13,6 +14,16 @@ export const imageNodesSlice = createSlice({
   name: 'imageNodes',
   initialState,
   reducers: {
+
+    // Импорт изображений
+    importImages: (state, action: PayloadAction<Record<string, ImageNode>>) => {
+      state.nodes = {
+        ...state.nodes,
+        ...action.payload,
+      };
+      state.error = null;
+    },
+
     // Добавление одного изображения
     addImageNode: (state, action: PayloadAction<ImageNode>) => {
       const node = action.payload;
@@ -137,6 +148,7 @@ export const {
   setLoading,
   setError,
   clearAllImages,
+  importImages,
 } = imageNodesSlice.actions;
 
 export default imageNodesSlice.reducer;

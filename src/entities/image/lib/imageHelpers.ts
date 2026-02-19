@@ -1,3 +1,5 @@
+// entities/image/lib/imageHelpers
+
 import { ImageValidationResult, ProcessedImageData } from '../model/types';
 
 /**

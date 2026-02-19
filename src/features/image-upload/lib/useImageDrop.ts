@@ -1,95 +1,111 @@
 import { useCallback, useState } from 'react';
-import { useAppDispatch } from '@shared/lib/state';
-import { addImageNode, setError, setLoading } from '../model/slice';
-import { processMultipleImages } from './imageProcessor';
-import { ImageNode } from '@entities/image/model/types';
+import { useDispatch, useSelector } from 'react-redux';
+import { useImageUpload } from './useImageUpload'; // ✅ Правильный импорт
+import { validateImage } from './imageProcessor';
+import { selectCurrentProject } from '@features/project-management/model/selectors';
 
-interface UseImageDropProps {
-  enabled?: boolean;
-  onImageDrop?: (images: ImageNode[]) => void;
+interface UseImageDropReturn {
+  isDraggingOver: boolean;
+  dropError: string | null;
+  handleDragOver: (e: React.DragEvent) => void;
+  handleDragLeave: (e: React.DragEvent) => void;
+  handleDrop: (e: React.DragEvent, position: { x: number; y: number }) => Promise<void>;
+  clearError: () => void;
 }
 
-export const useImageDrop = ({ enabled = true, onImageDrop }: UseImageDropProps = {}) => {
-  const dispatch = useAppDispatch();
+export const useImageDrop = (): UseImageDropReturn => {
+  const dispatch = useDispatch();
+  const currentProject = useSelector(selectCurrentProject);
+  
+  // 🆕 Получаем функции из хука
+  const imageUpload = useImageUpload();
+  console.log('📦 useImageDrop: imageUpload =', imageUpload); // Для отладки
+  
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [dropError, setDropError] = useState<string | null>(null);
 
+  // Обработчик drag over
   const handleDragOver = useCallback((e: React.DragEvent) => {
-    if (!enabled) return;
-    
     e.preventDefault();
     e.stopPropagation();
-    setIsDraggingOver(true);
-    setDropError(null);
-  }, [enabled]);
+    
+    if (e.dataTransfer.types.includes('Files')) {
+      setIsDraggingOver(true);
+      e.dataTransfer.dropEffect = 'copy';
+    }
+  }, []);
 
+  // Обработчик drag leave
   const handleDragLeave = useCallback((e: React.DragEvent) => {
-    if (!enabled) return;
-    
     e.preventDefault();
     e.stopPropagation();
     setIsDraggingOver(false);
-  }, [enabled]);
+  }, []);
 
-  const handleDrop = useCallback(async (
-    e: React.DragEvent, 
-    canvasPosition: { x: number; y: number }
-  ) => {
-    if (!enabled) return;
-    
+  // Обработчик drop
+  const handleDrop = useCallback(async (e: React.DragEvent, position: { x: number; y: number }) => {
     e.preventDefault();
     e.stopPropagation();
+    
     setIsDraggingOver(false);
     setDropError(null);
-    
+
+    console.log('📥 Drop событие:', { position });
+
     const files = Array.from(e.dataTransfer.files);
     
     if (files.length === 0) {
-      setDropError('Перетащите файлы');
+      console.warn('⚠️ Нет файлов в drop');
+      return;
+    }
+
+    console.log('📁 Получены файлы:', files.map(f => ({ name: f.name, type: f.type, size: f.size })));
+
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    
+    if (imageFiles.length === 0) {
+      setDropError('Можно загружать только изображения');
+      return;
+    }
+
+    if (!currentProject) {
+      setDropError('Нет текущего проекта');
       return;
     }
 
     try {
-      dispatch(setLoading(true));
-      
-      // Обрабатываем изображения
-      const processedImages = await processMultipleImages(files);
-      
-      if (processedImages.length === 0) {
-        setDropError('Нет валидных изображений');
+      // Валидируем каждый файл
+      for (const file of imageFiles) {
+        const validation = validateImage(file);
+        if (!validation.valid) {
+          setDropError(validation.error || 'Ошибка валидации');
+          return;
+        }
+      }
+
+      // 🆕 Проверяем, что uploadImages существует
+      if (!imageUpload.uploadImages) {
+        console.error('❌ uploadImages не найден в imageUpload:', imageUpload);
+        setDropError('Ошибка инициализации загрузки');
         return;
       }
+
+      console.log('🚀 Начинаем загрузку файлов...');
       
-      // Создаем ноды с учетом позиции
-      const imageNodes: ImageNode[] = processedImages.map((img, index) => ({
-        ...img,
-        type: 'image',
-        position: {
-          x: canvasPosition.x + index * 30,
-          y: canvasPosition.y + index * 30,
-        },
-        size: { width: img.width, height: img.height },
-        zIndex: 1,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }));
+      // Загружаем изображения
+      const result = await imageUpload.uploadImages(imageFiles, position);
       
-      // Добавляем в store
-      imageNodes.forEach(node => {
-        dispatch(addImageNode(node));
-      });
+      console.log('✅ Загрузка завершена:', result);
       
-      // Вызываем колбэк
-      onImageDrop?.(imageNodes);
-      
-      dispatch(setLoading(false));
     } catch (error) {
-      console.error('Error processing images:', error);
-      setDropError(error instanceof Error ? error.message : 'Ошибка обработки изображений');
-      dispatch(setError(error instanceof Error ? error.message : 'Ошибка обработки изображений'));
-      dispatch(setLoading(false));
+      console.error('❌ Ошибка при загрузке изображений:', error);
+      setDropError('Не удалось загрузить изображения');
     }
-  }, [enabled, dispatch, onImageDrop]);
+  }, [currentProject, imageUpload]); // 🆕 Добавляем imageUpload в зависимости
+
+  const clearError = useCallback(() => {
+    setDropError(null);
+  }, []);
 
   return {
     isDraggingOver,
@@ -97,6 +113,6 @@ export const useImageDrop = ({ enabled = true, onImageDrop }: UseImageDropProps 
     handleDragOver,
     handleDragLeave,
     handleDrop,
-    clearError: () => setDropError(null),
+    clearError,
   };
 };

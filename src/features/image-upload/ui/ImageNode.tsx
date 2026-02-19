@@ -1,3 +1,4 @@
+// src/features/image-upload/ui/ImageNode.tsx
 import React, { useRef, useState, useEffect } from 'react';
 import { ImageNode as IImageNode } from '@entities/image/model/types';
 import { ImagePreview } from '@shared/ui/kit/ImagePreview/ImagePreview';
@@ -35,12 +36,31 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
   const { handleDragStart, isDragging, draggedNodeId, dragState } = useCanvasDnd();
   const [isResizing, setIsResizing] = useState(false);
   const [resizeDirection, setResizeDirection] = useState<string | null>(null);
-  
-  // Убираем showInfo так как больше не показываем название
+  const [imageError, setImageError] = useState(false);
   
   // Для плавности используем requestAnimationFrame
   const rafRef = useRef<number>();
   const lastPositionRef = useRef<{ x: number; y: number }>({ x: node.position.x, y: node.position.y });
+
+  // Формируем полный URL изображения
+  const getImageUrl = () => {
+    if (!node.filePath) return '';
+    
+    // Если путь уже абсолютный (начинается с http)
+    if (node.filePath.startsWith('http')) {
+      return node.filePath;
+    }
+    
+    // Если путь начинается с /, добавляем base URL
+    if (node.filePath.startsWith('/')) {
+      return node.filePath;
+    }
+    
+    // Иначе добавляем /images/ префикс
+    return `/images/${node.filePath}`;
+  };
+
+  const imageUrl = getImageUrl();
 
   // Эффект для плавного перемещения изображения во время DnD
   useEffect(() => {
@@ -113,8 +133,8 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return;
     
-    if ((e.target as HTMLElement).closest('.resize-handle')) return;
-    if ((e.target as HTMLElement).closest('button')) return;
+    if ((e.target as HTMLElement).closest(`.${styles.resizeHandle}`)) return;
+    if ((e.target as HTMLElement).closest(`.${styles.actionButton}`)) return;
     
     e.preventDefault();
     e.stopPropagation();
@@ -204,7 +224,12 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    dispatch(deleteImageNode(node.id));
+    
+    if (window.confirm(`Удалить изображение "${node.originalName}"?`)) {
+      dispatch(deleteImageNode(node.id));
+      // TODO: добавить удаление файла через FileService
+      console.log('🗑️ Файл для удаления:', node.filePath);
+    }
   };
 
   const handleContextMenu = (e: React.MouseEvent) => {
@@ -241,6 +266,11 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
     dispatch(setImageZIndex({ id: node.id, zIndex: 1 }));
   };
 
+  const handleImageError = () => {
+    console.error('❌ Ошибка загрузки изображения:', node.filePath);
+    setImageError(true);
+  };
+
   const isBeingDragged = isDragging && draggedNodeId === node.id;
 
   useEffect(() => {
@@ -256,13 +286,18 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
     width: node.size.width,
     height: node.size.height,
     zIndex: node.zIndex,
-    transition: isBeingDragged ? 'none' : 'left 0.1s ease, top 0.1s ease',
   };
 
   return (
     <div
       ref={nodeRef}
-      className={`${styles.imageNode} ${isBeingDragged ? styles.dragging : ''} ${isSelected ? styles.selected : ''} ${isResizing ? styles.resizing : ''}`}
+      className={`
+        ${styles.imageNode} 
+        ${isBeingDragged ? styles.dragging : ''} 
+        ${isSelected ? styles.selected : ''} 
+        ${isResizing ? styles.resizing : ''} 
+        ${imageError ? styles.error : ''}
+      `}
       style={nodeStyle}
       onMouseDown={handleMouseDown}
       onContextMenu={handleContextMenu}
@@ -270,13 +305,23 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
       onDoubleClick={handleDoubleClick}
       data-node-id={node.id}
       data-node-type="image"
+      title={`${node.originalName} (${Math.round(node.fileSize / 1024)} KB)`}
     >
-      <ImagePreview
-        src={node.src}
-        alt={node.alt || 'image'}
-        width={node.size.width}
-        height={node.size.height}
-      />
+      {imageError ? (
+        // Показываем заглушку при ошибке загрузки
+        <div className={styles.errorPlaceholder}>
+          <span>❌</span>
+          <small>{node.originalName}</small>
+        </div>
+      ) : (
+        <ImagePreview
+          src={imageUrl}
+          alt={node.alt || node.originalName || 'image'}
+          width={node.size.width}
+          height={node.size.height}
+          onError={handleImageError}
+        />
+      )}
       
       {isSelected && (
         <>
@@ -292,6 +337,15 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
           
           {/* Панель действий */}
           <div className={styles.actions}>
+            {/* Информация о файле */}
+            <div className={styles.fileInfo}>
+              <span className={styles.fileName}>
+                {node.originalName.length > 20 
+                  ? node.originalName.substring(0, 17) + '...' 
+                  : node.originalName}
+              </span>
+            </div>
+            
             <button 
               className={`${styles.actionButton} ${styles.delete}`} 
               onClick={handleDelete} 
@@ -305,6 +359,13 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
       
       {/* Индикатор выделения */}
       {isSelected && <div className={styles.selectionIndicator} />}
+      
+      {/* Индикатор загрузки (можно добавить позже) */}
+      {(node as any).isUploading && (
+        <div className={styles.uploadingOverlay}>
+          <div className={styles.spinner} />
+        </div>
+      )}
     </div>
   );
 };

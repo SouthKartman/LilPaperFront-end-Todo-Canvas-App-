@@ -13,9 +13,9 @@ import { QuickTodoForm } from '@features/todo-form/ui/QuickTodoForm'
 import { TodoFormModal } from '@features/todo-form/ui/TodoFormModal'
 import styles from './CanvasWorkspace.module.css'
 
-// Импорты для изображений
+// Импорты для изображений - ИСПРАВЛЕНО!
 import { 
-  selectAllImageNodes,
+  selectCurrentCanvasImagesArray,  // ✅ Вместо selectAllImageNodes
   selectSelectedImageNodes 
 } from '@features/image-upload/model/selectors'
 import { 
@@ -38,7 +38,6 @@ import {
 
 import { updateCanvas } from '@features/project-management/model/slice'
 import { useEnhancedViewport } from '@features/canvas-viewport/lib/useTransformViewport'
-import { ZoomControls } from '@features/canvas-viewport/ui/ZoomControls'
 
 export const CanvasWorkspace: React.FC = () => {
   const { nodes } = useTodoNodes()
@@ -50,8 +49,8 @@ export const CanvasWorkspace: React.FC = () => {
   const todoNodes = useSelector(selectAllTodoNodes)
   const selectedNodes = useSelector(selectSelectedTodoNodes)
   
-  // Селекторы для изображений
-  const imageNodes = useSelector(selectAllImageNodes)
+  // ✅ ИСПРАВЛЕНО: используем селектор для текущего полотна
+  const imageNodes = useSelector(selectCurrentCanvasImagesArray)  // Только для текущего canvas!
   const selectedImageNodes = useSelector(selectSelectedImageNodes)
   
   const { openQuickForm, openForm } = useTodoForm()
@@ -85,7 +84,7 @@ export const CanvasWorkspace: React.FC = () => {
     clearError: clearImageError,
   } = useImageDrop()
 
-  // БЛОКИРОВКА МАСШТАБИРОВАНИЯ БРАУЗЕРА
+  // БЛОКИРОВКА МАСШТАБИРОВАНИЯ БРАУЗЕРА (без изменений)
   useEffect(() => {
     const preventBrowserZoom = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '-' || e.key === '=' || e.key === '0')) {
@@ -118,7 +117,7 @@ export const CanvasWorkspace: React.FC = () => {
     }
   }, [])
 
-  // Эффект для перемещения ноды с throttle
+  // Эффект для перемещения ноды с throttle (без изменений)
   useEffect(() => {
     if (!isDragging || !dragState?.draggedNodeId || !dragState?.currentPosition || !canvasRef.current) {
       return
@@ -156,7 +155,7 @@ export const CanvasWorkspace: React.FC = () => {
     }))
   }, [isDragging, dragState?.draggedNodeId, dragState?.currentPosition?.x, dragState?.currentPosition?.y, dragState?.offset?.x, dragState?.offset?.y, viewport, todoNodes, dispatch])
 
-  // Сохраняем изменения viewport в полотне
+  // Сохраняем изменения viewport в полотне (без изменений)
   useEffect(() => {
     if (currentCanvas && 
         (viewport.position.x !== canvasViewport.x || 
@@ -217,12 +216,21 @@ export const CanvasWorkspace: React.FC = () => {
     handleCreateNode(canvasPosition, 'Новая задача')
   }
 
-  // Обработчик drop для изображений
+  // Обработчик drop для изображений - ИСПРАВЛЕНО с проверкой canvas
   const handleCanvasDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    if (!currentCanvas) {
+      console.warn('Нет текущего полотна для добавления изображения')
+      return
+    }
+    
     const canvasPosition = convertScreenToCanvas(e.clientX, e.clientY)
     handleDrop(e, canvasPosition)
-  }, [convertScreenToCanvas, handleDrop])
+  }, [convertScreenToCanvas, handleDrop, currentCanvas])
 
+  // Обработчики глобальных событий (без изменений)
   useEffect(() => {
     const handleGlobalMouseMove = (e: MouseEvent) => {
       handlePanMove(e)
@@ -248,6 +256,7 @@ export const CanvasWorkspace: React.FC = () => {
     }
   }, [handlePanMove, handlePanEnd, handleKeyDown])
 
+  // Блокировка скролла при перетаскивании (без изменений)
   useEffect(() => {
     if (isDragging) {
       document.body.style.overflow = 'hidden'
@@ -263,6 +272,7 @@ export const CanvasWorkspace: React.FC = () => {
     }
   }, [isDragging])
 
+  // Фильтрация задач по текущему полотну (без изменений)
   const currentCanvasNodes = React.useMemo(() => {
     if (!currentCanvas) return []
     
@@ -270,6 +280,12 @@ export const CanvasWorkspace: React.FC = () => {
       currentCanvas.nodes.includes(node.id)
     )
   }, [todoNodes, currentCanvas])
+
+  // ✅ Добавим логирование для отладки
+  useEffect(() => {
+    console.log(`🎨 Текущее полотно: ${currentCanvas?.id || 'нет'}`)
+    console.log(`🖼️ Изображений на полотне: ${imageNodes.length}`)
+  }, [currentCanvas, imageNodes])
 
   return (
     <div className={styles.workspace}>
@@ -351,7 +367,7 @@ export const CanvasWorkspace: React.FC = () => {
             />
           ))}
 
-          {/* Рендер изображений */}
+          {/* ✅ Рендер изображений - теперь только для текущего полотна */}
           {imageNodes.map((node: any) => (
             <ImageNode
               key={node.id}
@@ -391,7 +407,6 @@ export const CanvasWorkspace: React.FC = () => {
               }}
               onDoubleClick={(e, nodeId) => {
                 e.stopPropagation()
-                // Здесь можно открыть полноэкранный просмотр
                 console.log('Open image fullscreen:', nodeId)
               }}
             />
@@ -425,7 +440,15 @@ export const CanvasWorkspace: React.FC = () => {
       <QuickTodoForm />
       <TodoFormModal />
       
-
+      {/* Кнопка загрузки изображений - добавим */}
+      <div style={{
+        position: 'absolute',
+        bottom: '80px',
+        right: '20px',
+        zIndex: 5,
+      }}>
+        <ImageUploadButton />
+      </div>
       
       {/* Панель управления */}
       <div style={{
@@ -440,6 +463,7 @@ export const CanvasWorkspace: React.FC = () => {
         borderRadius: '8px',
         boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
       }}>
+        {/* Здесь могут быть другие элементы управления */}
       </div>
       
       <div className={styles.hotkeyHint}>

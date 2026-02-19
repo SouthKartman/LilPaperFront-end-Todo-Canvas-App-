@@ -8,11 +8,13 @@ export interface ImageNode {
   size: { width: number; height: number };
   zIndex: number;
   
-  // Данные изображения
-  src: string;              // base64 или URL
-  originalName: string;      // Исходное имя файла
-  fileSize: number;          // Размер в байтах
-  mimeType: string;          // image/png, image/jpeg и т.д.
+  // 🆕 ИЗМЕНЕНО: теперь храним путь к файлу, а не base64
+  filePath: string;           // Путь к файлу (например: /images/projects/project-1/image-123.jpg)
+  
+  // Метаданные файла
+  originalName: string;       // Исходное имя файла
+  fileSize: number;           // Размер в байтах
+  mimeType: string;           // image/png, image/jpeg и т.д.
   
   // Метаданные
   createdAt: string;
@@ -28,12 +30,13 @@ export interface ImageNode {
 
 export interface ProcessedImageData {
   id: string;
-  src: string;
+  filePath: string;
   width: number;
   height: number;
   originalName: string;
   fileSize: number;
   mimeType: string;
+  position?: { x: number; y: number }; // 🆕 Добавляем опциональную позицию
 }
 
 export interface ImageValidationResult {

@@ -3,23 +3,38 @@ import { useEffect, useCallback, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '@shared/lib/state/store';
 import { TodoStorage } from '@shared/api/storage/jsonStorage/todoStorage';
+import { ImageStorage } from '@shared/api/storage/jsonStorage/imageStorage'; // 🆕 Импортируем
 
 export const useAutoSave = () => {
-  const nodes = useSelector((state: RootState) => state.todoNodes.nodes);
+  const todoNodes = useSelector((state: RootState) => state.todoNodes.nodes);
+  const imageNodes = useSelector((state: RootState) => state.imageNodes.nodes); // 🆕 Получаем изображения
+  
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
-  const prevNodesRef = useRef<string>('');
+  const prevTodoRef = useRef<string>('');
+  const prevImageRef = useRef<string>(''); // 🆕 Для изображений
 
-  // Функция для сохранения
+  // Функция для сохранения всего
   const save = useCallback(() => {
-    if (Object.keys(nodes).length === 0) return;
+    // Сохраняем задачи
+    if (Object.keys(todoNodes).length > 0) {
+      const todoString = JSON.stringify(todoNodes);
+      if (todoString !== prevTodoRef.current) {
+        console.log('💾 Автосохранение задач...');
+        TodoStorage.saveTodos(todoNodes);
+        prevTodoRef.current = todoString;
+      }
+    }
     
-    const nodesString = JSON.stringify(nodes);
-    if (nodesString === prevNodesRef.current) return;
-    
-    console.log('💾 Автосохранение...');
-    TodoStorage.saveTodos(nodes);
-    prevNodesRef.current = nodesString;
-  }, [nodes]);
+    // 🆕 Сохраняем изображения
+    if (Object.keys(imageNodes).length > 0) {
+      const imageString = JSON.stringify(imageNodes);
+      if (imageString !== prevImageRef.current) {
+        console.log('🖼️ Автосохранение изображений...');
+        ImageStorage.saveImages(imageNodes);
+        prevImageRef.current = imageString;
+      }
+    }
+  }, [todoNodes, imageNodes]);
 
   // Автосохранение при изменениях
   useEffect(() => {
@@ -29,14 +44,14 @@ export const useAutoSave = () => {
     
     saveTimeoutRef.current = setTimeout(() => {
       save();
-    }, 3000); // Задержка 3 секунды
+    }, 3000);
 
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [nodes, save]);
+  }, [todoNodes, imageNodes, save]);
 
   // Сохранение при закрытии страницы
   useEffect(() => {

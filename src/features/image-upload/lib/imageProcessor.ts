@@ -1,92 +1,195 @@
 import { ProcessedImageData } from '@entities/image/model/types';
-import { 
-  calculateOptimalDimensions, 
-  validateImageFile, 
-  generateImageId 
-} from '@entities/image/lib/imageHelpers';
+import { STORAGE_CONFIG } from '@shared/api/storage/storage';
+import { FileService } from '@shared/lib/dom/fileService';
 
-export const processImageFile = (file: File): Promise<ProcessedImageData> => {
-  return new Promise((resolve, reject) => {
-    // Валидация
-    const validation = validateImageFile(file);
-    if (!validation.valid) {
-      reject(new Error(validation.error));
-      return;
-    }
+console.log('🚀 imageProcessor.ts загружается...', new Date().toISOString());
 
-    const reader = new FileReader();
+// ============= ОСНОВНЫЕ ФУНКЦИИ =============
+
+export async function processAndSaveImage(
+  file: File,
+  projectId: string,
+  position: { x: number; y: number }
+): Promise<ProcessedImageData> {
+  console.log('🔥 processAndSaveImage ВЫЗВАНА!', { file: file.name, projectId, position });
+  
+  try {
+    // 1. Оптимизируем изображение
+    const optimizedBlob = await optimizeImage(file);
+    const optimizedFile = new File([optimizedBlob], file.name, { type: file.type });
     
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const { width, height } = calculateOptimalDimensions(img.width, img.height);
-        
-        resolve({
-          id: generateImageId(),
-          src: e.target?.result as string,
-          width,
-          height,
-          originalName: file.name,
-          fileSize: file.size,
-          mimeType: file.type,
-        });
-      };
-      
-      img.onerror = () => reject(new Error('Ошибка загрузки изображения'));
-      img.src = e.target?.result as string;
+    // 2. Сохраняем файл
+    const savedFile = await FileService.saveImage(optimizedFile, projectId);
+    
+    // 3. Создаем запись для ноды
+    const imageData: ProcessedImageData = {
+      id: `img-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      filePath: savedFile.filePath,
+      width: savedFile.width,
+      height: savedFile.height,
+      originalName: savedFile.originalName,
+      fileSize: savedFile.fileSize,
+      mimeType: savedFile.mimeType,
+      position: position,
     };
     
-    reader.onerror = () => reject(new Error('Ошибка чтения файла'));
-    reader.readAsDataURL(file);
-  });
-};
-
-export const processMultipleImages = async (files: File[]): Promise<ProcessedImageData[]> => {
-  const imageFiles = files.filter(file => file.type.startsWith('image/'));
-  
-  if (imageFiles.length === 0) {
-    throw new Error('Нет файлов изображений');
+    console.log('✅ Изображение обработано:', imageData);
+    return imageData;
+  } catch (error) {
+    console.error('❌ Ошибка обработки изображения:', error);
+    throw error;
   }
-  
-  const results = await Promise.allSettled(imageFiles.map(processImageFile));
-  
-  return results
-    .filter((result): result is PromiseFulfilledResult<ProcessedImageData> => 
-      result.status === 'fulfilled'
-    )
-    .map(result => result.value);
-};
+}
 
-export const processImageFromUrl = async (url: string): Promise<ProcessedImageData> => {
+export async function processMultipleImages(
+  files: File[],
+  projectId: string,
+  startPosition: { x: number; y: number },
+  spacing: number = 250
+): Promise<ProcessedImageData[]> {
+  console.log('🔥 processMultipleImages ВЫЗВАНА!', { 
+    filesCount: files.length, 
+    files: files.map(f => f.name),
+    projectId, 
+    startPosition 
+  });
+  
+  const results: ProcessedImageData[] = [];
+  let offsetX = 0;
+
+  for (const file of files) {
+    try {
+      const position = {
+        x: startPosition.x + offsetX,
+        y: startPosition.y,
+      };
+      
+      console.log(`📸 Обрабатываю ${file.name}...`);
+      
+      const imageData = await processAndSaveImage(file, projectId, position);
+      results.push(imageData);
+      
+      offsetX += spacing;
+      console.log(`✅ ${file.name} обработан`);
+    } catch (error) {
+      console.error(`❌ Ошибка с ${file.name}:`, error);
+    }
+  }
+
+  console.log('🎉 Готово!', results.length);
+  return results;
+}
+
+// ============= ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ =============
+
+export async function optimizeImage(
+  file: File,
+  maxWidth: number = 1920,
+  maxHeight: number = 1080
+): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.crossOrigin = 'anonymous';
+    const url = URL.createObjectURL(file);
     
     img.onload = () => {
-      const { width, height } = calculateOptimalDimensions(img.width, img.height);
+      URL.revokeObjectURL(url);
       
-      // Создаем canvas для конвертации в base64
+      let width = img.width;
+      let height = img.height;
+      
+      if (width > maxWidth) {
+        height = (height * maxWidth) / width;
+        width = maxWidth;
+      }
+      
+      if (height > maxHeight) {
+        width = (width * maxHeight) / height;
+        height = maxHeight;
+      }
+      
       const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
+      canvas.width = Math.round(width);
+      canvas.height = Math.round(height);
       
       const ctx = canvas.getContext('2d');
-      ctx?.drawImage(img, 0, 0, width, height);
+      if (!ctx) {
+        reject(new Error('Не удалось создать контекст canvas'));
+        return;
+      }
       
-      const base64Data = canvas.toDataURL('image/png');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(new Error('Не удалось создать blob'));
+          }
+        },
+        file.type,
+        STORAGE_CONFIG.jpegQuality
+      );
+    };
+    
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Не удалось загрузить изображение'));
+    };
+    
+    img.src = url;
+  });
+}
+
+// ✅ ЭКСПОРТИРУЕМ validateImage
+export function validateImage(file: File): { valid: boolean; error?: string } {
+  console.log('🔍 validateImage вызвана для:', file.name);
+  
+  // Проверка размера
+  if (file.size > STORAGE_CONFIG.maxFileSize) {
+    return {
+      valid: false,
+      error: `Файл слишком большой. Максимальный размер: ${STORAGE_CONFIG.maxFileSize / 1024 / 1024}MB`
+    };
+  }
+  
+  // Проверка типа
+  if (!STORAGE_CONFIG.allowedTypes.includes(file.type as any)) {
+    return {
+      valid: false,
+      error: `Неподдерживаемый тип файла: ${file.type}. Разрешены: ${STORAGE_CONFIG.allowedTypes.join(', ')}`
+    };
+  }
+  
+  return { valid: true };
+}
+
+export async function getImageDimensions(file: File): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    
+    img.onload = () => {
+      URL.revokeObjectURL(url);
       resolve({
-        id: generateImageId(),
-        src: base64Data,
-        width,
-        height,
-        originalName: url.split('/').pop() || 'image.png',
-        fileSize: base64Data.length,
-        mimeType: 'image/png',
+        width: img.width,
+        height: img.height,
       });
     };
     
-    img.onerror = () => reject(new Error('Ошибка загрузки изображения по URL'));
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Не удалось загрузить изображение'));
+    };
+    
     img.src = url;
   });
-};
+}
+
+console.log('✅ imageProcessor.ts загружен! Экспорты:', {
+  processAndSaveImage: typeof processAndSaveImage,
+  processMultipleImages: typeof processMultipleImages,
+  validateImage: typeof validateImage,
+  optimizeImage: typeof optimizeImage,
+  getImageDimensions: typeof getImageDimensions
+});
