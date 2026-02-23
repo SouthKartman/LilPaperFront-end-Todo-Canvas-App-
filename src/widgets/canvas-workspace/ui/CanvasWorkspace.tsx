@@ -483,32 +483,6 @@ export const CanvasWorkspace: React.FC = () => {
       <QuickTodoForm />
       <TodoFormModal />
       
-      {/* Кнопка загрузки изображений */}
-      <div style={{
-        position: 'absolute',
-        bottom: '80px',
-        right: '20px',
-        zIndex: 5,
-      }}>
-        <ImageUploadButton />
-      </div>
-      
-      {/* Панель управления */}
-      <div style={{
-        position: 'absolute',
-        bottom: '20px',
-        right: '20px',
-        zIndex: 5,
-        display: 'flex',
-        gap: '8px',
-        background: 'white',
-        padding: '8px',
-        borderRadius: '8px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-      }}>
-        {/* Здесь могут быть другие элементы управления */}
-      </div>
-      
       <div className={styles.hotkeyHint}>
         Ctrl+колесо — масштаб • Колесо — панорамирование • Alt+ЛКМ — панорамирование • Перетащите изображения для загрузки
       </div>

@@ -1,3 +1,4 @@
+
 <h1 align="center">🎨 Canvas Todo App</h1>
 
 <p align="center">
@@ -9,181 +10,9 @@
   <img src="https://img.shields.io/badge/React-18-blue" alt="React 18" />
   <img src="https://img.shields.io/badge/TypeScript-5.0-blue" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Redux_Toolkit-2.0-purple" alt="Redux Toolkit" />
-  <img src="https://img.shields.io/badge/Konva.js-9.0-orange" alt="Konva.js" />
+  <img src="https://img.shields.io/badge/Dexie.js-4.0-green" alt="Dexie.js" />
   <img src="https://img.shields.io/badge/FSD-Architecture-green" alt="FSD Architecture" />
 </p>
-
-<hr />
-
-
-## Наполнение проекта
-
-```bash
-    src/
-├── 📂 app/                   # 🏠 ЯДРО ПРИЛОЖЕНИЯ (настройки и запуск)
-│   ├── 📂 providers/         # 🔌 ПРОВОДКА (обертки для библиотек)
-│   │   ├── StoreProvider/    # 🗃️ Redux хранилище данных
-│   │   ├── ThemeProvider/    # 🎨 Темы (светлая/темная)
-│   │   └── DndProvider/      # 🖱️ Настройки Drag & Drop
-│   ├── 📂 styles/            # 🖌️ ГЛОБАЛЬНЫЕ СТИЛИ
-│   │   ├── global.css        # 🌍 Основные стили всего приложения
-│   │   └── variables.css     # 🎯 CSS переменные (цвета, шрифты)
-│   └── App.tsx              # 🚪 ВХОДНАЯ ДВЕРЬ (главный компонент)
-│
-├── 📂 entities/              # 🏢 СУЩНОСТИ (что есть в приложении)
-│   └── 📂 todo/              # 📝 СУЩНОСТЬ "ЗАДАЧА"
-│   │   ├── 📂 model/         # 📊 МОДЕЛЬ ДАННЫХ
-│   │   │   ├── types.ts      # 📐 ТИПЫ TypeScript (описание задачи)
-│   │   │   └── api.ts        # 🌐 API запросы к серверу
-│   │   ├── 📂 lib/           # 🧰 ИНСТРУМЕНТЫ ДЛЯ ЗАДАЧ
-│   │   │   └── todoUtils.ts  # ⚙️ Функции для работы с задачами
-│   │   └── 📂 ui/            # 👁️ БАЗОВЫЙ ВИД ЗАДАЧИ
-│   │        └── TodoCard/     # 🎴 Карточка задачи (минимум стилей)
-│   ├── 📂 canvas/   # 🔍 ЗУМ И ПАНОРАМИРОВАНИЕ
-│   │   └── 📂 model/         # 💾 ДАННЫЕ И СОСТОЯНИЕ
-│   │   │   ├── api.ts        # 🔍 Api для листов и проектов
-│   │   │   └── types.ts      # 🗃️ Типы данных для canvas листов
-│   │   └── 📂 lib/         # 🧰 ИНСТРУМЕНТЫ ДЛЯ Проектов
-│   └── 📂 image/   # 🔍 РАБОТА С Изображениями
-│       └── 📂 model/         # 💾 ДАННЫЕ И СОСТОЯНИЕ
-│       │   ├── api.ts        # 🔍 Api для images
-│       │   └── types.ts      # 🗃️ Типы данных для images
-│       └── 📂 lib/         # 🧰 ИНСТРУМЕНТЫ ДЛЯ Проектов
-│           └── imageHelpers.ts        
-├── 📂 features/              # 🎯 ФИЧИ (что можно делать)
-│   ├── 📂 todo-nodes/        # 🎯 НОДЫ-ЗАДАЧИ НА ХОЛСТЕ
-│   │   ├── 📂 lib/           # 🧠 ЛОГИКА
-│   │   │   └── useTodoNode=.ts     # 🪝 Хук для работы с нодой
-│   │   │   └── todoNodeHelpers.ts # 🔧 Вспомогательные функции
-│   │   ├── 📂 model/         # 💾 ДАННЫЕ И СОСТОЯНИЕ
-│   │   │   ├── types.ts      # 📐 Типы для нод
-│   │   │   ├── slice.ts      # 🗃️ Redux slice (хранилище)
-│   │   │   └── selectors.ts  # 🔍 Функции для получения данных
-│   │   └── 📂 ui/            # 👁️ ИНТЕРФЕЙС
-│   │       ├── KanvaTodoNode/ # 🎴 Компонент ноды для канвас холста
-│   │       └── TodoNode/     # 🎴 Компонент ноды
-│   ├── 📂 image-upload/        # 🎯 Изображения НА ХОЛСТЕ
-│   │   ├── 📂 lib/           # 🧠 ЛОГИКА
-│   │   │   └── imageProcessprs.ts # загрузка изображений
-│   │   │   └── useImageDrop.ts # D&D изображений
-│   │   │   └── useImageUpload.ts # загрузка на холст изображений
-│   │   ├── 📂 model/         # 💾 ДАННЫЕ И СОСТОЯНИЕ
-│   │   │   ├── slice.ts      # 🗃️ Redux slice (хранилище)
-│   │   │   └── selectors.ts  # 🔍 Функции для получения данных
-│   │   └── 📂 ui/            # 👁️ ИНТЕРФЕЙС
-│   │       ├── ImageDropOverlay/ # 🎴 Компонент ноды для загрузки d&d
-│   │       └── ImageNode/     # 🎴 Компонент ноды изображений
-│   │       └── ImageUploadButton/     # 🎴 Компонент кнопки загрузки изображений
-│   ├── 📂 nodes-creations/   # 🎯 НОДЫ-ЗАДАЧИ НА ХОЛСТЕ
-│   │   ├── 📂 lib/           # 🧠 ЛОГИКА
-│   │   │   ├── contextMenuHelpers.ts  # 🪝 Хук для работы с меню пунктами
-│   │   │   └── useContextMenu  # 🔧 Работа функций контекстного меню
-│   │   ├── 📂 model/         # 💾 ДАННЫЕ И СОСТОЯНИЕ
-│   │   │   ├── types.ts      # 📐 Типы для нод
-│   │   │   └── slice.ts      # 🗃️ Redux slice (хранилище)
-│   │   └── 📂 ui/            # 👁️ ИНТЕРФЕЙС
-│   │       ├── СontextMenu/  # 🎴 Компонент ноды
-│   │       ├── MenuDivider/  # 📝 Форма создания/редактирования
-│   │       └── MenuItem/     # 📋 Список нод (если понадобится)
-│   ├── 📂 todo-form/         # 🎯 Форма для создания Ноды
-│   │   ├── 📂 lib/           # 🧠 ЛОГИКА
-│   │   │   └── useTodoForm.ts  # 🪝 Хук для работы с формой
-│   │   ├── 📂 model/         # 💾 ДАННЫЕ И СОСТОЯНИЕ
-│   │   │   ├── types.ts      # 📐 Типы для нод
-│   │   │   └── slice.ts      # 🗃️ Redux slice (хранилище)
-│   │   └── 📂 ui/            # 👁️ ИНТЕРФЕЙС
-│   │       ├── QuickTodoForm/     # 🎴 Быстрая форма создания
-│   │       ├── TodoForm/     # 📝 Форма создания/редактирования
-│   │       └── TodoFormModal/     # 📋 Форма (если понадобится)
-│   ├── 📂 storage/         # 🎯 Форма для просмотра функции автосохранения
-│   │   ├── 📂 lib/           # 🧠 ЛОГИКА
-│   │   │   └── useAutoSave.ts  # 🪝 Хук для работы Автосохранения
-│   │   ├── 📂 model/         # 💾 ДАННЫЕ И СОСТОЯНИЕ
-│   │   │   └── autoSaveMiddleware.ts # 🗃️ Redux slice для списка действий у сохранений (хранилище)
-│   │   └── 📂 ui/            # 👁️ ИНТЕРФЕЙС
-│   │       └── StorageMeneger/     # 🎴 Форма сохранений
-│   ├── 📂 canvas-dnd/        # 🖱️ ПЕРЕТАСКИВАНИЕ (Drag & Drop)
-│   │   ├── lib/useCanvasDnd.ts    # 🧠 Логика перетаскивания
-│   │   ├── model/slice.ts         # 💾 Состояние DnD
-│   │   └── model/types.ts     # 📐 Типы для позицианирования нод
-│   │
-│   ├── 📂 canvas-toolbar/    # 🛠️ ПАНЕЛЬ ИНСТРУМЕНТОВ
-│   │   └── ui/Toolbar.tsx         # 👁️ Компонент тулбара
-│   │
-│   ├── 📂 properties-panel/  # ⚙️ ПАНЕЛЬ СВОЙСТВ
-│   │   └── ui/PropertiesPanel.tsx # 👁️ Компонент панели
-│   │
-│   ├── 📂 canvas-viewport/   # 🔍 ЗУМ И ПАНОРАМИРОВАНИЕ
-│   │   ├── 📂 lib/           # 🧠 ЛОГИКА
-│   │   │   └── useCanvasViewport.ts # 🧠 Логика зума
-│   │   │   └── useTransformViewport.ts # 🧠 Логика масштабирования полотна
-│   │   ├── 📂 model/         # 💾 ДАННЫЕ И СОСТОЯНИЕ
-│   │   │   ├── selectors.ts  # 🔍 Функции для получения координат нод
-│   │   │   ├── types.ts      # 📐 Типы для нод
-│   │   │   └── slice.ts      # 🗃️ Redux slice (хранилище)
-│   │   └── 📂 ui/            # 👁️ ИНТЕРФЕЙС
-│   │       ├── GridRenderer/     # 🎴 Рисование самой сетки
-│   │       └── ZoomControls/     # 👁️ Кнопки управления
-│   │
-│   ├── 📂 project-management/   # 🔍 ЗУМ И ПАНОРАМИРОВАНИЕ
-│   │   └── 📂 model/         # 💾 ДАННЫЕ И СОСТОЯНИЕ
-│   │       ├── selectors.ts  # 🔍 Функции для получения координат нод
-│   │       └── slice.ts      # 🗃️ Redux slice (хранилище)
-│   │
-│   └── 📂 selection/         # ☑️ ВЫДЕЛЕНИЕ ЭЛЕМЕНТОВ
-│       └── lib/useSelection.ts     # 🧠 Логика выделения
-│
-├── 📂 widgets/               # 🧩 ГОТОВЫЕ БЛОКИ (комнаты)
-│   ├── 📂 workspace-layout/  # 📐 МАКЕТ РАБОЧЕЙ ОБЛАСТИ
-│   │   └── ui/WorkspaceLayout.tsx # 👁️ Компонент макета
-│   │
-│   └── 📂 pages-workspace/  # 🎨 Панель со страницами
-│   │   └── ui/PageItem/ # 👁️ Компонент Item-ов
-│   │   └── ui/PagesSidebar/ # 👁️ Компонент сайд панели
-│   │
-│   └── 📂 canvas-workspace/  # 🎨 ХОЛСТ С ИНСТРУМЕНТАМИ
-│       └── ui/CanvasWorkspace/ # 👁️ Компонент холста
-│       └── ui/KonvaCanvasWorkspace/ # 👁️ Компонент холста матричного приближения (Konva.js)
-│
-├── 📂 processes/             # 🔄 ПРОЦЕССЫ (сложные действия)
-│   └── 📂 canvas-actions/    # ✨ СЛОЖНЫЕ ДЕЙСТВИЯ С ХОЛСТОМ
-│   └── 📂 canvas-sync/    # ✨ Синхронизация листов с холстами
-│       └── 📂 lib/    # ✨ Логика работы синхронизации
-│            └── 📂 canvasSyncMiddleware/  # ✨ Файл логики синхронизации (Создания, удаления, обновления нод)
-│
-└── 📂 shared/                # 🤝 ОБЩИЙ КОД (все используют)
-    ├── 📂 api/               # 🌐 РАБОТА С СЕРВЕРОМ
-    │   └── storage/                 # Хранилища
-    │       └── jsonStorage/         # Json хранилище
-    │           └── localStorage.ts  # Функция локального хранилища
-    │           └── todoStorage.ts   #🔄 Функции работы хранилища с нодами заметок  
-    │
-    ├── 📂 lib/               # 🧰 ИНСТРУМЕНТЫ И УТИЛИТЫ
-    │   ├── 📂 geometry/      # 📐 ГЕОМЕТРИЧЕСКИЕ ФУНКЦИИ
-    │   │
-    │   ├── 📂 dom/           # 🖥️ РАБОТА С ДОМ
-    │   │
-    │   ├── 📂 state/         # 🗃️ НАСТРОЙКИ СОСТОЯНИЯ
-    │   │   └── store.ts      # ⚙️ Конфигурация Redux store
-    │   │   └── index.ts      # Cелектор для viewport
-    ├── 📂 ui/                # 🎨 ОБЩИЕ КОМПОНЕНТЫ
-    │   ├── 📂 kit/           # 🧩 ДИЗАЙН-СИСТЕМА
-    │   │   ├── Modal/        # 🪟 Модальное окно
-    │   │   │   ├── DraggableModal.tsx #  Перетаскиваемое окно
-    │   │   │   ├── UniversalModal.tsx
-    │   │   │   ├── useUniversalModal.ts 
-    │   │   │   └── AppModal.tsx # ⚙️ Модальное окно
-    │   │   ├── DatePicker/  # 📦 Элемент отслеживающий последнее сохранение
-    │   │   ├── ImagePreview/        # 🪟 Модальное окно
-    │   │   │   └── ImagePreview.tsx #  Перетаскиваемое окно
-    │   └── 📂 icons/         # 🎨 ИКОНКИ
-    │
-    └── 📂 config/            # ⚙️ КОНФИГУРАЦИИ
-        ├── routes.ts         # 🗺️ МАРШРУТЫ (страницы)
-        └── env.ts            # 🌍 ПЕРЕМЕННЫЕ ОКРУЖЕНИЯ
-```
-
-
 
 
 <h2>📋 О приложении</h2>
@@ -193,6 +22,222 @@
   вдохновленное такими инструментами как Miro, Figma и Notion. Вместо скучных списков вы получаете <strong>бесконечный холст</strong>, 
   на котором можно размещать задачи, изображения, создавать связи между ними и организовывать проекты любым удобным способом.
 </p>
+
+
+<br>
+
+
+## Наполнение проекта
+
+```bash
+src/
+├── 📂 app/                   # 🏠 ЯДРО ПРИЛОЖЕНИЯ
+│   ├── 📂 providers/         # 🔌 ПРОВАЙДЕРЫ
+│   │   ├── StoreProvider/    # 🗃️ Redux хранилище
+│   │   ├── ThemeProvider/    # 🎨 Темы (светлая/темная)
+│   │   └── DndProvider/      # 🖱️ Drag & Drop
+│   ├── 📂 styles/            # 🖌️ ГЛОБАЛЬНЫЕ СТИЛИ
+│   │   ├── global.css
+│   │   └── variables.css
+│   └── App.tsx               # 🚪 ГЛАВНЫЙ КОМПОНЕНТ
+│
+├── 📂 entities/              # 🏢 БИЗНЕС-СУЩНОСТИ
+│   ├── 📂 todo/              # 📝 СУЩНОСТЬ "ЗАДАЧА"
+│   │   ├── 📂 model/
+│   │   │   ├── types.ts      # 📐 Типы задач
+│   │   │   └── api.ts        # 🌐 API для задач
+│   │   ├── 📂 lib/
+│   │   │   └── todoUtils.ts  # ⚙️ Утилиты для задач
+│   │   └── 📂 ui/
+│   │       └── TodoCard/     # 🎴 Базовая карточка задачи
+│   │
+│   ├── 📂 canvas/            # 🖼️ СУЩНОСТЬ "КАНВАС"
+│   │   ├── 📂 model/
+│   │   │   ├── types.ts      # 📐 Типы для canvas
+│   │   │   └── api.ts        # 🌐 API для canvas
+│   │   └── 📂 lib/
+│   │       └── canvasHelpers.ts # 🔧 Хелперы для canvas
+│   │
+│   └── 📂 image/             # 🖼️ СУЩНОСТЬ "ИЗОБРАЖЕНИЕ"
+│       ├── 📂 model/
+│       │   └── types.ts      # 📐 Типы для изображений
+│       └── 📂 lib/
+│           └── imageHelpers.ts # 🔧 Хелперы для изображений
+│
+├── 📂 features/              # 🎯 ПОЛЬЗОВАТЕЛЬСКИЕ СЦЕНАРИИ
+│   ├── 📂 todo-nodes/        # 🎯 НОДЫ-ЗАДАЧИ
+│   │   ├── 📂 lib/
+│   │   │   ├── useTodoNode.ts    # 🪝 Хук для работы с нодой
+│   │   │   └── todoNodeHelpers.ts # 🔧 Вспомогательные функции
+│   │   ├── 📂 model/
+│   │   │   ├── types.ts      # 📐 Типы для нод
+│   │   │   ├── slice.ts      # 🗃️ Redux slice
+│   │   │   └── selectors.ts  # 🔍 Мемоизированные селекторы
+│   │   └── 📂 ui/
+│   │       ├── KanvaTodoNode/ # 🎴 Нода для Konva
+│   │       └── TodoNode/      # 🎴 Компонент ноды
+│   │
+│   ├── 📂 image-upload/       # 🎯 ЗАГРУЗКА ИЗОБРАЖЕНИЙ
+│   │   ├── 📂 lib/
+│   │   │   ├── imageProcessor.ts  # 🔧 Обработка изображений
+│   │   │   ├── useImageDrop.ts    # 🪝 D&D изображений
+│   │   │   ├── useImageUpload.ts  # 🪝 Загрузка с прогрессом
+│   │   │   └── useProjectImage.ts # 🪝 Загрузка из IndexedDB
+│   │   ├── 📂 model/
+│   │   │   ├── slice.ts      # 🗃️ Redux slice
+│   │   │   └── selectors.ts  # 🔍 Селекторы
+│   │   └── 📂 ui/
+│   │       ├── ImageNode/        # 🎴 Компонент с прелоадером
+│   │       ├── ImageDropOverlay/ # 🎴 Оверлей для D&D
+│   │       └── ImageUploadButton/ # 🎴 Кнопка загрузки
+│   │
+│   ├── 📂 node-creations/     # 🎯 СОЗДАНИЕ НОД
+│   │   ├── 📂 lib/
+│   │   │   ├── contextMenuHelpers.ts # 🔧 Хелперы меню
+│   │   │   └── useContextMenu.ts     # 🪝 Контекстное меню
+│   │   ├── 📂 model/
+│   │   │   ├── types.ts      # 📐 Типы
+│   │   │   └── slice.ts      # 🗃️ Redux slice
+│   │   └── 📂 ui/
+│   │       ├── ContextMenu/  # 🎴 Компонент меню
+│   │       ├── MenuDivider/  # 🎴 Разделитель
+│   │       └── MenuItem/     # 🎴 Пункт меню
+│   │
+│   ├── 📂 todo-form/          # 🎯 ФОРМА ЗАДАЧ
+│   │   ├── 📂 lib/
+│   │   │   └── useTodoForm.ts # 🪝 Хук формы
+│   │   ├── 📂 model/
+│   │   │   ├── types.ts      # 📐 Типы
+│   │   │   └── slice.ts      # 🗃️ Redux slice
+│   │   └── 📂 ui/
+│   │       ├── QuickTodoForm/   # 🎴 Быстрая форма
+│   │       ├── TodoForm/        # 📝 Полная форма
+│   │       └── TodoFormModal/   # 📋 Модальная форма
+│   │
+│   ├── 📂 storage/            # 💾 ХРАНИЛИЩЕ
+│   │   ├── 📂 lib/
+│   │   │   ├── useAutoSave.ts     # 🪝 Автосохранение
+│   │   │   ├── migrationUtils.ts  # 🪝 Миграция данных
+│   │   │   └── useIndexedDBInit.ts # 🪝 Инициализация IndexedDB
+│   │   ├── 📂 model/
+│   │   │   └── autoSaveMiddleware.ts # 🔄 Middleware
+│   │   └── 📂 ui/
+│   │       └── StorageManager/    # 🎴 Менеджер хранилища
+│   │
+│   ├── 📂 canvas-dnd/         # 🖱️ DRAG & DROP
+│   │   ├── 📂 lib/
+│   │   │   └── useCanvasDnd.ts    # 🪝 Логика перетаскивания
+│   │   ├── 📂 model/
+│   │   │   ├── slice.ts      # 🗃️ Redux slice
+│   │   │   └── types.ts      # 📐 Типы DnD
+│   │   └── 📂 ui/
+│   │
+│   ├── 📂 canvas-toolbar/     # 🛠️ ПАНЕЛЬ ИНСТРУМЕНТОВ
+│   │   └── 📂 ui/
+│   │       └── CanvasToolbar.tsx # 🎴 Тулбар
+│   │
+│   ├── 📂 properties-panel/   # ⚙️ ПАНЕЛЬ СВОЙСТВ
+│   │   └── 📂 ui/
+│   │       └── PropertiesPanel.tsx # 🎴 Панель свойств
+│   │
+│   ├── 📂 canvas-viewport/    # 🔍 ЗУМ И ПАНОРАМИРОВАНИЕ
+│   │   ├── 📂 lib/
+│   │   │   ├── useCanvasViewport.ts    # 🪝 Логика зума
+│   │   │   ├── useEnhancedViewport.ts  # 🪝 Улучшенный viewport
+│   │   │   └── useAutoPan.ts           # 🪝 Автопанорамирование
+│   │   ├── 📂 model/
+│   │   │   ├── slice.ts      # 🗃️ Redux slice
+│   │   │   ├── types.ts      # 📐 Типы viewport
+│   │   │   └── selectors.ts  # 🔍 Селекторы
+│   │   └── 📂 ui/
+│   │       ├── GridRenderer/    # 🎴 Рендер сетки
+│   │       └── ZoomControls/    # 🎴 Кнопки зума
+│   │
+│   ├── 📂 project-management/ # 📁 УПРАВЛЕНИЕ ПРОЕКТАМИ
+│   │   └── 📂 model/
+│   │       ├── slice.ts      # 🗃️ Redux slice
+│   │       └── selectors.ts  # 🔍 Селекторы
+│   │
+│   └── 📂 selection/          # ☑️ ВЫДЕЛЕНИЕ
+│       └── 📂 lib/
+│           └── useSelection.ts # 🪝 Логика выделения
+│
+├── 📂 widgets/                # 🧩 ГОТОВЫЕ UI БЛОКИ
+│   ├── 📂 workspace-layout/   # 📐 МАКЕТ
+│   │   └── 📂 ui/
+│   │       └── WorkspaceLayout.tsx # 🎴 Макет рабочей области
+│   │
+│   ├── 📂 pages-workspace/    # 📄 ПАНЕЛЬ СТРАНИЦ
+│   │   └── 📂 ui/
+│   │       ├── PageItem/     # 🎴 Элемент страницы
+│   │       └── PagesSidebar/ # 🎴 Сайдбар страниц
+│   │
+│   └── 📂 canvas-workspace/   # 🎨 ХОЛСТ
+│       └── 📂 ui/
+│           ├── CanvasWorkspace/     # 🎴 Основной холст
+│           └── KonvaCanvasWorkspace/ # 🎴 Холст Konva
+│
+├── 📂 processes/              # 🔄 СЛОЖНЫЕ ПРОЦЕССЫ
+│   ├── 📂 canvas-actions/     # ✨ ДЕЙСТВИЯ С ХОЛСТОМ
+│   │   └── 📂 lib/
+│   │
+│   └── 📂 canvas-sync/        # 🔄 СИНХРОНИЗАЦИЯ
+│       └── 📂 lib/
+│           └── canvasSyncMiddleware/ # 🔄 Middleware синхронизации
+│
+└── 📂 shared/                 # 🤝 ОБЩИЙ КОД
+    ├── 📂 api/                 # 🌐 РАБОТА С ДАННЫМИ
+    │   └── 📂 storage/         # ХРАНИЛИЩА
+    │       ├── 📂 jsonStorage/ # 📦 localStorage (legacy)
+    │       │   ├── localStorage.ts
+    │       │   ├── todoStorage.ts
+    │       │   └── imageStorage.ts
+    │       │
+    │       ├── 📂 indexedDB/   # 🗄️ IndexedDB (текущее)
+    │       │   ├── schema.ts      # 📐 Схема БД
+    │       │   ├── todoStorage.ts # 📝 Задачи
+    │       │   ├── imageStorage.ts # 🖼️ Изображения
+    │       │   ├── projectStorage.ts # 📁 Проекты
+    │       │   └── index.ts     # 📤 Экспорты
+    │       │
+    │       └── storage.ts      # ⚙️ Конфигурация
+    │
+    ├── 📂 lib/                 # 🧰 УТИЛИТЫ
+    │   ├── 📂 geometry/        # 📐 Геометрические функции
+    │   │
+    │   ├── 📂 dom/             # 🖥️ РАБОТА С DOM
+    │   │   ├── fileService.ts  # 📁 Сервис для файлов
+    │   │   └── diagnostic.ts   # 🔍 Диагностика
+    │   │
+    │   └── 📂 state/           # 🗃️ НАСТРОЙКИ СОСТОЯНИЯ
+    │       ├── store.ts        # ⚙️ Конфигурация Redux
+    │       └── index.ts        # 📤 Экспорты
+    │
+    ├── 📂 ui/                  # 🎨 ОБЩИЕ КОМПОНЕНТЫ
+    │   ├── 📂 kit/             # 🧩 ДИЗАЙН-СИСТЕМА
+    │   │   ├── 📂 Modal/       # 🪟 Модальные окна
+    │   │   │   ├── DraggableModal.tsx
+    │   │   │   ├── UniversalModal.tsx
+    │   │   │   ├── useUniversalModal.ts
+    │   │   │   └── AppModal.tsx
+    │   │   │
+    │   │   ├── 📂 DatePicker/  # 📅 Выбор даты
+    │   │   │
+    │   │   ├── 📂 ImagePreview/ # 🖼️ Превью изображений
+    │   │   │   └── ImagePreview.tsx
+    │   │   │
+    │   │   └── 📂 AppInitializer/ # 🚀 Инициализация
+    │   │       └── AppInitializer.tsx
+    │   │
+    │   └── 📂 icons/           # 🎨 ИКОНКИ
+    │
+    └── 📂 config/              # ⚙️ КОНФИГУРАЦИИ
+        ├── routes.ts           # 🗺️ Маршруты
+        └── env.ts              # 🌍 Переменные окружения
+```
+
+
+
 
 <h3>🚀 Ключевые возможности</h3>
 
