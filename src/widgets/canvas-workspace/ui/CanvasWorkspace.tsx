@@ -25,9 +25,12 @@ import {
 } from '@features/image-upload/model/slice'
 import { ImageNode } from '@features/image-upload/ui/ImageNode'
 import { useImageDrop } from '@features/image-upload/lib/useImageDrop'
-import { useImageUpload } from '@features/image-upload/lib/useImageUpload' // ✅ Добавляем
+import { useImageUpload } from '@features/image-upload/lib/useImageUpload'
 import { ImageDropOverlay } from '@features/image-upload/ui/ImageDropOverlay'
 import { ImageUploadButton } from '@features/image-upload/ui/ImageUploadButton'
+
+// ✅ ИСПРАВЛЕНО: импортируем ImageNode, а не IImageNode
+import { ImageNode as ImageNodeType } from '@entities/image/model/types'
 
 import {
   selectCurrentCanvas,
@@ -85,8 +88,8 @@ export const CanvasWorkspace: React.FC = () => {
     clearError: clearImageError,
   } = useImageDrop()
 
-  // ✅ Хук для загрузки изображений с отслеживанием прогресса
-  const { uploadImages, uploadingImages } = useImageUpload()
+  // ✅ Хук для загрузки изображений с отслеживанием прогресса и justUploadedIds
+  const { uploadImages, uploadingImages, justUploadedIds } = useImageUpload()
 
   // БЛОКИРОВКА МАСШТАБИРОВАНИЯ БРАУЗЕРА
   useEffect(() => {
@@ -379,7 +382,7 @@ export const CanvasWorkspace: React.FC = () => {
           {/* ✅ Рендер загружаемых изображений (прелоадеры) */}
           {uploadingImages.map((tempNode) => {
             // Создаем временный node объект для прелоадера
-            const tempImageNode: IImageNode = {
+            const tempImageNode: ImageNodeType = {
               id: tempNode.tempId,
               type: 'image',
               position: tempNode.position,
@@ -406,13 +409,14 @@ export const CanvasWorkspace: React.FC = () => {
             );
           })}
 
-          {/* ✅ Рендер готовых изображений */}
+          {/* ✅ Рендер готовых изображений с пропом skipLoading для новых */}
           {imageNodes.map((node: any) => (
             <ImageNode
               key={node.id}
               node={node}
               isSelected={selectedImageNodes.some(n => n.id === node.id)}
               viewport={viewport}
+              skipLoading={justUploadedIds.has(node.id)} // Пропускаем состояние загрузки для новых
               onContextMenu={(e, nodeId) => {
                 e.preventDefault()
                 e.stopPropagation()

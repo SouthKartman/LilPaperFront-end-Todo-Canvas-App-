@@ -24,6 +24,7 @@ interface ImageNodeProps {
   onDoubleClick?: (e: React.MouseEvent, nodeId: string) => void;
   isUploading?: boolean;
   uploadProgress?: number;
+  skipLoading?: boolean; // Новый проп - пропустить состояние загрузки
 }
 
 export const ImageNode: React.FC<ImageNodeProps> = ({
@@ -35,6 +36,7 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
   onDoubleClick,
   isUploading = false,
   uploadProgress = 0,
+  skipLoading = false,
 }) => {
   const dispatch = useAppDispatch();
   const nodeRef = useRef<HTMLDivElement>(null);
@@ -301,6 +303,23 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
     zIndex: node.zIndex,
   };
 
+  // Если skipLoading=true и изображение еще не загружено, показываем плейсхолдер без состояния загрузки
+  if (skipLoading && !imageUrl && !error) {
+    return (
+      <div
+        ref={nodeRef}
+        className={`${styles.imageNode} ${styles.skipLoading}`}
+        style={nodeStyle}
+        data-node-id={node.id}
+        data-node-type="image"
+      >
+        <div className={styles.imagePlaceholder}>
+          <div className={styles.placeholderSpinner}></div>
+        </div>
+      </div>
+    );
+  }
+
   // Рендерим состояние загрузки (прелоад)
   if (isUploading) {
     return (
@@ -330,8 +349,8 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
     );
   }
 
-  // Рендерим состояние загрузки из БД
-  if (loading) {
+  // Рендерим состояние загрузки из БД (только если не skipLoading)
+  if (loading && !skipLoading) {
     return (
       <div
         ref={nodeRef}

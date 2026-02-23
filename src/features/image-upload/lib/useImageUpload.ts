@@ -21,6 +21,7 @@ export const useImageUpload = () => {
   const dispatch = useDispatch();
   const currentProject = useSelector(selectCurrentProject);
   const [uploadingImages, setUploadingImages] = useState<UploadingImageNode[]>([]);
+  const [justUploadedIds, setJustUploadedIds] = useState<Set<string>>(new Set());
 
   const uploadImages = useCallback(async (
     files: File[],
@@ -43,45 +44,40 @@ export const useImageUpload = () => {
         y: startPosition.y,
       },
       size: {
-        width: 300, // Временный размер, потом обновится
+        width: 300,
         height: 200,
       },
       progress: 0,
     }));
 
-    // Добавляем временные ноды в состояние
     setUploadingImages(tempNodes);
 
     try {
-      // Симулируем прогресс для каждого файла
+      // Прогресс для каждого файла
       const progressIntervals = tempNodes.map((node, index) => {
         return setInterval(() => {
           setUploadingImages(prev => 
             prev.map(img => 
               img.tempId === node.tempId 
-                ? { ...img, progress: Math.min(img.progress + 10, 90) }
+                ? { ...img, progress: Math.min(img.progress + 5, 90) } // Медленнее
                 : img
             )
           );
-        }, 300 + index * 100);
+        }, 500 + index * 150); // Медленнее
       });
 
-      // 1. Обрабатываем изображения
       const imagesData = await processMultipleImages(
         files,
         currentProject.id,
         startPosition
       );
 
-      // Очищаем интервалы
       progressIntervals.forEach(interval => clearInterval(interval));
 
-      // Устанавливаем прогресс 100% для всех
       setUploadingImages(prev => 
         prev.map(img => ({ ...img, progress: 100 }))
       );
 
-      // 2. Создаем реальные ноды
       const imageNodes = imagesData.map((data, index) => ({
         id: data.id,
         type: 'image' as const,
@@ -103,7 +99,7 @@ export const useImageUpload = () => {
         pageId: currentProject.currentPageId || 'default',
       }));
 
-      // 3. Ждем подтверждения от IndexedDB
+      // Ждем подтверждения от IndexedDB (увеличиваем попытки)
       for (const node of imageNodes) {
         const pathMatch = node.filePath.match(/\/images\/projects\/([^/]+)\/(.+)$/);
         if (pathMatch) {
@@ -113,34 +109,49 @@ export const useImageUpload = () => {
           let attempts = 0;
           let stored = null;
           
-          while (!stored && attempts < 10) {
+          // Увеличиваем до 20 попыток по 300мс (6 секунд)
+          while (!stored && attempts < 20) {
             stored = await db.fileStorage.get(fileId);
             if (!stored) {
-              await new Promise(resolve => setTimeout(resolve, 200));
+              await new Promise(resolve => setTimeout(resolve, 300));
               attempts++;
             }
+          }
+          
+          if (stored) {
+            console.log(`✅ Файл ${fileName} подтвержден (${attempts * 300}ms)`);
+          } else {
+            console.warn(`⚠️ Файл ${fileName} не подтвержден после 6 секунд`);
           }
         }
       }
 
-      // 4. Добавляем в Redux
       dispatch(addImageNodes(imageNodes));
       
-      // 5. Очищаем временные ноды через небольшую задержку
+      const newIds = new Set(imageNodes.map(node => node.id));
+      setJustUploadedIds(newIds);
+      
+      // Увеличиваем время показа skipLoading до 5 секунд
       setTimeout(() => {
         setUploadingImages([]);
+        
+        setTimeout(() => {
+          setJustUploadedIds(new Set());
+        }, 5000); // 5 секунд вместо 3
       }, 500);
 
       return imageNodes;
     } catch (error) {
       console.error('❌ Ошибка в uploadImages:', error);
       setUploadingImages([]);
+      setJustUploadedIds(new Set());
       throw error;
     }
   }, [currentProject, dispatch]);
 
   return {
     uploadImages,
-    uploadingImages, // Возвращаем массив загружаемых изображений
+    uploadingImages,
+    justUploadedIds,
   };
 };
