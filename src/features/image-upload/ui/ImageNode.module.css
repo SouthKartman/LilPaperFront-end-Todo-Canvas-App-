@@ -1,3 +1,6 @@
+/* src/features/image-upload/ui/ImageNode/ImageNode.module.css */
+
+/* Базовые стили */
 .imageNode {
   position: absolute;
   cursor: move;
@@ -27,6 +30,7 @@
   cursor: default;
 }
 
+/* Индикатор выделения */
 .selectionIndicator {
   position: absolute;
   top: -2px;
@@ -150,70 +154,165 @@
   color: white;
 }
 
-
-.imageNode {
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
-  will-change: transform, left, top; /* Оптимизация для анимаций */
-}
-
-.imageNode.dragging {
-  transition: none; /* Отключаем transition во время перетаскивания */
-  cursor: grabbing;
-  opacity: 0.9;
-  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.2));
-}
-
-.imageNode:not(.dragging) {
-  transition: left 0.1s ease, top 0.1s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-}
-
-/* Плавное появление информации о файле */
+/* Информация о файле */
 .fileInfo {
-  animation: slideUp 0.2s ease;
+  padding: 0 8px;
+  font-size: 12px;
+  color: #1f2937;
+  max-width: 200px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
 }
 
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.fileName {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* Плавное появление кнопок действий */
-.actions {
-  animation: fadeIn 0.2s ease;
+/* ===== СТИЛИ ДЛЯ ПРЕЛОАДЕРА ===== */
+.imageNode.preload {
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px dashed #3b82f6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  animation: preloadPulse 1.5s ease-in-out infinite;
+  cursor: wait;
+  pointer-events: none;
+  z-index: 1000;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+.preloadContent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 8px;
 }
 
-/* Плавное изменение размера при ресайзе */
-.imageNode.resizing {
-  transition: none;
+.preloadSpinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e5e7eb;
+  border-top: 3px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 12px;
 }
 
-.resizeHandle {
-  transition: transform 0.1s ease, background-color 0.1s ease;
+.preloadText {
+  font-size: 14px;
+  font-weight: 600;
+  color: #3b82f6;
+  margin-bottom: 8px;
 }
 
-.resizeHandle:hover {
-  transform: scale(1.2);
-  background-color: #3b82f6;
+.preloadFileName {
+  font-size: 11px;
+  color: #6b7280;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 8px;
+  margin-top: 4px;
 }
 
-/* Добавьте в конец ImageNode.module.css */
+.progressBar {
+  width: 80%;
+  height: 4px;
+  background: #e5e7eb;
+  border-radius: 2px;
+  overflow: hidden;
+  margin: 8px 0;
+}
 
-/* Стили для ошибки загрузки */
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  transition: width 0.3s ease;
+  border-radius: 2px;
+}
+
+@keyframes preloadPulse {
+  0%, 100% { opacity: 1; border-color: #3b82f6; }
+  50% { opacity: 0.8; border-color: #60a5fa; }
+}
+
+/* ===== СТИЛИ ДЛЯ ЗАГРУЗКИ ИЗ БД ===== */
+.imageNode.loading {
+  background: #f3f4f6;
+  border: 2px dashed #9ca3af;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  color: #6b7280;
+}
+
+.loadingSpinner {
+  font-size: 24px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 8px;
+}
+
+.loadingText {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* Плейсхолдер для изображения */
+.imagePlaceholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f3f4f6;
+  z-index: 1;
+}
+
+.placeholderSpinner {
+  width: 30px;
+  height: 30px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Само изображение */
+.image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  z-index: 2;
+}
+
+.imageVisible {
+  opacity: 1;
+}
+
+.imageHidden {
+  opacity: 0;
+}
+
+/* ===== СТИЛИ ДЛЯ ОШИБКИ ===== */
 .imageNode.error {
   border-color: #ef4444;
   background: #fef2f2;
@@ -244,23 +343,22 @@
   white-space: nowrap;
 }
 
-/* Информация о файле */
-.fileInfo {
-  padding: 0 8px;
-  font-size: 12px;
-  color: #1f2937;
-  max-width: 200px;
-  background: rgba(255, 255, 255, 0.9);
+/* Кнопка повтора */
+.retryButton {
+  background: #ef4444;
+  color: white;
+  border: none;
   border-radius: 4px;
-  display: flex;
-  align-items: center;
+  padding: 4px 12px;
+  font-size: 11px;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: background 0.2s ease;
+  z-index: 30;
 }
 
-.fileName {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.retryButton:hover {
+  background: #dc2626;
 }
 
 /* Оверлей загрузки */

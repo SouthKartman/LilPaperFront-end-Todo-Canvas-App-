@@ -1,4 +1,3 @@
-// features/image-upload/lib/imageProccessor.ts
 import { ProcessedImageData } from '@entities/image/model/types';
 import { STORAGE_CONFIG } from '@shared/api/storage/storage';
 import { FileService } from '@shared/lib/dom/fileService';
@@ -19,10 +18,31 @@ export async function processAndSaveImage(
     const optimizedBlob = await optimizeImage(file);
     const optimizedFile = new File([optimizedBlob], file.name, { type: file.type });
     
-    // 2. Сохраняем файл
+    // 2. Сохраняем файл через FileService
+    console.log('💾 Сохраняем файл через FileService...');
     const savedFile = await FileService.saveImage(optimizedFile, projectId);
+    console.log('✅ Файл сохранен:', savedFile);
     
-    // 3. Создаем запись для ноды
+    // 3. Проверяем, что файл сохранился
+    const { db } = await import('@shared/api/storage/indexedDB/schema');
+    const pathMatch = savedFile.filePath.match(/\/images\/projects\/([^/]+)\/(.+)$/);
+    
+    if (pathMatch) {
+      const [, , fileName] = pathMatch;
+      const fileId = `${projectId}_${fileName}`;
+      
+      // Ждем запись в БД
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      const stored = await db.fileStorage.get(fileId);
+      if (stored) {
+        console.log(`✅ Файл подтвержден в IndexedDB: ${fileName}`);
+      } else {
+        console.warn(`⚠️ Файл еще не в IndexedDB, но продолжим...`);
+      }
+    }
+    
+    // 4. Создаем запись для ноды
     const imageData: ProcessedImageData = {
       id: `img-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       filePath: savedFile.filePath,
@@ -34,7 +54,7 @@ export async function processAndSaveImage(
       position: position,
     };
     
-    console.log('✅ Изображение обработано:', imageData);
+    console.log('✅ Изображение обработано:', imageData.id);
     return imageData;
   } catch (error) {
     console.error('❌ Ошибка обработки изображения:', error);
@@ -50,7 +70,6 @@ export async function processMultipleImages(
 ): Promise<ProcessedImageData[]> {
   console.log('🔥 processMultipleImages ВЫЗВАНА!', { 
     filesCount: files.length, 
-    files: files.map(f => f.name),
     projectId, 
     startPosition 
   });
@@ -77,7 +96,7 @@ export async function processMultipleImages(
     }
   }
 
-  console.log('🎉 Готово!', results.length);
+  console.log(`🎉 Готово! Обработано ${results.length} изображений`);
   return results;
 }
 
@@ -142,11 +161,9 @@ export async function optimizeImage(
   });
 }
 
-// ✅ ЭКСПОРТИРУЕМ validateImage
 export function validateImage(file: File): { valid: boolean; error?: string } {
-  console.log('🔍 validateImage вызвана для:', file.name);
+  console.log('🔍 validateImage:', file.name);
   
-  // Проверка размера
   if (file.size > STORAGE_CONFIG.maxFileSize) {
     return {
       valid: false,
@@ -154,11 +171,10 @@ export function validateImage(file: File): { valid: boolean; error?: string } {
     };
   }
   
-  // Проверка типа
   if (!STORAGE_CONFIG.allowedTypes.includes(file.type as any)) {
     return {
       valid: false,
-      error: `Неподдерживаемый тип файла: ${file.type}. Разрешены: ${STORAGE_CONFIG.allowedTypes.join(', ')}`
+      error: `Неподдерживаемый тип файла: ${file.type}`
     };
   }
   
@@ -187,10 +203,4 @@ export async function getImageDimensions(file: File): Promise<{ width: number; h
   });
 }
 
-console.log('✅ imageProcessor.ts загружен! Экспорты:', {
-  processAndSaveImage: typeof processAndSaveImage,
-  processMultipleImages: typeof processMultipleImages,
-  validateImage: typeof validateImage,
-  optimizeImage: typeof optimizeImage,
-  getImageDimensions: typeof getImageDimensions
-});
+console.log('✅ imageProcessor.ts загружен!');

@@ -13,9 +13,9 @@ import { QuickTodoForm } from '@features/todo-form/ui/QuickTodoForm'
 import { TodoFormModal } from '@features/todo-form/ui/TodoFormModal'
 import styles from './CanvasWorkspace.module.css'
 
-// Импорты для изображений - ИСПРАВЛЕНО!
+// Импорты для изображений
 import { 
-  selectCurrentCanvasImagesArray,  // ✅ Вместо selectAllImageNodes
+  selectCurrentCanvasImagesArray,
   selectSelectedImageNodes 
 } from '@features/image-upload/model/selectors'
 import { 
@@ -25,6 +25,7 @@ import {
 } from '@features/image-upload/model/slice'
 import { ImageNode } from '@features/image-upload/ui/ImageNode'
 import { useImageDrop } from '@features/image-upload/lib/useImageDrop'
+import { useImageUpload } from '@features/image-upload/lib/useImageUpload' // ✅ Добавляем
 import { ImageDropOverlay } from '@features/image-upload/ui/ImageDropOverlay'
 import { ImageUploadButton } from '@features/image-upload/ui/ImageUploadButton'
 
@@ -49,8 +50,8 @@ export const CanvasWorkspace: React.FC = () => {
   const todoNodes = useSelector(selectAllTodoNodes)
   const selectedNodes = useSelector(selectSelectedTodoNodes)
   
-  // ✅ ИСПРАВЛЕНО: используем селектор для текущего полотна
-  const imageNodes = useSelector(selectCurrentCanvasImagesArray)  // Только для текущего canvas!
+  // Изображения для текущего полотна
+  const imageNodes = useSelector(selectCurrentCanvasImagesArray)
   const selectedImageNodes = useSelector(selectSelectedImageNodes)
   
   const { openQuickForm, openForm } = useTodoForm()
@@ -74,7 +75,7 @@ export const CanvasWorkspace: React.FC = () => {
     handleToggleGrid,
   } = useEnhancedViewport()
 
-  // Хук для DnD изображений
+  // Хуки для работы с изображениями
   const {
     isDraggingOver: isDraggingImage,
     dropError: imageDropError,
@@ -84,7 +85,10 @@ export const CanvasWorkspace: React.FC = () => {
     clearError: clearImageError,
   } = useImageDrop()
 
-  // БЛОКИРОВКА МАСШТАБИРОВАНИЯ БРАУЗЕРА (без изменений)
+  // ✅ Хук для загрузки изображений с отслеживанием прогресса
+  const { uploadImages, uploadingImages } = useImageUpload()
+
+  // БЛОКИРОВКА МАСШТАБИРОВАНИЯ БРАУЗЕРА
   useEffect(() => {
     const preventBrowserZoom = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '-' || e.key === '=' || e.key === '0')) {
@@ -117,7 +121,7 @@ export const CanvasWorkspace: React.FC = () => {
     }
   }, [])
 
-  // Эффект для перемещения ноды с throttle (без изменений)
+  // Эффект для перемещения ноды с throttle
   useEffect(() => {
     if (!isDragging || !dragState?.draggedNodeId || !dragState?.currentPosition || !canvasRef.current) {
       return
@@ -155,7 +159,7 @@ export const CanvasWorkspace: React.FC = () => {
     }))
   }, [isDragging, dragState?.draggedNodeId, dragState?.currentPosition?.x, dragState?.currentPosition?.y, dragState?.offset?.x, dragState?.offset?.y, viewport, todoNodes, dispatch])
 
-  // Сохраняем изменения viewport в полотне (без изменений)
+  // Сохраняем изменения viewport в полотне
   useEffect(() => {
     if (currentCanvas && 
         (viewport.position.x !== canvasViewport.x || 
@@ -216,8 +220,8 @@ export const CanvasWorkspace: React.FC = () => {
     handleCreateNode(canvasPosition, 'Новая задача')
   }
 
-  // Обработчик drop для изображений - ИСПРАВЛЕНО с проверкой canvas
-  const handleCanvasDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+  // Обработчик drop для изображений
+  const handleCanvasDrop = useCallback(async (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
     e.stopPropagation()
     
@@ -227,10 +231,21 @@ export const CanvasWorkspace: React.FC = () => {
     }
     
     const canvasPosition = convertScreenToCanvas(e.clientX, e.clientY)
+    
+    // Получаем файлы из события drop
+    const files = Array.from(e.dataTransfer.files)
+    const imageFiles = files.filter(file => file.type.startsWith('image/'))
+    
+    if (imageFiles.length === 0) return
+    
+    // Загружаем изображения
+    await uploadImages(imageFiles, canvasPosition)
+    
+    // Вызываем оригинальный handleDrop для очистки состояния
     handleDrop(e, canvasPosition)
-  }, [convertScreenToCanvas, handleDrop, currentCanvas])
+  }, [convertScreenToCanvas, handleDrop, currentCanvas, uploadImages])
 
-  // Обработчики глобальных событий (без изменений)
+  // Обработчики глобальных событий
   useEffect(() => {
     const handleGlobalMouseMove = (e: MouseEvent) => {
       handlePanMove(e)
@@ -256,7 +271,7 @@ export const CanvasWorkspace: React.FC = () => {
     }
   }, [handlePanMove, handlePanEnd, handleKeyDown])
 
-  // Блокировка скролла при перетаскивании (без изменений)
+  // Блокировка скролла при перетаскивании
   useEffect(() => {
     if (isDragging) {
       document.body.style.overflow = 'hidden'
@@ -272,7 +287,7 @@ export const CanvasWorkspace: React.FC = () => {
     }
   }, [isDragging])
 
-  // Фильтрация задач по текущему полотну (без изменений)
+  // Фильтрация задач по текущему полотну
   const currentCanvasNodes = React.useMemo(() => {
     if (!currentCanvas) return []
     
@@ -280,12 +295,6 @@ export const CanvasWorkspace: React.FC = () => {
       currentCanvas.nodes.includes(node.id)
     )
   }, [todoNodes, currentCanvas])
-
-  // ✅ Добавим логирование для отладки
-  useEffect(() => {
-    console.log(`🎨 Текущее полотно: ${currentCanvas?.id || 'нет'}`)
-    console.log(`🖼️ Изображений на полотне: ${imageNodes.length}`)
-  }, [currentCanvas, imageNodes])
 
   return (
     <div className={styles.workspace}>
@@ -367,7 +376,37 @@ export const CanvasWorkspace: React.FC = () => {
             />
           ))}
 
-          {/* ✅ Рендер изображений - теперь только для текущего полотна */}
+          {/* ✅ Рендер загружаемых изображений (прелоадеры) */}
+          {uploadingImages.map((tempNode) => {
+            // Создаем временный node объект для прелоадера
+            const tempImageNode: IImageNode = {
+              id: tempNode.tempId,
+              type: 'image',
+              position: tempNode.position,
+              size: tempNode.size,
+              zIndex: 1000,
+              filePath: '',
+              originalName: tempNode.originalName,
+              fileSize: tempNode.fileSize,
+              mimeType: tempNode.mimeType,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              pageId: currentPage?.id || 'default',
+            };
+            
+            return (
+              <ImageNode
+                key={tempNode.tempId}
+                node={tempImageNode}
+                isUploading={true}
+                uploadProgress={tempNode.progress}
+                viewport={viewport}
+                isSelected={false}
+              />
+            );
+          })}
+
+          {/* ✅ Рендер готовых изображений */}
           {imageNodes.map((node: any) => (
             <ImageNode
               key={node.id}
@@ -440,7 +479,7 @@ export const CanvasWorkspace: React.FC = () => {
       <QuickTodoForm />
       <TodoFormModal />
       
-      {/* Кнопка загрузки изображений - добавим */}
+      {/* Кнопка загрузки изображений */}
       <div style={{
         position: 'absolute',
         bottom: '80px',

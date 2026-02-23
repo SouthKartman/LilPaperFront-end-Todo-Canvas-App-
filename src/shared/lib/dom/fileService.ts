@@ -1,4 +1,3 @@
-// src/shared/lib/dom/fileService.ts
 export interface SavedFileInfo {
   fileName: string;
   filePath: string;
@@ -27,8 +26,12 @@ export class FileService {
       // 2. Получаем размеры изображения
       const dimensions = await this.getImageDimensions(file);
       
-      // 3. Сохраняем файл в IndexedDB (постоянное хранилище)
-      await this.saveFileToIndexedDB(file, projectId, fileName);
+      // 3. Сохраняем файл в IndexedDB
+      const saved = await this.saveFileToIndexedDB(file, projectId, fileName);
+      
+      if (!saved) {
+        throw new Error('Не удалось сохранить файл в IndexedDB');
+      }
       
       console.log('✅ Файл сохранен в IndexedDB:', filePath);
       
@@ -47,57 +50,79 @@ export class FileService {
     }
   }
 
-
-  // src/shared/lib/dom/fileService.ts (фрагмент)
-  private static async saveFileToIndexedDB(file: File, projectId: string, fileName: string): Promise<void> {
-    const { db } = await import('@shared/api/storage/indexedDB/schema');
-    
-    const id = `${projectId}_${fileName}`;
-    const now = new Date().toISOString();
-    
-    // Проверяем, существует ли уже файл
-    const existing = await db.fileStorage.get(id);
-    if (existing) {
-      console.log(`⚠️ Файл уже существует, обновляем: ${fileName}`);
-    }
-    
-    await db.fileStorage.put({
-      id,
-      projectId,
-      fileName,
-      blob: file,
-      mimeType: file.type,
-      size: file.size,
-      createdAt: existing ? existing.createdAt : now,
-      lastAccessed: now,
-    });
-    
-    // ✅ Важно: проверяем, что файл действительно сохранился
-    const saved = await db.fileStorage.get(id);
-    if (saved) {
-      console.log(`✅ Файл успешно сохранен в IndexedDB: ${fileName} (${(saved.size / 1024).toFixed(1)} KB)`);
-    } else {
-      console.error(`❌ Файл НЕ сохранился в IndexedDB: ${fileName}`);
+  /**
+   * Сохранить файл в IndexedDB
+   */
+  private static async saveFileToIndexedDB(file: File, projectId: string, fileName: string): Promise<boolean> {
+    try {
+      // ✅ ИСПРАВЛЕНО: правильный путь к schema (убрал лишний /storage)
+      const { db } = await import('@shared/api/storage/indexedDB/schema');
+      
+      const id = `${projectId}_${fileName}`;
+      const now = new Date().toISOString();
+      
+      console.log(`💾 Сохраняю файл в IndexedDB:`, { id, size: file.size, type: file.type });
+      
+      // Сохраняем файл
+      await db.fileStorage.put({
+        id,
+        projectId,
+        fileName,
+        blob: file,
+        mimeType: file.type,
+        size: file.size,
+        createdAt: now,
+        lastAccessed: now,
+      });
+      
+      // Проверяем, что файл действительно сохранился
+      const saved = await db.fileStorage.get(id);
+      
+      if (saved) {
+        console.log(`✅ Файл успешно сохранен: ${fileName} (${(saved.size / 1024).toFixed(1)} KB)`);
+        
+        // Проверяем целостность
+        if (saved.size !== file.size) {
+          console.error(`❌ Размер не совпадает! В БД: ${saved.size}, оригинал: ${file.size}`);
+          return false;
+        }
+        
+        return true;
+      } else {
+        console.error(`❌ Файл НЕ сохранился в IndexedDB!`);
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Ошибка при сохранении в IndexedDB:', error);
+      return false;
     }
   }
+
   /**
    * Получить файл из IndexedDB
    */
   static async getFile(projectId: string, fileName: string): Promise<File | null> {
-    const { db } = await import('@shared/api/storage/indexedDB/schema');
-    
-    const id = `${projectId}_${fileName}`;
-    const stored = await db.fileStorage.get(id);
-    
-    if (!stored) {
-      console.warn(`⚠️ Файл не найден в IndexedDB: ${projectId}/${fileName}`);
+    try {
+      // ✅ ИСПРАВЛЕНО: правильный путь к schema (убрал лишний /storage)
+      const { db } = await import('@shared/api/storage/indexedDB/schema');
+      
+      const id = `${projectId}_${fileName}`;
+      const stored = await db.fileStorage.get(id);
+      
+      if (!stored) {
+        console.warn(`⚠️ Файл не найден в IndexedDB: ${projectId}/${fileName}`);
+        return null;
+      }
+      
+      // Обновляем время последнего доступа
+      await db.fileStorage.update(id, { lastAccessed: new Date().toISOString() });
+      
+      console.log(`📂 Файл загружен из IndexedDB: ${fileName} (${(stored.size / 1024).toFixed(1)} KB)`);
+      return new File([stored.blob], stored.fileName, { type: stored.mimeType });
+    } catch (error) {
+      console.error('❌ Ошибка получения файла из IndexedDB:', error);
       return null;
     }
-    
-    // Обновляем время последнего доступа
-    await db.fileStorage.update(id, { lastAccessed: new Date().toISOString() });
-    
-    return new File([stored.blob], stored.fileName, { type: stored.mimeType });
   }
 
   /**
@@ -107,11 +132,9 @@ export class FileService {
     try {
       const file = await this.getFile(projectId, fileName);
       if (!file) {
-        console.warn(`⚠️ Не удалось получить файл: ${projectId}/${fileName}`);
         return null;
       }
       
-      // Создаем blob URL для отображения
       const url = URL.createObjectURL(file);
       console.log(`🔗 Создан blob URL для: ${fileName}`);
       return url;
@@ -125,11 +148,11 @@ export class FileService {
    * Удалить файл
    */
   static async deleteFile(projectId: string, fileName: string): Promise<boolean> {
-    const { db } = await import('@shared/api/storage/indexedDB/schema');
-    
-    const id = `${projectId}_${fileName}`;
-    
     try {
+      // ✅ ИСПРАВЛЕНО: правильный путь к schema
+      const { db } = await import('@shared/api/storage/indexedDB/schema');
+      
+      const id = `${projectId}_${fileName}`;
       await db.fileStorage.delete(id);
       console.log(`🗑️ Файл удален из IndexedDB: ${fileName}`);
       return true;
@@ -170,7 +193,6 @@ export class FileService {
   static revokeUrl(url: string): void {
     if (url && url.startsWith('blob:')) {
       URL.revokeObjectURL(url);
-      console.log('🧹 blob URL освобожден');
     }
   }
 
@@ -183,20 +205,26 @@ export class FileService {
     mimeType?: string;
     createdAt?: string;
   }> {
-    const { db } = await import('@shared/api/storage/indexedDB/schema');
-    
-    const id = `${projectId}_${fileName}`;
-    const stored = await db.fileStorage.get(id);
-    
-    if (!stored) {
+    try {
+      // ✅ ИСПРАВЛЕНО: правильный путь к schema
+      const { db } = await import('@shared/api/storage/indexedDB/schema');
+      
+      const id = `${projectId}_${fileName}`;
+      const stored = await db.fileStorage.get(id);
+      
+      if (!stored) {
+        return { exists: false };
+      }
+      
+      return {
+        exists: true,
+        size: stored.size,
+        mimeType: stored.mimeType,
+        createdAt: stored.createdAt,
+      };
+    } catch (error) {
+      console.error('❌ Ошибка получения информации о файле:', error);
       return { exists: false };
     }
-    
-    return {
-      exists: true,
-      size: stored.size,
-      mimeType: stored.mimeType,
-      createdAt: stored.createdAt,
-    };
   }
 }

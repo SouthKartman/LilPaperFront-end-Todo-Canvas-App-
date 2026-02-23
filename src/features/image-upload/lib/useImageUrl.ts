@@ -1,25 +1,34 @@
 // src/features/image-upload/lib/useImageUrl.ts
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { ImageIndexedDBStorage } from '@shared/api/storage/indexedDB/imageStorage';
+import { db } from '@shared/api/storage/indexedDB/schema';
 
 interface UseImageUrlResult {
   url: string | null;
   loading: boolean;
   error: Error | null;
   revoke: () => void;
+  retry: () => void; // Добавляем функцию повторной попытки
 }
 
 export const useImageUrl = (imageId: string | null): UseImageUrlResult => {
   const [url, setUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const urlRef = useRef<string | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout>();
 
   const revoke = useCallback(() => {
-    if (url && url.startsWith('blob:')) {
-      URL.revokeObjectURL(url);
-      console.log('🧹 blob URL освобожден');
+    if (urlRef.current && urlRef.current.startsWith('blob:')) {
+      URL.revokeObjectURL(urlRef.current);
+      urlRef.current = null;
     }
-  }, [url]);
+  }, []);
+
+  const retry = useCallback(() => {
+    setRetryCount(prev => prev + 1);
+  }, []);
 
   useEffect(() => {
     if (!imageId) {
@@ -31,24 +40,58 @@ export const useImageUrl = (imageId: string | null): UseImageUrlResult => {
     let currentUrl: string | null = null;
 
     const loadImage = async () => {
+      // Очищаем предыдущий таймер
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+
       setLoading(true);
       setError(null);
       
       try {
-        console.log(`🖼️ Загрузка изображения: ${imageId}`);
+        console.log(`🖼️ Загрузка изображения: ${imageId} (попытка ${retryCount + 1})`);
         
-        // Получаем URL через ImageIndexedDBStorage
+        // Проверяем, есть ли метаданные в БД
+        const image = await db.images.get(imageId);
+        if (!image) {
+          console.log(`⏳ Изображение ${imageId} еще не в БД, ждем...`);
+          
+          // Если метаданных нет, пробуем через секунду
+          timeoutRef.current = setTimeout(() => {
+            if (isMounted) {
+              setRetryCount(prev => prev + 1);
+            }
+          }, 1000);
+          
+          setLoading(false);
+          return;
+        }
+
+        // Получаем URL
         const imageUrl = await ImageIndexedDBStorage.getImageUrl(imageId);
         
         if (isMounted) {
           if (imageUrl) {
+            // Освобождаем старый URL
+            if (urlRef.current && urlRef.current.startsWith('blob:')) {
+              URL.revokeObjectURL(urlRef.current);
+            }
+            
             currentUrl = imageUrl;
+            urlRef.current = imageUrl;
             setUrl(imageUrl);
             console.log(`✅ Изображение загружено: ${imageId}`);
           } else {
+            // Если файла нет, пробуем через секунду
+            console.log(`⏳ Файл для ${imageId} еще не готов, ждем...`);
+            timeoutRef.current = setTimeout(() => {
+              if (isMounted) {
+                setRetryCount(prev => prev + 1);
+              }
+            }, 1000);
+            
             setError(new Error('Failed to load image'));
-            setUrl('/placeholder-image.png'); // Fallback
-            console.warn(`⚠️ Изображение не найдено: ${imageId}`);
+            setUrl('/placeholder-image.png');
           }
         }
       } catch (err) {
@@ -66,14 +109,16 @@ export const useImageUrl = (imageId: string | null): UseImageUrlResult => {
 
     loadImage();
 
-    // Очистка при размонтировании
     return () => {
       isMounted = false;
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
       if (currentUrl && currentUrl.startsWith('blob:')) {
         URL.revokeObjectURL(currentUrl);
       }
     };
-  }, [imageId]);
+  }, [imageId, retryCount]);
 
-  return { url, loading, error, revoke };
+  return { url, loading, error, revoke, retry };
 };

@@ -1,10 +1,10 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { ImageNode as IImageNode } from '@entities/image/model/types';
 import { ImagePreview } from '@shared/ui/kit/ImagePreview/ImagePreview';
 import { useAppDispatch } from '@shared/lib/state';
 import { useCanvasDnd } from '@features/canvas-dnd/lib/useCanvasDnd';
-import { useProjectImage } from '../lib/useProjectImage'; // Новый хук
-import { FileService } from '@shared/lib/dom/fileService'; // Для удаления файлов
+import { useProjectImage } from '../lib/useProjectImage';
+import { FileService } from '@shared/lib/dom/fileService';
 import { 
   moveImageNode, 
   resizeImageNode, 
@@ -22,6 +22,8 @@ interface ImageNodeProps {
   onContextMenu?: (e: React.MouseEvent, nodeId: string) => void;
   onClick?: (e: React.MouseEvent, nodeId: string) => void;
   onDoubleClick?: (e: React.MouseEvent, nodeId: string) => void;
+  isUploading?: boolean;
+  uploadProgress?: number;
 }
 
 export const ImageNode: React.FC<ImageNodeProps> = ({
@@ -31,15 +33,41 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
   onContextMenu,
   onClick,
   onDoubleClick,
+  isUploading = false,
+  uploadProgress = 0,
 }) => {
   const dispatch = useAppDispatch();
   const nodeRef = useRef<HTMLDivElement>(null);
   const { handleDragStart, isDragging, draggedNodeId, dragState } = useCanvasDnd();
   const [isResizing, setIsResizing] = useState(false);
   const [resizeDirection, setResizeDirection] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [imageLoaded, setImageLoaded] = useState(false);
   
-  // Используем новый хук для загрузки изображения
-  const { url: imageUrl, loading, error } = useProjectImage(node.id);
+  // Используем хук для загрузки изображения с возможностью ретрая
+  const { url: imageUrl, loading, error } = useProjectImage(node.id, retryCount);
+  
+  // Автоматический ретрай при ошибке
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => {
+        setRetryCount(prev => prev + 1);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
+  // Сброс состояния загрузки при изменении URL
+  useEffect(() => {
+    setImageLoaded(false);
+  }, [imageUrl]);
+
+  // Ручной ретрай
+  const handleRetry = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRetryCount(prev => prev + 1);
+    setImageLoaded(false);
+  }, []);
   
   // Для плавности используем requestAnimationFrame
   const rafRef = useRef<number>();
@@ -50,37 +78,31 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
     if (isDragging && draggedNodeId === node.id && dragState?.currentPosition && !isResizing) {
       
       const updatePosition = () => {
-        // Находим canvas элемент
         const canvasElement = document.querySelector('[class*="canvas"]') as HTMLElement;
         if (!canvasElement) return;
         
         const rect = canvasElement.getBoundingClientRect();
         
-        // Вычисляем позицию с учетом offset
         const mouseX = dragState.currentPosition.x - dragState.offset.x;
         const mouseY = dragState.currentPosition.y - dragState.offset.y;
         
-        // Конвертируем экранные координаты в canvas координаты
         const relativeX = mouseX - rect.left;
         const relativeY = mouseY - rect.top;
         
         const canvasX = (relativeX - viewport.position.x) / viewport.scale;
         const canvasY = (relativeY - viewport.position.y) / viewport.scale;
         
-        // Новая позиция с центрированием
         const newPosition = {
           x: canvasX - node.size.width / 2,
           y: canvasY - node.size.height / 2,
         };
         
-        // Плавное обновление с интерполяцией
         const speed = 0.8;
         const smoothPosition = {
           x: lastPositionRef.current.x + (newPosition.x - lastPositionRef.current.x) * speed,
           y: lastPositionRef.current.y + (newPosition.y - lastPositionRef.current.y) * speed,
         };
         
-        // Обновляем позицию только если изменение значительное
         const dx = Math.abs(smoothPosition.x - lastPositionRef.current.x);
         const dy = Math.abs(smoothPosition.y - lastPositionRef.current.y);
         
@@ -210,14 +232,12 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
     
     if (window.confirm(`Удалить изображение "${node.originalName}"?`)) {
       try {
-        // Извлекаем projectId и fileName из filePath
         const pathMatch = node.filePath?.match(/\/images\/projects\/([^/]+)\/(.+)$/);
         if (pathMatch) {
           const [, projectId, fileName] = pathMatch;
           await FileService.deleteFile(projectId, fileName);
         }
         
-        // Удаляем из Redux и IndexedDB
         dispatch(deleteImageNode(node.id));
       } catch (error) {
         console.error('❌ Ошибка удаления файла:', error);
@@ -260,6 +280,10 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
     dispatch(setImageZIndex({ id: node.id, zIndex: 1 }));
   };
 
+  const handleImageLoad = () => {
+    setImageLoaded(true);
+  };
+
   const isBeingDragged = isDragging && draggedNodeId === node.id;
 
   useEffect(() => {
@@ -277,13 +301,44 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
     zIndex: node.zIndex,
   };
 
-  // Рендерим состояние загрузки
+  // Рендерим состояние загрузки (прелоад)
+  if (isUploading) {
+    return (
+      <div
+        ref={nodeRef}
+        className={`${styles.imageNode} ${styles.preload}`}
+        style={nodeStyle}
+        data-node-id={node.id}
+        data-node-type="image"
+      >
+        <div className={styles.preloadContent}>
+          <div className={styles.preloadSpinner}></div>
+          <div className={styles.preloadText}>
+            {uploadProgress > 0 ? `${uploadProgress}%` : 'Загрузка...'}
+          </div>
+          {uploadProgress > 0 && (
+            <div className={styles.progressBar}>
+              <div 
+                className={styles.progressFill} 
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+          )}
+          <div className={styles.preloadFileName}>{node.originalName}</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Рендерим состояние загрузки из БД
   if (loading) {
     return (
       <div
         ref={nodeRef}
         className={`${styles.imageNode} ${styles.loading}`}
         style={nodeStyle}
+        data-node-id={node.id}
+        data-node-type="image"
       >
         <div className={styles.loadingSpinner}>🔄</div>
         <div className={styles.loadingText}>Загрузка...</div>
@@ -298,14 +353,16 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
         ref={nodeRef}
         className={`${styles.imageNode} ${styles.error}`}
         style={nodeStyle}
+        data-node-id={node.id}
+        data-node-type="image"
         title={node.originalName}
       >
-        <div className={styles.errorPlaceholder}>
+        <div className={styles.placeholder}>
           <span>❌</span>
           <small>{node.originalName}</small>
           <button 
             className={styles.retryButton}
-            onClick={() => window.location.reload()}
+            onClick={handleRetry}
           >
             🔄 Повторить
           </button>
@@ -322,6 +379,7 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
         ${isBeingDragged ? styles.dragging : ''} 
         ${isSelected ? styles.selected : ''} 
         ${isResizing ? styles.resizing : ''}
+        ${!imageLoaded ? styles.hideImage : ''}
       `}
       style={nodeStyle}
       onMouseDown={handleMouseDown}
@@ -332,12 +390,23 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
       data-node-type="image"
       title={`${node.originalName} (${Math.round(node.fileSize / 1024)} KB)`}
     >
-      <ImagePreview
+      {/* Плейсхолдер пока изображение загружается */}
+      {!imageLoaded && (
+        <div className={styles.imagePlaceholder}>
+          <div className={styles.placeholderSpinner}></div>
+        </div>
+      )}
+      
+      <img
         src={imageUrl}
-        alt={node.alt || node.originalName || 'image'}
-        width={node.size.width}
-        height={node.size.height}
-        className={styles.imagePreview}
+        alt={node.alt || node.originalName}
+        className={`${styles.image} ${imageLoaded ? styles.imageVisible : styles.imageHidden}`}
+        onLoad={handleImageLoad}
+        onError={(e) => {
+          console.error('Ошибка загрузки изображения:', imageUrl);
+          handleRetry(e as any);
+        }}
+        style={{ display: imageLoaded ? 'block' : 'none' }}
       />
       
       {isSelected && (
@@ -354,14 +423,6 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
           
           {/* Панель действий */}
           <div className={styles.actions}>
-            <div className={styles.fileInfo}>
-              <span className={styles.fileName}>
-                {node.originalName.length > 20 
-                  ? node.originalName.substring(0, 17) + '...' 
-                  : node.originalName}
-              </span>
-            </div>
-            
             <button 
               className={`${styles.actionButton} ${styles.bringToFront}`}
               onClick={handleBringToFront}
@@ -391,13 +452,6 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
       
       {/* Индикатор выделения */}
       {isSelected && <div className={styles.selectionIndicator} />}
-      
-      {/* Индикатор загрузки (для будущих анимаций) */}
-      {(node as any).isUploading && (
-        <div className={styles.uploadingOverlay}>
-          <div className={styles.spinner} />
-        </div>
-      )}
     </div>
   );
 };
