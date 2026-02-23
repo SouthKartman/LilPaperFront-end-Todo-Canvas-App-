@@ -1,4 +1,3 @@
-// src/features/canvas-toolbar/ui/CanvasToolbar.tsx
 import React, { useCallback, useEffect, useState } from 'react'
 import styles from './CanvasToolbar.module.css'
 import { RootState } from '@shared/lib/state/store'
@@ -35,16 +34,15 @@ export const CanvasToolbar: React.FC = () => {
     }
   }, [nodes]);
 
-  // ✅ Правильно деструктурируем объект из хука
   const { openModal } = useAppModal();
   
   const handleOpenStorageManager = () => {
     openModal(
-      <StorageManager />,
+      <StorageManager modalMode={true} />,
       {
-        // title: 'Управление сохранениями',
-        width: '750px',
-        height: '500px',
+        title: '📁 Управление хранилищем',
+        width: '800px',
+        height: 'auto',
         onClose: () => {
           console.log('Storage manager закрыт');
         }
@@ -57,7 +55,7 @@ export const CanvasToolbar: React.FC = () => {
       <div className={styles.tools}>
         
       </div>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '10px', alignItems: 'center' }}>
+      <div style={{ marginLeft: 'auto', display: 'flex', gap: '10px', alignItems: 'center' }}>
         <span style={{ fontSize: '14px', color: '#666' }}>Масштаб:</span>
         <ZoomControls />
         <button 
@@ -69,7 +67,7 @@ export const CanvasToolbar: React.FC = () => {
         </button>
         <button 
           onClick={handleOpenStorageManager}
-          className='storage-btn'
+          className="storage-btn"
           >
           📁 Хранилище
         </button>

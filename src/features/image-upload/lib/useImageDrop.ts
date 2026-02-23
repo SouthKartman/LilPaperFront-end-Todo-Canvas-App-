@@ -1,3 +1,5 @@
+// features/image-upload/lib/useImageDrop.ts
+
 import { useCallback, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useImageUpload } from './useImageUpload'; // ✅ Правильный импорт

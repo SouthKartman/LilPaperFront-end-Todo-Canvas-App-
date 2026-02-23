@@ -1,3 +1,5 @@
+// features/image-upload/lib/useImageUpload.ts
+
 import { useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { processMultipleImages } from './imageProcessor'; // 👈 Только один импорт

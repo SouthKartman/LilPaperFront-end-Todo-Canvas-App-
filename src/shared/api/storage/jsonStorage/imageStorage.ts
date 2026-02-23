@@ -1,3 +1,4 @@
+// src/shared/api/storage/jsonStorage/imageStorage.ts
 import { ImageNode } from '@entities/image/model/types';
 import { LocalStorage } from './localStorage';
 import { FileService } from '@shared/lib/dom/fileService';

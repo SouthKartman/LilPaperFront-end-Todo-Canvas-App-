@@ -1,3 +1,4 @@
+// features/image-upload/lib/imageProccessor.ts
 import { ProcessedImageData } from '@entities/image/model/types';
 import { STORAGE_CONFIG } from '@shared/api/storage/storage';
 import { FileService } from '@shared/lib/dom/fileService';

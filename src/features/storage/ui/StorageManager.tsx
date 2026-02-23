@@ -1,181 +1,312 @@
-// src/features/storage/ui/StorageManager/StorageManager.tsx
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { TodoStorage } from '@shared/api/storage/jsonStorage/todoStorage';
-import { ImageStorage } from '@shared/api/storage/jsonStorage/imageStorage'; // 🆕 Импортируем
+import { ImageStorage } from '@shared/api/storage/jsonStorage/imageStorage';
+import { TodoIndexedDBStorage } from '@shared/api/storage/indexedDB/todoStorage';
+import { ImageIndexedDBStorage } from '@shared/api/storage/indexedDB/imageStorage';
+import { ProjectIndexedDBStorage } from '@shared/api/storage/indexedDB/projectStorage';
 import { importNodes, clearAllNodes } from '@features/todo-nodes/model/slice';
-import { clearAllImages } from '@features/image-upload/model/slice'; // 🆕 Импортируем
+import { clearAllImages } from '@features/image-upload/model/slice';
 import { loadProjectState } from '@features/project-management/model/slice';
 import { RootState } from '@shared/lib/state/store';
+import { db } from '@shared/api/storage/indexedDB/schema';
 import './StorageManager.css';
 
-export const StorageManager: React.FC = () => {
+interface StorageStats {
+  localStorage: {
+    todos: number;
+    images: number;
+    project: boolean;
+    lastSave: Date | null;
+    imageSize: number;
+  };
+  indexedDB: {
+    todos: number;
+    images: number;
+    projects: number;
+    pages: number;
+    canvases: number;
+    imageSize: number;
+    dbSize?: string;
+  };
+}
+
+interface StorageManagerProps {
+  modalMode?: boolean;
+}
+
+export const StorageManager: React.FC<StorageManagerProps> = ({ modalMode = false }) => {
   const dispatch = useDispatch();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Получаем состояние
+  // Получаем состояние из Redux
   const todoNodes = useSelector((state: RootState) => state.todoNodes.nodes);
-  const imageNodes = useSelector((state: RootState) => state.imageNodes.nodes); // 🆕
+  const imageNodes = useSelector((state: RootState) => state.imageNodes.nodes);
   const project = useSelector((state: RootState) => state.project);
   
   const todoCount = Object.keys(todoNodes).length;
-  const imageCount = Object.keys(imageNodes).length; // 🆕
-  const pageCount = Object.keys(project.pages).length;
+  const imageCount = Object.keys(imageNodes).length;
+  const pageCount = Object.keys(project.pages || {}).length;
   
-  const [lastSave, setLastSave] = useState<Date | null>(null);
-  const [imageStats, setImageStats] = useState({ count: 0, totalSize: 0 }); // 🆕
+  const [stats, setStats] = useState<StorageStats>({
+    localStorage: {
+      todos: 0,
+      images: 0,
+      project: false,
+      lastSave: null,
+      imageSize: 0,
+    },
+    indexedDB: {
+      todos: 0,
+      images: 0,
+      projects: 0,
+      pages: 0,
+      canvases: 0,
+      imageSize: 0,
+    },
+  });
+  
   const [isSaving, setIsSaving] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [activeStorage, setActiveStorage] = useState<'localStorage' | 'indexedDB' | 'both'>('both');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Загружаем время последнего сохранения
-  useEffect(() => {
-    const savedDate = TodoStorage.getLastSave();
-    setLastSave(savedDate);
+  // Загружаем статистику из обоих хранилищ
+  const loadStats = useCallback(async () => {
+    setIsRefreshing(true);
     
-    // 🆕 Загружаем статистику изображений
-    const stats = ImageStorage.getStats();
-    setImageStats(stats);
+    try {
+      // Статистика из localStorage
+      const localTodos = TodoStorage.loadTodos();
+      const localImages = ImageStorage.loadImages();
+      const localProject = localStorage.getItem('project_state');
+      const localLastSave = TodoStorage.getLastSave();
+      const localImageStats = ImageStorage.getStats();
+      
+      // Статистика из IndexedDB
+      const [idbTodos, idbImages, idbProjects, idbPages, idbCanvases] = await Promise.all([
+        db.todos.count(),
+        db.images.count(),
+        db.projects.count(),
+        db.pages.count(),
+        db.canvases.count(),
+      ]);
+      
+      // Размер изображений в IndexedDB
+      const idbImagesList = await db.images.toArray();
+      const idbImageSize = idbImagesList.reduce((acc, img) => acc + (img.fileSize || 0), 0);
+      
+      // Оценка размера базы данных
+      let dbSize = 'N/A';
+      if (navigator.storage && navigator.storage.estimate) {
+        const estimate = await navigator.storage.estimate();
+        if (estimate.usage) {
+          const usageMB = estimate.usage / (1024 * 1024);
+          dbSize = `${usageMB.toFixed(2)} MB`;
+        }
+      }
+      
+      setStats({
+        localStorage: {
+          todos: Object.keys(localTodos).length,
+          images: Object.keys(localImages).length,
+          project: !!localProject,
+          lastSave: localLastSave,
+          imageSize: localImageStats.totalSize || 0,
+        },
+        indexedDB: {
+          todos: idbTodos,
+          images: idbImages,
+          projects: idbProjects,
+          pages: idbPages,
+          canvases: idbCanvases,
+          imageSize: idbImageSize,
+          dbSize,
+        },
+      });
+
+      // Определяем активное хранилище
+      if (idbTodos > 0 || idbImages > 0) {
+        setActiveStorage(idbTodos > 0 ? 'indexedDB' : 'both');
+      } else if (Object.keys(localTodos).length > 0) {
+        setActiveStorage('localStorage');
+      }
+      
+    } catch (error) {
+      console.error('❌ Ошибка загрузки статистики:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
   }, []);
 
-  // Функция для ручного сохранения всего
-  const handleSave = useCallback(() => {
+  // Загружаем статистику при монтировании
+  useEffect(() => {
+    loadStats();
+    
+    // Обновляем статистику каждые 5 секунд
+    const interval = setInterval(loadStats, 5000);
+    return () => clearInterval(interval);
+  }, [loadStats]);
+
+  // Функция для экспорта данных в JSON файл
+  const handleExport = useCallback(async () => {
+    setIsExporting(true);
+    
+    try {
+      // Собираем все данные для экспорта
+      const exportData = {
+        version: '2.0',
+        exportDate: new Date().toISOString(),
+        stats: {
+          todoCount,
+          imageCount,
+          pageCount,
+          projectName: project.projects[project.currentProjectId || '']?.name || 'Без названия',
+        },
+        data: {
+          todoNodes: todoNodes,
+          imageNodes: imageNodes,
+          project: {
+            currentProjectId: project.currentProjectId,
+            projects: project.projects || {},
+            pages: project.pages || {},
+            canvases: project.canvases || {},
+          },
+        },
+        storage: {
+          localStorage: stats.localStorage,
+          indexedDB: stats.indexedDB,
+        },
+      };
+
+      // Создаем и скачиваем файл
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+        type: 'application/json',
+      });
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      
+      // Формируем имя файла с датой и именем проекта
+      const projectName = project.projects[project.currentProjectId || '']?.name || 'project';
+      const dateStr = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+      a.download = `todo-backup-${projectName}-${dateStr}.json`;
+      
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      setTimeout(() => URL.revokeObjectURL(url), 100);
+      
+      console.log(`📤 Экспортировано: ${todoCount} задач, ${imageCount} изображений`);
+      alert(`✅ Экспорт завершен! Файл: ${a.download}`);
+    } catch (error) {
+      console.error('❌ Ошибка экспорта:', error);
+      alert('❌ Ошибка при экспорте данных');
+    } finally {
+      setIsExporting(false);
+    }
+  }, [todoNodes, imageNodes, project, todoCount, imageCount, pageCount, stats]);
+
+  // Функция для ручного сохранения в оба хранилища
+  const handleSave = useCallback(async () => {
     setIsSaving(true);
     
     try {
-      // Сохраняем задачи
+      // Сохраняем в localStorage
       const successTodos = TodoStorage.saveTodos(todoNodes);
-      
-      // 🆕 Сохраняем изображения
       const successImages = ImageStorage.saveImages(imageNodes);
       
-      // Сохраняем проект
       const projectState = {
         currentProjectId: project.currentProjectId,
-        projects: project.projects,
-        pages: project.pages,
+        projects: project.projects || {},
+        pages: project.pages || {},
         canvases: project.canvases || {},
       };
       const successProject = TodoStorage.saveProjectState(projectState);
       
-      if (successTodos || successProject || successImages) {
-        setLastSave(new Date());
-        
-        // 🆕 Обновляем статистику изображений
-        setImageStats(ImageStorage.getStats());
-        
-        alert(`✅ Сохранено: ${todoCount} задач, ${imageCount} изображений`);
-      } else {
-        alert('❌ Не удалось сохранить данные');
-      }
+      // Сохраняем в IndexedDB
+      await TodoIndexedDBStorage.saveTodos(todoNodes);
+      await ImageIndexedDBStorage.saveImages(imageNodes);
+      await ProjectIndexedDBStorage.saveProject(projectState);
+      
+      // Обновляем статистику
+      await loadStats();
+      
+      const savedCount = 
+        (successTodos ? Object.keys(todoNodes).length : 0) +
+        (successImages ? Object.keys(imageNodes).length : 0);
+      
+      alert(`✅ Сохранено в оба хранилища: ${savedCount} элементов`);
     } catch (error) {
+      console.error('❌ Ошибка сохранения:', error);
       alert('❌ Ошибка при сохранении');
     } finally {
-      setTimeout(() => setIsSaving(false), 500);
+      setIsSaving(false);
     }
-  }, [todoNodes, imageNodes, project, todoCount, imageCount]);
+  }, [todoNodes, imageNodes, project, loadStats]);
 
-  // Автосохранение при размонтировании
-  useEffect(() => {
-    return () => {
-      TodoStorage.saveTodos(todoNodes);
-      ImageStorage.saveImages(imageNodes); // 🆕
-    };
-  }, [todoNodes, imageNodes]);
-
-  const handleExport = useCallback(() => {
-    const exportData = {
-      version: '1.1',
-      exportDate: new Date().toISOString(),
-      todoNodes: todoNodes,
-      imageNodes: imageNodes, // 🆕 Добавляем изображения
-      project: {
-        currentProjectId: project.currentProjectId,
-        projects: project.projects,
-        pages: project.pages,
-        canvases: project.canvases || {},
-      },
-    };
+  // Функция для миграции из localStorage в IndexedDB
+  const handleMigrate = useCallback(async () => {
+    if (!window.confirm('Перенести данные из localStorage в IndexedDB? Старые данные останутся как резервная копия.')) {
+      return;
+    }
     
-    // 🆕 Обновляем экспорт
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-      type: 'application/json',
-    });
+    setIsSaving(true);
     
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `todo-project-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    
-    console.log(`📤 Экспорт: ${todoCount} задач, ${imageCount} изображений`);
-  }, [todoNodes, imageNodes, project, todoCount, imageCount]);
-
-  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
     try {
-      const importedData = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          try {
-            resolve(JSON.parse(e.target?.result as string));
-          } catch (error) {
-            reject(error);
-          }
-        };
-        reader.onerror = reject;
-        reader.readAsText(file);
-      }) as any;
+      // Загружаем из localStorage
+      const localTodos = TodoStorage.loadTodos();
+      const localImages = ImageStorage.loadImages();
+      const localProjectStr = localStorage.getItem('project_state');
+      const localProject = localProjectStr ? JSON.parse(localProjectStr) : null;
       
-      // Импортируем задачи
-      if (importedData.todoNodes) {
-        dispatch(importNodes(importedData.todoNodes));
-        TodoStorage.saveTodos(importedData.todoNodes);
+      // Сохраняем в IndexedDB
+      if (Object.keys(localTodos).length > 0) {
+        await TodoIndexedDBStorage.saveTodos(localTodos);
       }
       
-      // 🆕 Импортируем изображения
-      if (importedData.imageNodes) {
-        dispatch({ type: 'imageNodes/importImages', payload: importedData.imageNodes });
-        ImageStorage.saveImages(importedData.imageNodes);
+      if (Object.keys(localImages).length > 0) {
+        await ImageIndexedDBStorage.saveImages(localImages);
       }
       
-      // Импортируем проект
-      if (importedData.project) {
-        dispatch(loadProjectState(importedData.project));
-        TodoStorage.saveProjectState(importedData.project);
+      if (localProject) {
+        await ProjectIndexedDBStorage.saveProject(localProject);
       }
       
-      setLastSave(new Date());
-      setImageStats(ImageStorage.getStats());
-      
-      const importedTodoCount = importedData.todoNodes ? Object.keys(importedData.todoNodes).length : 0;
-      const importedImageCount = importedData.imageNodes ? Object.keys(importedData.imageNodes).length : 0; // 🆕
-      
-      alert(`✅ Импортировано: ${importedTodoCount} задач, ${importedImageCount} изображений`);
-      
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      await loadStats();
+      alert(`✅ Миграция завершена! Перенесено: ${Object.keys(localTodos).length} задач, ${Object.keys(localImages).length} изображений`);
     } catch (error) {
-      alert(`❌ Ошибка при импорте: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`);
+      console.error('❌ Ошибка миграции:', error);
+      alert('❌ Ошибка при миграции');
+    } finally {
+      setIsSaving(false);
     }
-  };
+  }, [loadStats]);
 
-  const handleClearAll = () => {
-    if (window.confirm('Вы уверены, что хотите удалить ВСЕ данные? Это действие нельзя отменить.')) {
-      dispatch(clearAllNodes());
-      dispatch(clearAllImages()); // 🆕 Очищаем изображения
-      TodoStorage.clearAll();
-      ImageStorage.clearAll(); // 🆕
-      setLastSave(null);
-      setImageStats({ count: 0, totalSize: 0 });
-      alert('✅ Все данные удалены');
+  // Функция для очистки IndexedDB
+  const handleClearIndexedDB = useCallback(async () => {
+    if (!window.confirm('Очистить IndexedDB? Это действие нельзя отменить.')) {
+      return;
     }
-  };
-
-  const projectInfo = TodoStorage.getProjectInfo();
+    
+    try {
+      await Promise.all([
+        db.todos.clear(),
+        db.images.clear(),
+        db.projects.clear(),
+        db.pages.clear(),
+        db.canvases.clear(),
+      ]);
+      
+      await loadStats();
+      alert('✅ IndexedDB очищена');
+    } catch (error) {
+      console.error('❌ Ошибка очистки IndexedDB:', error);
+      alert('❌ Ошибка при очистке');
+    }
+  }, [loadStats]);
 
   // Форматируем размер файлов
   const formatFileSize = (bytes: number) => {
@@ -184,62 +315,137 @@ export const StorageManager: React.FC = () => {
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
-  // Автосохранение при изменении
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (todoCount > 0 || imageCount > 0 || pageCount > 0) {
-        handleSave();
-      }
-    }, 3000);
-
-    return () => clearTimeout(timer);
-  }, [todoNodes, imageNodes, project, handleSave, todoCount, imageCount, pageCount]);
+  // Форматируем дату
+  const formatDate = (date: Date | null) => {
+    if (!date) return 'Никогда';
+    return date.toLocaleTimeString('ru-RU', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+  };
 
   return (
-    <div className="storage-manager">
+    <div className={modalMode ? 'storage-manager-modal' : 'storage-manager'}>
       <div className="storage-header">
         <h3>💾 Управление хранилищем</h3>
+        <button 
+          onClick={loadStats} 
+          className="storage-btn storage-btn-refresh"
+          disabled={isRefreshing}
+          title="Обновить статистику"
+        >
+          {isRefreshing ? '🔄' : '↻'}
+        </button>
       </div>
       
-      <div className="storage-stats">
-        <div className="stat-item">
-          <span className="stat-label">📝 Задач:</span>
-          <span className="stat-value">{todoCount}</span>
-        </div>
-        
-        {/* 🆕 Статистика изображений */}
-        <div className="stat-item">
-          <span className="stat-label">🖼️ Изображений:</span>
-          <span className="stat-value">{imageCount}</span>
-        </div>
-        
-        {imageStats.totalSize > 0 && (
-          <div className="stat-item">
-            <span className="stat-label">📦 Объем:</span>
-            <span className="stat-value">{formatFileSize(imageStats.totalSize)}</span>
+      <div className="storage-comparison">
+        {/* localStorage секция */}
+        <div className={`storage-section ${activeStorage === 'localStorage' ? 'active' : ''}`}>
+          <div className="storage-section-header">
+            <h4>📦 localStorage</h4>
+            <span className="storage-badge">Старое хранилище</span>
           </div>
-        )}
-        
-        <div className="stat-item">
-          <span className="stat-label">📄 Страниц:</span>
-          <span className="stat-value">{pageCount}</span>
+          
+          <div className="storage-stats">
+            <div className="stat-item">
+              <span className="stat-label">📝 Задачи:</span>
+              <span className="stat-value">{stats.localStorage.todos}</span>
+            </div>
+            
+            <div className="stat-item">
+              <span className="stat-label">🖼️ Изображения:</span>
+              <span className="stat-value">{stats.localStorage.images}</span>
+            </div>
+            
+            {stats.localStorage.imageSize > 0 && (
+              <div className="stat-item">
+                <span className="stat-label">📦 Объем:</span>
+                <span className="stat-value">{formatFileSize(stats.localStorage.imageSize)}</span>
+              </div>
+            )}
+            
+            <div className="stat-item">
+              <span className="stat-label">📁 Проект:</span>
+              <span className="stat-value">{stats.localStorage.project ? '✅' : '❌'}</span>
+            </div>
+            
+            <div className="stat-item">
+              <span className="stat-label">⏱️ Последнее:</span>
+              <span className="stat-value">{formatDate(stats.localStorage.lastSave)}</span>
+            </div>
+          </div>
         </div>
-        
-        {projectInfo?.currentProject && (
-          <div className="stat-item">
-            <span className="stat-label">📁 Проект:</span>
-            <span className="stat-value">{projectInfo.currentProject.name}</span>
+
+        {/* IndexedDB секция */}
+        <div className={`storage-section ${activeStorage === 'indexedDB' ? 'active' : ''}`}>
+          <div className="storage-section-header">
+            <h4>🗄️ IndexedDB</h4>
+            <span className="storage-badge storage-badge-new">Новое хранилище</span>
           </div>
-        )}
-        
-        {lastSave && (
-          <div className="stat-item">
-            <span className="stat-label">⏱️ Сохранено:</span>
-            <span className="stat-value">
-              {lastSave.toLocaleTimeString().slice(0, 5)}
-            </span>
+          
+          <div className="storage-stats">
+            <div className="stat-item">
+              <span className="stat-label">📝 Задачи:</span>
+              <span className="stat-value">{stats.indexedDB.todos}</span>
+            </div>
+            
+            <div className="stat-item">
+              <span className="stat-label">🖼️ Изображения:</span>
+              <span className="stat-value">{stats.indexedDB.images}</span>
+            </div>
+            
+            {stats.indexedDB.imageSize > 0 && (
+              <div className="stat-item">
+                <span className="stat-label">📦 Объем:</span>
+                <span className="stat-value">{formatFileSize(stats.indexedDB.imageSize)}</span>
+              </div>
+            )}
+            
+            <div className="stat-item">
+              <span className="stat-label">📁 Проектов:</span>
+              <span className="stat-value">{stats.indexedDB.projects}</span>
+            </div>
+            
+            <div className="stat-item">
+              <span className="stat-label">📄 Страниц:</span>
+              <span className="stat-value">{stats.indexedDB.pages}</span>
+            </div>
+            
+            <div className="stat-item">
+              <span className="stat-label">🖼️ Полотен:</span>
+              <span className="stat-value">{stats.indexedDB.canvases}</span>
+            </div>
+            
+            {stats.indexedDB.dbSize && (
+              <div className="stat-item">
+                <span className="stat-label">💿 Размер БД:</span>
+                <span className="stat-value">{stats.indexedDB.dbSize}</span>
+              </div>
+            )}
           </div>
-        )}
+        </div>
+      </div>
+
+      {/* Redux состояние */}
+      <div className="redux-stats">
+        <h4>🔄 Текущее состояние (Redux)</h4>
+        <div className="storage-stats">
+          <div className="stat-item">
+            <span className="stat-label">📝 Задач в памяти:</span>
+            <span className="stat-value">{todoCount}</span>
+          </div>
+          
+          <div className="stat-item">
+            <span className="stat-label">🖼️ Изображений в памяти:</span>
+            <span className="stat-value">{imageCount}</span>
+          </div>
+          
+          <div className="stat-item">
+            <span className="stat-label">📄 Страниц в памяти:</span>
+            <span className="stat-value">{pageCount}</span>
+          </div>
+        </div>
       </div>
 
       <div className="storage-actions">
@@ -247,17 +453,35 @@ export const StorageManager: React.FC = () => {
           onClick={handleSave}
           className="storage-btn storage-btn-save"
           disabled={isSaving}
-          title="Сохранить все данные в браузер"
+          title="Сохранить в оба хранилища"
         >
           {isSaving ? '💾 Сохранение...' : '💾 Сохранить все'}
         </button>
         
         <button 
-          onClick={handleExport} 
+          onClick={handleExport}
           className="storage-btn storage-btn-export"
-          title="Скачать все данные в JSON файл"
+          disabled={isExporting || (todoCount === 0 && imageCount === 0)}
+          title="Экспортировать данные в JSON файл"
         >
-          📤 Экспорт
+          {isExporting ? '📤 Экспорт...' : '📤 Экспорт JSON'}
+        </button>
+        
+        <button 
+          onClick={handleMigrate} 
+          className="storage-btn storage-btn-migrate"
+          disabled={isSaving || stats.indexedDB.todos > 0}
+          title="Перенести данные из localStorage в IndexedDB"
+        >
+          🚀 Миграция
+        </button>
+        
+        <button 
+          onClick={handleClearIndexedDB} 
+          className="storage-btn storage-btn-clear-idb"
+          title="Очистить IndexedDB"
+        >
+          🗑️ Очистить IDB
         </button>
         
         <button 
@@ -271,29 +495,86 @@ export const StorageManager: React.FC = () => {
         <input
           type="file"
           ref={fileInputRef}
-          onChange={handleImport}
+          onChange={async (event) => {
+            const file = event.target.files?.[0];
+            if (!file) return;
+
+            try {
+              const text = await file.text();
+              const data = JSON.parse(text);
+              
+              if (data.data?.todoNodes) {
+                dispatch(importNodes(data.data.todoNodes));
+              } else if (data.todoNodes) {
+                dispatch(importNodes(data.todoNodes));
+              }
+              
+              if (data.data?.imageNodes) {
+                dispatch({ type: 'imageNodes/importImages', payload: data.data.imageNodes });
+              } else if (data.imageNodes) {
+                dispatch({ type: 'imageNodes/importImages', payload: data.imageNodes });
+              }
+              
+              if (data.data?.project) {
+                dispatch(loadProjectState(data.data.project));
+              } else if (data.project) {
+                dispatch(loadProjectState(data.project));
+              }
+              
+              await loadStats();
+              alert('✅ Импорт завершен');
+            } catch (error) {
+              console.error('❌ Ошибка импорта:', error);
+              alert('❌ Ошибка импорта');
+            }
+            
+            if (fileInputRef.current) {
+              fileInputRef.current.value = '';
+            }
+          }}
           accept=".json,application/json"
           style={{ display: 'none' }}
         />
         
         <button 
-          onClick={handleClearAll} 
+          onClick={() => {
+            if (window.confirm('Удалить все данные из Redux и localStorage?')) {
+              dispatch(clearAllNodes());
+              dispatch(clearAllImages());
+              TodoStorage.clearAll();
+              ImageStorage.clearAll();
+              loadStats();
+            }
+          }} 
           className="storage-btn storage-btn-clear"
-          title="Удалить все данные"
+          title="Удалить все данные из localStorage и Redux"
         >
-          🗑️ Очистить
+          🧹 Очистить LS
         </button>
       </div>
       
       <div className="storage-info">
         <small>
-          <strong>Автосохранение работает:</strong>
-          <ul>
-            <li>✓ Автоматически каждые 3 секунды</li>
-            <li>✓ Сохраняет задачи, изображения и проекты</li>
-            <li>✓ При закрытии страницы</li>
-            <li>✓ Данные хранятся в браузере</li>
-          </ul>
+          <strong>Статус миграции:</strong>{' '}
+          {stats.indexedDB.todos > 0 ? (
+            <span style={{ color: '#28a745' }}>✅ Данные в IndexedDB</span>
+          ) : stats.localStorage.todos > 0 ? (
+            <span style={{ color: '#ffc107' }}>⚠️ Данные только в localStorage</span>
+          ) : (
+            <span style={{ color: '#6c757d' }}>⏸️ Нет данных</span>
+          )}
+        </small>
+        <br />
+        <small>
+          <strong>Активное хранилище:</strong>{' '}
+          {activeStorage === 'indexedDB' ? '🗄️ IndexedDB' : 
+           activeStorage === 'localStorage' ? '📦 localStorage' : 
+           '🔄 Оба хранилища'}
+        </small>
+        <br />
+        <small>
+          <strong>Последний экспорт:</strong>{' '}
+          {isExporting ? '⏳ Экспортируется...' : 'Готов к экспорту'}
         </small>
       </div>
     </div>

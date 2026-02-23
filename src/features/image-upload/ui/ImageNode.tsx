@@ -1,9 +1,10 @@
-// src/features/image-upload/ui/ImageNode.tsx
 import React, { useRef, useState, useEffect } from 'react';
 import { ImageNode as IImageNode } from '@entities/image/model/types';
 import { ImagePreview } from '@shared/ui/kit/ImagePreview/ImagePreview';
 import { useAppDispatch } from '@shared/lib/state';
 import { useCanvasDnd } from '@features/canvas-dnd/lib/useCanvasDnd';
+import { useProjectImage } from '../lib/useProjectImage'; // Новый хук
+import { FileService } from '@shared/lib/dom/fileService'; // Для удаления файлов
 import { 
   moveImageNode, 
   resizeImageNode, 
@@ -36,31 +37,13 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
   const { handleDragStart, isDragging, draggedNodeId, dragState } = useCanvasDnd();
   const [isResizing, setIsResizing] = useState(false);
   const [resizeDirection, setResizeDirection] = useState<string | null>(null);
-  const [imageError, setImageError] = useState(false);
+  
+  // Используем новый хук для загрузки изображения
+  const { url: imageUrl, loading, error } = useProjectImage(node.id);
   
   // Для плавности используем requestAnimationFrame
   const rafRef = useRef<number>();
   const lastPositionRef = useRef<{ x: number; y: number }>({ x: node.position.x, y: node.position.y });
-
-  // Формируем полный URL изображения
-  const getImageUrl = () => {
-    if (!node.filePath) return '';
-    
-    // Если путь уже абсолютный (начинается с http)
-    if (node.filePath.startsWith('http')) {
-      return node.filePath;
-    }
-    
-    // Если путь начинается с /, добавляем base URL
-    if (node.filePath.startsWith('/')) {
-      return node.filePath;
-    }
-    
-    // Иначе добавляем /images/ префикс
-    return `/images/${node.filePath}`;
-  };
-
-  const imageUrl = getImageUrl();
 
   // Эффект для плавного перемещения изображения во время DnD
   useEffect(() => {
@@ -222,13 +205,24 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
     document.addEventListener('mouseup', handleResizeEnd);
   };
 
-  const handleDelete = (e: React.MouseEvent) => {
+  const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
     
     if (window.confirm(`Удалить изображение "${node.originalName}"?`)) {
-      dispatch(deleteImageNode(node.id));
-      // TODO: добавить удаление файла через FileService
-      console.log('🗑️ Файл для удаления:', node.filePath);
+      try {
+        // Извлекаем projectId и fileName из filePath
+        const pathMatch = node.filePath?.match(/\/images\/projects\/([^/]+)\/(.+)$/);
+        if (pathMatch) {
+          const [, projectId, fileName] = pathMatch;
+          await FileService.deleteFile(projectId, fileName);
+        }
+        
+        // Удаляем из Redux и IndexedDB
+        dispatch(deleteImageNode(node.id));
+      } catch (error) {
+        console.error('❌ Ошибка удаления файла:', error);
+        alert('Не удалось удалить файл');
+      }
     }
   };
 
@@ -266,11 +260,6 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
     dispatch(setImageZIndex({ id: node.id, zIndex: 1 }));
   };
 
-  const handleImageError = () => {
-    console.error('❌ Ошибка загрузки изображения:', node.filePath);
-    setImageError(true);
-  };
-
   const isBeingDragged = isDragging && draggedNodeId === node.id;
 
   useEffect(() => {
@@ -288,6 +277,43 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
     zIndex: node.zIndex,
   };
 
+  // Рендерим состояние загрузки
+  if (loading) {
+    return (
+      <div
+        ref={nodeRef}
+        className={`${styles.imageNode} ${styles.loading}`}
+        style={nodeStyle}
+      >
+        <div className={styles.loadingSpinner}>🔄</div>
+        <div className={styles.loadingText}>Загрузка...</div>
+      </div>
+    );
+  }
+
+  // Рендерим ошибку
+  if (error || !imageUrl) {
+    return (
+      <div
+        ref={nodeRef}
+        className={`${styles.imageNode} ${styles.error}`}
+        style={nodeStyle}
+        title={node.originalName}
+      >
+        <div className={styles.errorPlaceholder}>
+          <span>❌</span>
+          <small>{node.originalName}</small>
+          <button 
+            className={styles.retryButton}
+            onClick={() => window.location.reload()}
+          >
+            🔄 Повторить
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       ref={nodeRef}
@@ -295,8 +321,7 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
         ${styles.imageNode} 
         ${isBeingDragged ? styles.dragging : ''} 
         ${isSelected ? styles.selected : ''} 
-        ${isResizing ? styles.resizing : ''} 
-        ${imageError ? styles.error : ''}
+        ${isResizing ? styles.resizing : ''}
       `}
       style={nodeStyle}
       onMouseDown={handleMouseDown}
@@ -307,21 +332,13 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
       data-node-type="image"
       title={`${node.originalName} (${Math.round(node.fileSize / 1024)} KB)`}
     >
-      {imageError ? (
-        // Показываем заглушку при ошибке загрузки
-        <div className={styles.errorPlaceholder}>
-          <span>❌</span>
-          <small>{node.originalName}</small>
-        </div>
-      ) : (
-        <ImagePreview
-          src={imageUrl}
-          alt={node.alt || node.originalName || 'image'}
-          width={node.size.width}
-          height={node.size.height}
-          onError={handleImageError}
-        />
-      )}
+      <ImagePreview
+        src={imageUrl}
+        alt={node.alt || node.originalName || 'image'}
+        width={node.size.width}
+        height={node.size.height}
+        className={styles.imagePreview}
+      />
       
       {isSelected && (
         <>
@@ -337,7 +354,6 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
           
           {/* Панель действий */}
           <div className={styles.actions}>
-            {/* Информация о файле */}
             <div className={styles.fileInfo}>
               <span className={styles.fileName}>
                 {node.originalName.length > 20 
@@ -345,6 +361,22 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
                   : node.originalName}
               </span>
             </div>
+            
+            <button 
+              className={`${styles.actionButton} ${styles.bringToFront}`}
+              onClick={handleBringToFront}
+              title="На передний план"
+            >
+              ⬆️
+            </button>
+            
+            <button 
+              className={`${styles.actionButton} ${styles.sendToBack}`}
+              onClick={handleSendToBack}
+              title="На задний план"
+            >
+              ⬇️
+            </button>
             
             <button 
               className={`${styles.actionButton} ${styles.delete}`} 
@@ -360,7 +392,7 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
       {/* Индикатор выделения */}
       {isSelected && <div className={styles.selectionIndicator} />}
       
-      {/* Индикатор загрузки (можно добавить позже) */}
+      {/* Индикатор загрузки (для будущих анимаций) */}
       {(node as any).isUploading && (
         <div className={styles.uploadingOverlay}>
           <div className={styles.spinner} />

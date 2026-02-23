@@ -8,6 +8,12 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   position: absolute;
   bottom: 50px;
+  right: 20px;
+  width: 700px;
+  max-width: 90vw;
+  z-index: 1000;
+  max-height: 80vh;
+  overflow-y: auto;
 }
 
 .storage-header {
@@ -25,142 +31,213 @@
   font-size: 18px;
 }
 
-.storage-stats {
+.storage-comparison {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: 1fr 1fr;
   gap: 16px;
   margin-bottom: 20px;
-  padding: 16px;
+}
+
+.storage-section {
   background: #f8f9fa;
   border-radius: 8px;
+  padding: 12px;
   border: 1px solid #e9ecef;
+}
+
+.storage-section.active {
+  border-color: #adb5bd;
+  background: #ffffff;
+}
+
+.storage-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.storage-section-header h4 {
+  margin: 0;
+  font-size: 14px;
+  color: #495057;
+  font-weight: 600;
+}
+
+.storage-badge {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #e9ecef;
+  color: #495057;
+  font-weight: 500;
+}
+
+.storage-badge-new {
+  background: #dee2e6;
+  color: #212529;
+}
+
+.redux-stats {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+  border: 1px solid #e9ecef;
+}
+
+.redux-stats h4 {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  color: #495057;
+  font-weight: 600;
+}
+
+.storage-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .stat-item {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.stat-item:last-child {
+  border-bottom: none;
 }
 
 .stat-label {
-  font-size: 13px;
+  font-size: 12px;
   color: #6c757d;
   font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 
 .stat-value {
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 600;
   color: #212529;
+  background: #f8f9fa;
+  padding: 2px 8px;
+  border-radius: 12px;
 }
 
 .storage-actions {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   flex-wrap: wrap;
   margin-bottom: 16px;
 }
 
 .storage-btn {
-  padding: 10px 16px;
-  border: none;
+  padding: 8px 12px;
+  border: 1px solid #e0e0e0;
   border-radius: 6px;
   cursor: pointer;
   font-weight: 500;
-  font-size: 14px;
+  font-size: 13px;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-width: 140px;
+  gap: 4px;
+  flex: 1;
+  min-width: 100px;
   justify-content: center;
-}
-
-.storage-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.storage-btn:active {
-  transform: translateY(0);
-}
-
-.storage-btn-refresh {
-  background: #6c757d;
-  color: white;
-  padding: 8px;
-  min-width: auto;
-  width: 40px;
-  height: 40px;
-}
-
-.storage-btn-refresh:hover {
-  background: #5a6268;
-}
-
-.storage-btn-export {
-  background: linear-gradient(135deg, #17a2b8, #138496);
-  color: white;
-}
-
-.storage-btn-export:hover {
-  background: linear-gradient(135deg, #138496, #117a8b);
-}
-
-.storage-btn-import {
-  background: linear-gradient(135deg, #28a745, #218838);
-  color: white;
-}
-
-.storage-btn-import:hover {
-  background: linear-gradient(135deg, #218838, #1e7e34);
-}
-
-.storage-btn-backup {
-  background: linear-gradient(135deg, #ffc107, #e0a800);
+  background: #ffffff;
   color: #212529;
 }
 
-.storage-btn-backup:hover {
-  background: linear-gradient(135deg, #e0a800, #d39e00);
+.storage-btn:hover:not(:disabled) {
+  background: #f8f9fa;
+  border-color: #adb5bd;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.storage-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f8f9fa;
+}
+
+.storage-btn-refresh {
+  min-width: 40px;
+  width: 40px;
+  flex: 0 0 auto;
+  padding: 8px;
+}
+
+.storage-btn-save {
+  background: #f8f9fa;
+  border-color: #ced4da;
+}
+
+.storage-btn-save:hover:not(:disabled) {
+  background: #e9ecef;
+}
+
+.storage-btn-migrate {
+  background: #f8f9fa;
+  border-color: #ced4da;
+}
+
+.storage-btn-clear-idb {
+  background: #f8f9fa;
+  border-color: #ced4da;
+}
+
+.storage-btn-import {
+  background: #f8f9fa;
+  border-color: #ced4da;
 }
 
 .storage-btn-clear {
-  background: linear-gradient(135deg, #dc3545, #c82333);
-  color: white;
-}
-
-.storage-btn-clear:hover {
-  background: linear-gradient(135deg, #c82333, #bd2130);
+  background: #f8f9fa;
+  border-color: #ced4da;
 }
 
 .storage-info {
-  padding: 16px;
-  background: #e7f5ff;
+  padding: 12px;
+  background: #f8f9fa;
   border-radius: 8px;
-  border-left: 4px solid #17a2b8;
-  margin-top: 16px;
+  border: 1px solid #e9ecef;
+  font-size: 12px;
+  color: #495057;
 }
 
-.storage-info small {
-  font-size: 13px;
-  color: #055160;
+/* Кастомный скроллбар */
+.storage-manager::-webkit-scrollbar {
+  width: 8px;
 }
 
-.storage-info ul {
-  margin: 8px 0 0 0;
-  padding-left: 20px;
+.storage-manager::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
 }
 
-.storage-info li {
-  margin-bottom: 4px;
+.storage-manager::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.storage-manager::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }
 
 /* Адаптивность */
 @media (max-width: 768px) {
-  .storage-stats {
+  .storage-manager {
+    width: 95%;
+    right: 2.5%;
+    bottom: 10px;
+    max-height: 70vh;
+  }
+  
+  .storage-comparison {
     grid-template-columns: 1fr;
   }
   
@@ -169,6 +246,90 @@
   }
   
   .storage-btn {
+    width: 100%;
+  }
+}
+
+
+/* Модальный режим */
+.storage-manager-modal {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 20px;
+  width: 100%;
+  max-width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+/* Отключаем абсолютное позиционирование в модальном режиме */
+.storage-manager-modal.storage-manager {
+  position: relative;
+  bottom: auto;
+  right: auto;
+  margin: 0;
+  box-shadow: none;
+  border: none;
+}
+
+/* Адаптируем сетку для модального окна */
+.storage-manager-modal .storage-comparison {
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+/* Делаем секции более компактными */
+.storage-manager-modal .storage-section {
+  padding: 12px;
+}
+
+/* Адаптируем кнопки */
+.storage-manager-modal .storage-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.storage-manager-modal .storage-btn {
+  min-width: auto;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+/* Убираем лишние отступы */
+.storage-manager-modal .storage-header {
+  margin-top: 0;
+  padding-top: 0;
+}
+
+/* Стили для модального окна (если нужно настроить само модальное окно) */
+:global(.modal-content) {
+  padding: 0 !important;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+:global(.modal-content) .storage-manager-modal {
+  border-radius: 0;
+  max-height: calc(80vh - 60px); /* Учитываем высоту заголовка модального окна */
+}
+
+/* Адаптивность для модального режима */
+@media (max-width: 768px) {
+  .storage-manager-modal {
+    padding: 16px;
+  }
+  
+  .storage-manager-modal .storage-comparison {
+    grid-template-columns: 1fr;
+  }
+  
+  .storage-manager-modal .storage-actions {
+    grid-template-columns: 1fr;
+  }
+  
+  .storage-manager-modal .storage-btn {
     width: 100%;
   }
 }

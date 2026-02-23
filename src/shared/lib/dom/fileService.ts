@@ -1,3 +1,4 @@
+// src/shared/lib/dom/fileService.ts
 export interface SavedFileInfo {
   fileName: string;
   filePath: string;
@@ -10,7 +11,7 @@ export interface SavedFileInfo {
 
 export class FileService {
   /**
-   * Сохранить изображение в public/images
+   * Сохранить изображение в IndexedDB
    */
   static async saveImage(file: File, projectId: string): Promise<SavedFileInfo> {
     console.log('📁 FileService.saveImage:', { file: file.name, projectId });
@@ -26,10 +27,10 @@ export class FileService {
       // 2. Получаем размеры изображения
       const dimensions = await this.getImageDimensions(file);
       
-      // 3. 🔥 РЕАЛЬНОЕ СОХРАНЕНИЕ ФАЙЛА
-      await this.saveFileToPublic(file, projectId, fileName);
+      // 3. Сохраняем файл в IndexedDB (постоянное хранилище)
+      await this.saveFileToIndexedDB(file, projectId, fileName);
       
-      console.log('✅ Файл сохранен:', filePath);
+      console.log('✅ Файл сохранен в IndexedDB:', filePath);
       
       return {
         fileName,
@@ -46,72 +47,96 @@ export class FileService {
     }
   }
 
-  /**
-   * Сохранить файл в public/images/projects/[projectId]/
-   * В реальном приложении здесь должен быть API вызов
-   */
-  private static async saveFileToPublic(file: File, projectId: string, fileName: string): Promise<void> {
-    // 🚨 ВРЕМЕННОЕ РЕШЕНИЕ ДЛЯ ТЕСТА
-    // В реальном приложении здесь должен быть запрос к серверу
-    console.log('💾 Сохраняем файл:', { projectId, fileName, size: file.size });
+
+  // src/shared/lib/dom/fileService.ts (фрагмент)
+  private static async saveFileToIndexedDB(file: File, projectId: string, fileName: string): Promise<void> {
+    const { db } = await import('@shared/api/storage/indexedDB/schema');
     
-    // Создаем запись в localStorage о том, что файл "сохранен"
-    // Это временное решение для тестирования
-    const savedFiles = this.getSavedFiles(projectId);
-    savedFiles.push({
+    const id = `${projectId}_${fileName}`;
+    const now = new Date().toISOString();
+    
+    // Проверяем, существует ли уже файл
+    const existing = await db.fileStorage.get(id);
+    if (existing) {
+      console.log(`⚠️ Файл уже существует, обновляем: ${fileName}`);
+    }
+    
+    await db.fileStorage.put({
+      id,
+      projectId,
       fileName,
-      filePath: `/images/projects/${projectId}/${fileName}`,
-      timestamp: Date.now(),
-      dataUrl: await this.fileToDataUrl(file) // Сохраняем как dataUrl для теста
+      blob: file,
+      mimeType: file.type,
+      size: file.size,
+      createdAt: existing ? existing.createdAt : now,
+      lastAccessed: now,
     });
-    localStorage.setItem(`project-files-${projectId}`, JSON.stringify(savedFiles));
     
-    // Создаем ссылку для скачивания (для теста)
-    const url = URL.createObjectURL(file);
-    console.log('🔗 Временный URL для файла:', url);
-    
-    // 👇 ВРЕМЕННО: для теста сохраняем ссылку в window
-    if (!window.__tempFiles) {
-      (window as any).__tempFiles = {};
+    // ✅ Важно: проверяем, что файл действительно сохранился
+    const saved = await db.fileStorage.get(id);
+    if (saved) {
+      console.log(`✅ Файл успешно сохранен в IndexedDB: ${fileName} (${(saved.size / 1024).toFixed(1)} KB)`);
+    } else {
+      console.error(`❌ Файл НЕ сохранился в IndexedDB: ${fileName}`);
     }
-    (window as any).__tempFiles[`${projectId}/${fileName}`] = url;
   }
-
   /**
-   * Конвертирует File в Data URL
+   * Получить файл из IndexedDB
    */
-  private static fileToDataUrl(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  }
-
-  /**
-   * Получить сохраненные файлы проекта (из localStorage)
-   */
-  private static getSavedFiles(projectId: string): any[] {
-    const key = `project-files-${projectId}`;
-    const saved = localStorage.getItem(key);
-    return saved ? JSON.parse(saved) : [];
-  }
-
-  /**
-   * Получить URL файла (в реальном приложении - с сервера)
-   */
-  static async getFileUrl(projectId: string, fileName: string): Promise<string> {
-    // 🚨 ВРЕМЕННО: возвращаем сохраненный dataUrl или создаем новый
-    const savedFiles = this.getSavedFiles(projectId);
-    const file = savedFiles.find(f => f.fileName === fileName);
+  static async getFile(projectId: string, fileName: string): Promise<File | null> {
+    const { db } = await import('@shared/api/storage/indexedDB/schema');
     
-    if (file?.dataUrl) {
-      return file.dataUrl;
+    const id = `${projectId}_${fileName}`;
+    const stored = await db.fileStorage.get(id);
+    
+    if (!stored) {
+      console.warn(`⚠️ Файл не найден в IndexedDB: ${projectId}/${fileName}`);
+      return null;
     }
     
-    // Если нет в localStorage, возвращаем путь (но файла не будет)
-    return `/images/projects/${projectId}/${fileName}`;
+    // Обновляем время последнего доступа
+    await db.fileStorage.update(id, { lastAccessed: new Date().toISOString() });
+    
+    return new File([stored.blob], stored.fileName, { type: stored.mimeType });
+  }
+
+  /**
+   * Получить URL для отображения изображения
+   */
+  static async getFileUrl(projectId: string, fileName: string): Promise<string | null> {
+    try {
+      const file = await this.getFile(projectId, fileName);
+      if (!file) {
+        console.warn(`⚠️ Не удалось получить файл: ${projectId}/${fileName}`);
+        return null;
+      }
+      
+      // Создаем blob URL для отображения
+      const url = URL.createObjectURL(file);
+      console.log(`🔗 Создан blob URL для: ${fileName}`);
+      return url;
+    } catch (error) {
+      console.error('❌ Ошибка получения URL:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Удалить файл
+   */
+  static async deleteFile(projectId: string, fileName: string): Promise<boolean> {
+    const { db } = await import('@shared/api/storage/indexedDB/schema');
+    
+    const id = `${projectId}_${fileName}`;
+    
+    try {
+      await db.fileStorage.delete(id);
+      console.log(`🗑️ Файл удален из IndexedDB: ${fileName}`);
+      return true;
+    } catch (error) {
+      console.error('❌ Ошибка удаления файла:', error);
+      return false;
+    }
   }
 
   /**
@@ -140,32 +165,38 @@ export class FileService {
   }
 
   /**
-   * Удалить файл
+   * Освободить blob URL
    */
-  static async deleteFile(projectId: string, fileName: string): Promise<boolean> {
-    try {
-      // Удаляем из localStorage
-      const savedFiles = this.getSavedFiles(projectId);
-      const filtered = savedFiles.filter(f => f.fileName !== fileName);
-      localStorage.setItem(`project-files-${projectId}`, JSON.stringify(filtered));
-      
-      // Удаляем временную ссылку
-      if ((window as any).__tempFiles?.[`${projectId}/${fileName}`]) {
-        URL.revokeObjectURL((window as any).__tempFiles[`${projectId}/${fileName}`]);
-        delete (window as any).__tempFiles[`${projectId}/${fileName}`];
-      }
-      
-      return true;
-    } catch (error) {
-      console.error('❌ Ошибка удаления файла:', error);
-      return false;
+  static revokeUrl(url: string): void {
+    if (url && url.startsWith('blob:')) {
+      URL.revokeObjectURL(url);
+      console.log('🧹 blob URL освобожден');
     }
   }
-}
 
-// Добавляем тип для window
-declare global {
-  interface Window {
-    __tempFiles?: Record<string, string>;
+  /**
+   * Получить информацию о файле
+   */
+  static async getFileInfo(projectId: string, fileName: string): Promise<{
+    exists: boolean;
+    size?: number;
+    mimeType?: string;
+    createdAt?: string;
+  }> {
+    const { db } = await import('@shared/api/storage/indexedDB/schema');
+    
+    const id = `${projectId}_${fileName}`;
+    const stored = await db.fileStorage.get(id);
+    
+    if (!stored) {
+      return { exists: false };
+    }
+    
+    return {
+      exists: true,
+      size: stored.size,
+      mimeType: stored.mimeType,
+      createdAt: stored.createdAt,
+    };
   }
 }

@@ -1,8 +1,8 @@
-// src/features/storage/model/autoSaveMiddleware.ts
 import { Middleware } from '@reduxjs/toolkit';
-import { TodoStorage } from '@shared/api/storage/jsonStorage/todoStorage';
-import { ImageStorage } from '@shared/api/storage/jsonStorage/imageStorage'; // 🆕 Импортируем
 import { RootState } from '@shared/lib/state/store';
+import { TodoIndexedDBStorage } from '@shared/api/storage/indexedDB/todoStorage';
+import { ImageIndexedDBStorage } from '@shared/api/storage/indexedDB/imageStorage';
+import { ProjectIndexedDBStorage } from '@shared/api/storage/indexedDB/projectStorage';
 
 // Действия, которые требуют автосохранения todoNodes
 const TODO_SAVE_ACTIONS = [
@@ -24,7 +24,7 @@ const TODO_SAVE_ACTIONS = [
   'todoNodes/clearAllNodes',
 ];
 
-// 🆕 Действия для изображений
+// Действия для изображений
 const IMAGE_SAVE_ACTIONS = [
   'imageNodes/addImageNode',
   'imageNodes/addImageNodes',
@@ -35,6 +35,7 @@ const IMAGE_SAVE_ACTIONS = [
   'imageNodes/deleteImageNode',
   'imageNodes/deleteImageNodes',
   'imageNodes/clearAllImages',
+  'imageNodes/importImages',
 ];
 
 // Действия для проекта
@@ -52,56 +53,125 @@ const PROJECT_SAVE_ACTIONS = [
   'project/updateProjectName',
   'project/deleteProject',
   'project/updateCanvas',
+  'project/loadProjectState',
 ];
+
+// Дебаунс очередь для избежания частых сохранений
+const saveQueue: Map<string, NodeJS.Timeout> = new Map();
 
 export const autoSaveMiddleware: Middleware = store => next => action => {
   const result = next(action);
   
   const state = store.getState() as RootState;
 
-  // Сохраняем todoNodes
+  // Сохраняем todoNodes в IndexedDB
   if (TODO_SAVE_ACTIONS.includes(action.type)) {
-    setTimeout(() => {
+    // Отменяем предыдущий таймер
+    if (saveQueue.has('todos')) {
+      clearTimeout(saveQueue.get('todos'));
+    }
+    
+    // Устанавливаем новый таймер с дебаунсом 1 секунда
+    const timeout = setTimeout(async () => {
       try {
-        TodoStorage.saveTodos(state.todoNodes.nodes);
+        const todoNodes = state.todoNodes?.nodes;
+        if (todoNodes && Object.keys(todoNodes).length > 0) {
+          await TodoIndexedDBStorage.saveTodos(todoNodes);
+          console.log(`💾 Автосохранение ${Object.keys(todoNodes).length} задач в IndexedDB`);
+        }
       } catch (error) {
-        console.error('❌ Ошибка автосохранения todoNodes:', error);
+        console.error('❌ Ошибка автосохранения todoNodes в IndexedDB:', error);
+        // Пробуем сохранить в localStorage как fallback
+        try {
+          const { TodoStorage } = await import('@shared/api/storage/jsonStorage/todoStorage');
+          TodoStorage.saveTodos(state.todoNodes.nodes);
+        } catch (fallbackError) {
+          console.error('❌ Критическая ошибка сохранения:', fallbackError);
+        }
+      } finally {
+        saveQueue.delete('todos');
       }
-    }, 0);
+    }, 1000);
+    
+    saveQueue.set('todos', timeout);
   }
   
-  // 🆕 Сохраняем изображения
+  // Сохраняем изображения в IndexedDB
   if (IMAGE_SAVE_ACTIONS.includes(action.type)) {
-    setTimeout(() => {
+    if (saveQueue.has('images')) {
+      clearTimeout(saveQueue.get('images'));
+    }
+    
+    const timeout = setTimeout(async () => {
       try {
-        ImageStorage.saveImages(state.imageNodes.nodes);
-        console.log(`🖼️ Автосохранение ${Object.keys(state.imageNodes.nodes).length} изображений`);
+        const imageNodes = state.imageNodes?.nodes;
+        if (imageNodes && Object.keys(imageNodes).length > 0) {
+          await ImageIndexedDBStorage.saveImages(imageNodes);
+          console.log(`🖼️ Автосохранение ${Object.keys(imageNodes).length} изображений в IndexedDB`);
+        }
       } catch (error) {
-        console.error('❌ Ошибка автосохранения изображений:', error);
+        console.error('❌ Ошибка автосохранения изображений в IndexedDB:', error);
+        // Пробуем сохранить в localStorage как fallback
+        try {
+          const { ImageStorage } = await import('@shared/api/storage/jsonStorage/imageStorage');
+          ImageStorage.saveImages(state.imageNodes.nodes);
+          console.log('🖼️ Сохранено в localStorage как fallback');
+        } catch (fallbackError) {
+          console.error('❌ Критическая ошибка сохранения изображений:', fallbackError);
+        }
+      } finally {
+        saveQueue.delete('images');
       }
-    }, 0);
+    }, 1000);
+    
+    saveQueue.set('images', timeout);
   }
   
-  // Сохраняем проект
+  // Сохраняем проект в IndexedDB
   if (PROJECT_SAVE_ACTIONS.includes(action.type)) {
-    setTimeout(() => {
+    if (saveQueue.has('project')) {
+      clearTimeout(saveQueue.get('project'));
+    }
+    
+    const timeout = setTimeout(async () => {
       try {
         const projectState = {
-          currentProjectId: state.project.currentProjectId,
-          projects: state.project.projects,
-          pages: state.project.pages,
-          canvases: state.project.canvases || {},
+          currentProjectId: state.project?.currentProjectId,
+          projects: state.project?.projects || {},
+          pages: state.project?.pages || {},
+          canvases: state.project?.canvases || {},
           metadata: {
             savedAt: new Date().toISOString(),
-            version: '1.1',
+            version: '2.0',
           },
         };
         
-        localStorage.setItem('project_state', JSON.stringify(projectState));
+        await ProjectIndexedDBStorage.saveProject(projectState);
+        console.log('📁 Автосохранение проекта в IndexedDB');
       } catch (error) {
-        console.error('❌ Ошибка автосохранения проекта:', error);
+        console.error('❌ Ошибка автосохранения проекта в IndexedDB:', error);
+        // Fallback на localStorage
+        try {
+          localStorage.setItem('project_state', JSON.stringify({
+            currentProjectId: state.project?.currentProjectId,
+            projects: state.project?.projects || {},
+            pages: state.project?.pages || {},
+            canvases: state.project?.canvases || {},
+            metadata: {
+              savedAt: new Date().toISOString(),
+              version: '1.1',
+            },
+          }));
+          console.log('📁 Сохранено в localStorage как fallback');
+        } catch (fallbackError) {
+          console.error('❌ Критическая ошибка сохранения проекта:', fallbackError);
+        }
+      } finally {
+        saveQueue.delete('project');
       }
-    }, 0);
+    }, 1000);
+    
+    saveQueue.set('project', timeout);
   }
   
   return result;
