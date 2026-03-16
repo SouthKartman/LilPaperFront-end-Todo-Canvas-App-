@@ -21,7 +21,7 @@ export const useImageDrop = (): UseImageDropReturn => {
   
   // 🆕 Получаем функции из хука
   const imageUpload = useImageUpload();
-  console.log('📦 useImageDrop: imageUpload =', imageUpload); // Для отладки
+  // console.log('📦 useImageDrop: imageUpload =', imageUpload); // Для отладки
   
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [dropError, setDropError] = useState<string | null>(null);
@@ -52,7 +52,7 @@ export const useImageDrop = (): UseImageDropReturn => {
     setIsDraggingOver(false);
     setDropError(null);
 
-    console.log('📥 Drop событие:', { position });
+    // console.log('📥 Drop событие:', { position });
 
     const files = Array.from(e.dataTransfer.files);
     

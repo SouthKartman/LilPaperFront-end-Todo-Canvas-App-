@@ -22,7 +22,8 @@
       "@features/*": ["src/features/*"],
       "@entities/*": ["src/entities/*"],
       "@shared/*": ["src/shared/*"],
-      "@widgets/*": ["src/widgets/*"]
+      "@widgets/*": ["src/widgets/*"],
+      "@pages/*": ["src/pages/*"]
     },
     "verbatimModuleSyntax": false
   },

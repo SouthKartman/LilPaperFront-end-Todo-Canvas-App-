@@ -1,5 +1,7 @@
-import React, { useEffect, useCallback, useRef } from 'react'
+// src/widgets/canvas-workspace/ui/CanvasWorkspace.tsx
+import React, { useEffect, useCallback, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
+import { useParams } from 'react-router-dom'
 import { useTodoNodes } from '@features/todo-nodes/lib/useTodoNode'
 import { TodoNode } from '@features/todo-nodes/ui/TodoNode/TodoNode'
 import { useCanvasDnd } from '@features/canvas-dnd/lib/useCanvasDnd'
@@ -27,9 +29,8 @@ import { ImageNode } from '@features/image-upload/ui/ImageNode'
 import { useImageDrop } from '@features/image-upload/lib/useImageDrop'
 import { useImageUpload } from '@features/image-upload/lib/useImageUpload'
 import { ImageDropOverlay } from '@features/image-upload/ui/ImageDropOverlay'
-import { ImageUploadButton } from '@features/image-upload/ui/ImageUploadButton'
 
-// ✅ ИСПРАВЛЕНО: импортируем ImageNode, а не IImageNode
+// Импортируем ImageNode как тип
 import { ImageNode as ImageNodeType } from '@entities/image/model/types'
 
 import {
@@ -41,14 +42,25 @@ import {
 } from '@features/project-management/model/selectors'
 
 import { updateCanvas } from '@features/project-management/model/slice'
+
+// Импортируем хук для viewport
 import { useEnhancedViewport } from '@features/canvas-viewport/lib/useTransformViewport'
 
+// Импортируем сервис превью
+import { previewService } from '@features/canvas-preview/lib/previewService'
+
 export const CanvasWorkspace: React.FC = () => {
+  // Получаем projectId из URL
+  const { projectId } = useParams()
+  
   const { nodes } = useTodoNodes()
   const { dragState, isDragging } = useCanvasDnd()
   const dispatch = useDispatch()
   const canvasRef = useRef<HTMLDivElement>(null)
   const lastUpdateRef = useRef<number>(0)
+  const saveTimeoutRef = useRef<NodeJS.Timeout>()
+  const [isSaving, setIsSaving] = useState(false)
+  const isGeneratingPreview = useRef(false) // 👈 Добавляем ref для предотвращения множественных генераций
   
   const todoNodes = useSelector(selectAllTodoNodes)
   const selectedNodes = useSelector(selectSelectedTodoNodes)
@@ -87,9 +99,76 @@ export const CanvasWorkspace: React.FC = () => {
     handleDrop,
     clearError: clearImageError,
   } = useImageDrop()
+  
+// Добавьте этот useEffect
 
-  // ✅ Хук для загрузки изображений с отслеживанием прогресса и justUploadedIds
+useEffect(() => {
+  if (canvasRef.current) {
+    // Принудительно устанавливаем размеры
+    canvasRef.current.style.minWidth = '800px';
+    canvasRef.current.style.minHeight = '400px';
+  }
+}, []);
+
+  // Хук для загрузки изображений
   const { uploadImages, uploadingImages, justUploadedIds } = useImageUpload()
+
+  // 👇 Функция сохранения проекта и генерации превью
+  const saveProject = useCallback(async () => {
+  if (!projectId || !canvasRef.current) return
+
+  setIsSaving(true)
+  console.log('💾 Сохранение проекта:', projectId)
+
+  try {
+    // Сохраняем viewport
+    if (currentCanvas) {
+      dispatch(updateCanvas({
+        canvasId: currentCanvas.id,
+        updates: {
+          viewport: {
+            x: viewport.position.x,
+            y: viewport.position.y,
+            zoom: viewport.scale,
+          },
+        },
+      }))
+    }
+
+    // Генерируем превью только если прошло больше 10 секунд с последней генерации
+    const stats = previewService.getStats();
+    const lastGen = localStorage.getItem(`last_preview_${projectId}`);
+    const now = Date.now();
+    
+    if (!lastGen || now - parseInt(lastGen) > 10000) { // 10 секунд
+      console.log('📸 Генерация превью (прошло >10с)');
+      localStorage.setItem(`last_preview_${projectId}`, now.toString());
+      
+      const previewUrl = await previewService.generateProjectPreview(projectId);
+      if (previewUrl) {
+        console.log('✅ Превью сгенерировано');
+      }
+    } else {
+      console.log('⏳ Пропускаем генерацию превью (слишком часто)');
+    }
+
+    console.log('✅ Проект сохранен')
+  } catch (error) {
+    console.error('❌ Ошибка сохранения:', error)
+  } finally {
+    setIsSaving(false)
+  }
+}, [projectId, currentCanvas, viewport, dispatch])
+
+// Увеличиваем debounce до 5 секунд
+const debouncedSave = useCallback(() => {
+  if (saveTimeoutRef.current) {
+    clearTimeout(saveTimeoutRef.current)
+  }
+  saveTimeoutRef.current = setTimeout(() => {
+    saveProject()
+  }, 5000) // 5 секунд вместо 3
+}, [saveProject])
 
   // БЛОКИРОВКА МАСШТАБИРОВАНИЯ БРАУЗЕРА
   useEffect(() => {
@@ -105,22 +184,12 @@ export const CanvasWorkspace: React.FC = () => {
       }
     }
 
-    const preventGestureZoom = (e: Event) => {
-      e.preventDefault()
-    }
-
     document.addEventListener('keydown', preventBrowserZoom, { passive: false })
     document.addEventListener('wheel', preventWheelZoom, { passive: false })
-    document.addEventListener('gesturestart', preventGestureZoom, { passive: false })
-    document.addEventListener('gesturechange', preventGestureZoom, { passive: false })
-    document.addEventListener('gestureend', preventGestureZoom, { passive: false })
 
     return () => {
       document.removeEventListener('keydown', preventBrowserZoom)
       document.removeEventListener('wheel', preventWheelZoom)
-      document.removeEventListener('gesturestart', preventGestureZoom)
-      document.removeEventListener('gesturechange', preventGestureZoom)
-      document.removeEventListener('gestureend', preventGestureZoom)
     }
   }, [])
 
@@ -160,7 +229,9 @@ export const CanvasWorkspace: React.FC = () => {
         y: canvasY - nodeHeight / 2,
       }
     }))
-  }, [isDragging, dragState?.draggedNodeId, dragState?.currentPosition?.x, dragState?.currentPosition?.y, dragState?.offset?.x, dragState?.offset?.y, viewport, todoNodes, dispatch])
+    
+    debouncedSave()
+  }, [isDragging, dragState?.draggedNodeId, dragState?.currentPosition?.x, dragState?.currentPosition?.y, dragState?.offset?.x, dragState?.offset?.y, viewport, todoNodes, dispatch, debouncedSave])
 
   // Сохраняем изменения viewport в полотне
   useEffect(() => {
@@ -179,8 +250,10 @@ export const CanvasWorkspace: React.FC = () => {
           },
         },
       }))
+      
+      debouncedSave()
     }
-  }, [viewport, currentCanvas, canvasViewport, dispatch])
+  }, [viewport, currentCanvas, canvasViewport, dispatch, debouncedSave])
 
   const convertScreenToCanvas = useCallback((screenX: number, screenY: number) => {
     if (!canvasRef.current) return { x: 0, y: 0 }
@@ -201,6 +274,7 @@ export const CanvasWorkspace: React.FC = () => {
       title,
       priority: 'medium',
     }))
+    debouncedSave()
   }
 
   const handleCanvasContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -235,18 +309,15 @@ export const CanvasWorkspace: React.FC = () => {
     
     const canvasPosition = convertScreenToCanvas(e.clientX, e.clientY)
     
-    // Получаем файлы из события drop
     const files = Array.from(e.dataTransfer.files)
     const imageFiles = files.filter(file => file.type.startsWith('image/'))
     
     if (imageFiles.length === 0) return
     
-    // Загружаем изображения
     await uploadImages(imageFiles, canvasPosition)
-    
-    // Вызываем оригинальный handleDrop для очистки состояния
     handleDrop(e, canvasPosition)
-  }, [convertScreenToCanvas, handleDrop, currentCanvas, uploadImages])
+    debouncedSave()
+  }, [convertScreenToCanvas, handleDrop, currentCanvas, uploadImages, debouncedSave])
 
   // Обработчики глобальных событий
   useEffect(() => {
@@ -301,10 +372,19 @@ export const CanvasWorkspace: React.FC = () => {
 
   return (
     <div className={styles.workspace}>
+      {/* Индикатор сохранения */}
+      {isSaving && (
+        <div className={styles.savingIndicator}>
+          <span className={styles.spinner} />
+          Saving preview...
+        </div>
+      )}
+
       <div 
         ref={canvasRef}
         className={`${styles.canvas} ${viewport.isPanning ? styles.panning : ''}`}
         style={{ background: canvasBackground }}
+        data-project-id={projectId}
         onWheel={handleWheel}
         onMouseDown={handlePanStart}
         onDragOver={handleDragOver}
@@ -379,9 +459,8 @@ export const CanvasWorkspace: React.FC = () => {
             />
           ))}
 
-          {/* ✅ Рендер загружаемых изображений (прелоадеры) */}
+          {/* Рендер загружаемых изображений */}
           {uploadingImages.map((tempNode) => {
-            // Создаем временный node объект для прелоадера
             const tempImageNode: ImageNodeType = {
               id: tempNode.tempId,
               type: 'image',
@@ -409,14 +488,14 @@ export const CanvasWorkspace: React.FC = () => {
             );
           })}
 
-          {/* ✅ Рендер готовых изображений с пропом skipLoading для новых */}
+          {/* Рендер готовых изображений */}
           {imageNodes.map((node: any) => (
             <ImageNode
               key={node.id}
               node={node}
               isSelected={selectedImageNodes.some(n => n.id === node.id)}
               viewport={viewport}
-              skipLoading={justUploadedIds.has(node.id)} // Пропускаем состояние загрузки для новых
+              skipLoading={justUploadedIds.has(node.id)}
               onContextMenu={(e, nodeId) => {
                 e.preventDefault()
                 e.stopPropagation()

@@ -1,9 +1,9 @@
+// src/shared/api/storage/indexedDB/schema.ts
 import Dexie, { Table } from 'dexie';
 import { Todo } from '@entities/todo/model/types';
 import { ImageNode } from '@entities/image/model/types';
 import { Canvas, CanvasPage, CanvasProject } from '@entities/canvas/model/types';
 
-// Расширенные типы для БД
 export interface DBTodo extends Todo {
   projectId: string;
   pageId: string;
@@ -14,12 +14,13 @@ export interface DBTodo extends Todo {
 export interface DBImage extends ImageNode {
   projectId: string;
   pageId: string;
-  // Убираем imageBlob и thumbnailBlob - файлы хранятся отдельно
 }
 
 export interface DBProject extends CanvasProject {
   createdAt: string;
   updatedAt: string;
+  preview?: string; // 👈 Добавляем поле для превью
+  previewUpdatedAt?: string; // 👈 Добавляем дату обновления превью
 }
 
 export interface DBPage extends CanvasPage {
@@ -45,9 +46,9 @@ export interface DBSyncLog {
   synced: boolean;
 }
 
-// 🆕 НОВЫЕ ТИПЫ ДЛЯ ХРАНЕНИЯ ФАЙЛОВ
+// Типы для хранения файлов
 export interface StoredFile {
-  id: string; // `${projectId}_${fileName}`
+  id: string;
   projectId: string;
   fileName: string;
   blob: Blob;
@@ -66,37 +67,32 @@ export interface FileMetadata {
   mimeType: string;
   storage: 'opfs' | 'indexeddb';
   savedAt: string;
-  imageNodeId?: string; // Связь с нодой изображения
+  imageNodeId?: string;
   width?: number;
   height?: number;
 }
 
 export class TodoAppDatabase extends Dexie {
-  // Существующие таблицы
   todos!: Table<DBTodo, string>;
   images!: Table<DBImage, string>;
   projects!: Table<DBProject, string>;
   pages!: Table<DBPage, string>;
   canvases!: Table<DBCanvas, string>;
   syncLog!: Table<DBSyncLog, number>;
-  
-  // 🆕 НОВЫЕ ТАБЛИЦЫ ДЛЯ ФАЙЛОВ
   fileStorage!: Table<StoredFile, string>;
   fileMetadata!: Table<FileMetadata, number>;
+
 
   constructor() {
     super('TodoAppDatabase');
     
-    this.version(2).stores({
-      // Существующие таблицы (версия 1)
+    this.version(3).stores({
       todos: 'id, projectId, pageId, status, priority, dueDate, createdAt, updatedAt, [projectId+pageId]',
       images: 'id, projectId, pageId, mimeType, fileSize, createdAt, updatedAt, [projectId+pageId]',
-      projects: 'id, name, currentPageId, createdAt, updatedAt',
+      projects: 'id, name, currentPageId, createdAt, updatedAt, preview, previewUpdatedAt', // 👈 Добавлено
       pages: 'id, projectId, canvasId, name, [projectId+metadata.order], createdAt, updatedAt',
       canvases: 'id, projectId, pageId, [projectId+pageId], updatedAt',
       syncLog: '++id, entityType, entityId, timestamp, synced',
-      
-      // 🆕 Новые таблицы для файлов (версия 2)
       fileStorage: 'id, projectId, fileName, mimeType, size, createdAt, lastAccessed',
       fileMetadata: '++id, fileName, projectId, storage, savedAt, imageNodeId, [projectId+fileName]',
     });

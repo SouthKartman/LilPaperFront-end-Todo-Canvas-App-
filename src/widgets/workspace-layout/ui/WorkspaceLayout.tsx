@@ -1,8 +1,9 @@
 // src/widgets/workspace-layout/ui/WorkspaceLayout.tsx
 import React, { useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { createProject } from '@features/project-management/model/slice'
-import { selectCurrentProject } from '@shared/lib/state/store'
+import { useParams } from 'react-router-dom'
+import { createProject, setCurrentProject } from '@features/project-management/model/slice'
+import { selectCurrentProject } from '@features/project-management/model/selectors'
 import { PagesSidebar } from '@widgets/pages-workspace/ui/PagesSidebar'
 import styles from './WorkspaceLayout.module.css'
 
@@ -18,19 +19,27 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
   children,
 }) => {
   const dispatch = useDispatch()
+  const { projectId } = useParams()
   const currentProject = useSelector(selectCurrentProject)
   
-  // 🆕 АВТОМАТИЧЕСКОЕ СОЗДАНИЕ ПРОЕКТА ПРИ ЗАГРУЗКЕ
+  // Открываем проект из URL
   useEffect(() => {
-    if (!currentProject) {
-      // Даем небольшую задержку для загрузки сохраненного состояния
+    if (projectId) {
+      console.log('📂 Открытие проекта из URL:', projectId)
+      dispatch(setCurrentProject(projectId))
+    }
+  }, [projectId, dispatch])
+  
+  // Создаем проект только если нет текущего проекта и нет projectId в URL
+  useEffect(() => {
+    if (!currentProject && !projectId) {
+      console.log('🚀 Создание нового проекта (нет проектов)')
       const timer = setTimeout(() => {
         dispatch(createProject({ name: 'Мой Проект' }))
       }, 100)
-      
       return () => clearTimeout(timer)
     }
-  }, [currentProject, dispatch])
+  }, [currentProject, projectId, dispatch])
   
   return (
     <div className={styles.layout}>
@@ -40,7 +49,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         </header>
       )}
       <div className={styles.content}>
-        {/* 🆕 ЛЕВАЯ ПАНЕЛЬ СО СТРАНИЦАМИ */}
+        {/* ЛЕВАЯ ПАНЕЛЬ СО СТРАНИЦАМИ */}
         <aside className={styles.pagesSidebar}>
           <PagesSidebar />
         </aside>

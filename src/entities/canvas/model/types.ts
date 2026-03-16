@@ -21,6 +21,19 @@ export interface CanvasProject {
   };
 }
 
+export interface CanvasProject {
+  id: string;
+  name: string;
+  pageIds: string[];
+  currentPageId: string | null;
+  preview?: string; // 👈 Добавляем поле для превью
+  previewUpdatedAt?: string; // 👈 Добавляем дату обновления превью
+  metadata: {
+    createdAt: Date;
+    updatedAt: Date;
+  };
+}
+
 // 🆕 НОВЫЙ ТИП: Полотно (Canvas)
 export interface Canvas {
   id: string;

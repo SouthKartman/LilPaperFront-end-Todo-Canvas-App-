@@ -35,7 +35,8 @@ src/
 │   ├── 📂 providers/         # 🔌 ПРОВАЙДЕРЫ
 │   │   ├── StoreProvider/    # 🗃️ Redux хранилище
 │   │   ├── ThemeProvider/    # 🎨 Темы (светлая/темная)
-│   │   └── DndProvider/      # 🖱️ Drag & Drop
+│   │   ├── DndProvider/      # DnD библиотека
+│   │   └── RouterProvider    # Router Provider
 │   ├── 📂 styles/            # 🖌️ ГЛОБАЛЬНЫЕ СТИЛИ
 │   │   ├── global.css
 │   │   └── variables.css
@@ -50,7 +51,12 @@ src/
 │   │   │   └── todoUtils.ts  # ⚙️ Утилиты для задач
 │   │   └── 📂 ui/
 │   │       └── TodoCard/     # 🎴 Базовая карточка задачи
-│   │
+│   ├── 📂 project/              # 📝 СУЩНОСТЬ "ЗАДАЧА"
+│   │   ├── 📂 model/
+│   │   │   ├── types.ts      # 📐 Типы проектоы
+│   │   │   └── constants.ts        # 🌐 Описание проекта
+│   │   └── 📂 lib/
+│   │       └── projectUtils.ts  # ⚙️ Утилиты для задач
 │   ├── 📂 canvas/            # 🖼️ СУЩНОСТЬ "КАНВАС"
 │   │   ├── 📂 model/
 │   │   │   ├── types.ts      # 📐 Типы для canvas
@@ -152,16 +158,27 @@ src/
 │   │   └── 📂 ui/
 │   │       ├── GridRenderer/    # 🎴 Рендер сетки
 │   │       └── ZoomControls/    # 🎴 Кнопки зума
+│   ├── 📂 canvas-preview/    # 🔍 Создание превью проекта
+│   │   └── 📂 lib/
+│   │       ├── generatePreview.ts    # 🪝 Создание превью (фотографирование)
+│   │       └── previewService.ts # 🪝 Сохранение и последующее внедрение в карту проекта превью
 │   │
 │   ├── 📂 project-management/ # 📁 УПРАВЛЕНИЕ ПРОЕКТАМИ
-│   │   └── 📂 model/
-│   │       ├── slice.ts      # 🗃️ Redux slice
-│   │       └── selectors.ts  # 🔍 Селекторы
-│   │
+│   │   ├── 📂 model/
+│   │   │   ├── slice.ts      # 🗃️ Redux slice
+│   │   │   └── selectors.ts  # 🔍 Селекторы
+│   │   ├── 📂 lib/
+│   │   │   └── useProject.ts  # Логика работы проектов
+│   │   └── index.ts  # Логика работы проектов
 │   └── 📂 selection/          # ☑️ ВЫДЕЛЕНИЕ
 │       └── 📂 lib/
 │           └── useSelection.ts # 🪝 Логика выделения
 │
+├── 📂 pages/  # 🧩 ГОТОВЫЕ UI страницы
+│   └── 📂 projects/   # 📐 МАКЕТ
+│       └── 📂 ui/
+│           └── ProjectPages.tsx # 🎴 Макет страницы создание проектов
+│   
 ├── 📂 widgets/                # 🧩 ГОТОВЫЕ UI БЛОКИ
 │   ├── 📂 workspace-layout/   # 📐 МАКЕТ
 │   │   └── 📂 ui/

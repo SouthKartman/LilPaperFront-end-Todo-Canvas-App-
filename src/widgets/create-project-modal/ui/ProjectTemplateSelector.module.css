@@ -1,0 +1,70 @@
+/* src/widgets/create-project-modal/ui/ProjectTemplateSelector.module.css */
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary, #333);
+  margin: 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+.template {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: var(--bg-secondary, #f5f5f5);
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.template:hover {
+  border-color: var(--accent-primary, #007bff);
+  transform: translateY(-1px);
+}
+
+.template.selected {
+  border-color: var(--accent-primary, #007bff);
+  background: var(--accent-light, #e6f2ff);
+}
+
+.icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  width: 100%;
+}
+
+.name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary, #333);
+  text-align: center;
+}
+
+.description {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #666);
+  text-align: center;
+}

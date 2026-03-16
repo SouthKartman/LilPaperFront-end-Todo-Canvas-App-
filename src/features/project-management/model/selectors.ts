@@ -1,13 +1,49 @@
-// features/project-management/model/selectors.ts
+// src/features/project-management/model/selectors.ts
 import { createSelector } from '@reduxjs/toolkit';
-import { RootState } from '@shared/lib/state/store'
+import { RootState } from '@shared/lib/state/store';
 
-// Базовые селекторы
 export const selectProjectState = (state: RootState) => state.project;
 
 export const selectCurrentProjectId = (state: RootState) => 
   state.project.currentProjectId;
 
+// Селектор для проектов в правильном порядке
+export const selectProjectsInOrder = createSelector(
+  [selectProjectState],
+  (projectState) => {
+    const { projects, projectOrder } = projectState;
+    
+    // Если есть порядок, используем его
+    if (projectOrder && projectOrder.length > 0) {
+      return projectOrder
+        .map(id => projects[id])
+        .filter(Boolean);
+    }
+    
+    // Если нет порядка, возвращаем как есть
+    return Object.values(projects);
+  }
+);
+
+// Используем ProjectsInOrder для всех проектов
+export const selectAllProjects = selectProjectsInOrder;
+
+// Недавние проекты
+export const selectRecentProjects = createSelector(
+  [selectAllProjects],
+  (projects) => {
+    return [...projects]
+      .filter(p => !p.archived)
+      .sort((a, b) => {
+        const dateA = a.metadata.updatedAt instanceof Date ? a.metadata.updatedAt : new Date(a.metadata.updatedAt);
+        const dateB = b.metadata.updatedAt instanceof Date ? b.metadata.updatedAt : new Date(b.metadata.updatedAt);
+        return dateB.getTime() - dateA.getTime();
+      })
+      .slice(0, 5);
+  }
+);
+
+// Остальные селекторы
 export const selectCurrentProject = createSelector(
   [selectProjectState, selectCurrentProjectId],
   (projectState, currentProjectId) => 
@@ -25,7 +61,6 @@ export const selectCurrentPage = createSelector(
     currentPageId ? projectState.pages[currentPageId] : null
 );
 
-// 🆕 Селектор для текущего полотна
 export const selectCurrentCanvas = createSelector(
   [selectCurrentPage, (state: RootState) => state.project.canvases],
   (currentPage, canvases) => {
@@ -34,25 +69,21 @@ export const selectCurrentCanvas = createSelector(
   }
 );
 
-// 🆕 Селектор для ID нод текущего полотна
 export const selectCurrentCanvasNodeIds = createSelector(
   [selectCurrentCanvas],
   (currentCanvas) => currentCanvas?.nodes || []
 );
 
-// 🆕 Селектор для viewport текущего полотна
 export const selectCurrentCanvasViewport = createSelector(
   [selectCurrentCanvas],
   (currentCanvas) => currentCanvas?.viewport || { x: 0, y: 0, zoom: 1 }
 );
 
-// 🆕 Селектор для сетки текущего полотна
 export const selectCurrentCanvasGrid = createSelector(
   [selectCurrentCanvas],
   (currentCanvas) => currentCanvas?.grid || { size: 20, color: '#e0e0e0', isVisible: true }
 );
 
-// 🆕 Селектор для фона текущего полотна
 export const selectCurrentCanvasBackground = createSelector(
   [selectCurrentCanvas],
   (currentCanvas) => currentCanvas?.background || '#f0f0f0'
@@ -75,7 +106,6 @@ export const selectProjectById = (projectId: string) =>
 export const selectPageById = (pageId: string) => 
   (state: RootState) => state.project.pages[pageId];
 
-// 🆕 Селектор для полотна по ID страницы
 export const selectCanvasByPageId = (pageId: string) => 
   (state: RootState) => {
     const page = state.project.pages[pageId];
@@ -83,6 +113,5 @@ export const selectCanvasByPageId = (pageId: string) =>
     return state.project.canvases[page.canvasId] || null;
   };
 
-// 🆕 Селектор для полотна по ID
 export const selectCanvasById = (canvasId: string) => 
   (state: RootState) => state.project.canvases[canvasId];
