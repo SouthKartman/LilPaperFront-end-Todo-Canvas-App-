@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="./public/Logo.png" alt="React 18" />
-</p>
-
 <h1 align="center">🎨 Canvas Todo App</h1>
 
 <p align="center">
@@ -18,6 +14,10 @@
 </p>
 
 <hr />
+
+<p align="center">
+  <img src="./public/Logo.png" alt="Lil Papper" width="30%" height="30%" />
+</p>
 
 
 ## Наполнение проекта
