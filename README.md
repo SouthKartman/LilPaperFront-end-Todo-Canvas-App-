@@ -1,12 +1,12 @@
-<p align="center">
-  <img src="./public/Logo.png" alt="Lil Papper" width="30%" height="30%" />
-</p>
-
-<!-- <h1 align="center">🎨 Lil Papper - Canvas Todo App</h1> -->
+<h1 align="center">🎨 Lil Papper - Canvas Todo App</h1> 
 
 <p align="center">
   <strong>Интерактивное приложение для управления задачами на бесконечном холсте</strong><br />
   с поддержкой изображений, проектов и продвинутым Drag & Drop
+</p>
+
+<p align="center">
+  <img src="./public/Logo.png" alt="Lil Papper" width="30%" height="30%" />
 </p>
 
 <p align="center">
