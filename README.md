@@ -772,8 +772,6 @@ npm run format</code></pre>
     </tr>
   </tbody>
 </table>
-<<<<<<< HEAD
-=======
 
 <hr />
 
@@ -831,72 +829,3 @@ npm run format</code></pre>
   <sub>Документация поддерживается в актуальном состоянии командой разработки.</sub><br />
   <sub>Последнее обновление: 2026</sub>
 </p>
->>>>>>> db62428 (update readme, add pages, add images)
-
-<hr />
-
-<h2>👨‍💻 Для разработчиков</h2>
-
-<h3>Ключевые концепции для понимания</h3>
-
-<ol>
-  <li>
-    <strong>Система координат</strong> — всегда конвертируйте экранные координаты в canvas координаты через <code>convertScreenToCanvas</code>
-  </li>
-  <li>
-    <strong>Состояние</strong> — используйте селекторы для доступа к данным, никогда не обращайтесь к store напрямую в компонентах
-  </li>
-  <li>
-    <strong>Производительность</strong> — при частых обновлениях (drag) используйте throttle или requestAnimationFrame
-  </li>
-  <li>
-    <strong>Архитектура</strong> — соблюдайте правила зависимостей, не импортируйте из верхних слоев в нижние
-  </li>
-</ol>
-
-<h3>Полезные хуки</h3>
-
-<table>
-  <thead>
-    <tr>
-      <th>Хук</th>
-      <th>Назначение</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><code>useCanvasDnd()</code></td>
-      <td>Базовый Drag & Drop для любых элементов</td>
-    </tr>
-    <tr>
-      <td><code>useEnhancedViewport()</code></td>
-      <td>Зум, панорамирование, работа с viewport</td>
-    </tr>
-    <tr>
-      <td><code>useImageDrop()</code></td>
-      <td>Обработка перетаскивания изображений из проводника</td>
-    </tr>
-    <tr>
-      <td><code>useAutoPan()</code></td>
-      <td>Автоматическое панорамирование при перетаскивании к краю</td>
-    </tr>
-  </tbody>
-</table>
-
-<hr />
-
-<<<<<<< HEAD
-<p align="center">
-  <sub>Документация поддерживается в актуальном состоянии командой разработки.</sub><br />
-  <sub>Последнее обновление: 2026</sub>
-</p>
-=======
-
-
-
-
-
-
-
-
->>>>>>> db62428 (update readme, add pages, add images)
