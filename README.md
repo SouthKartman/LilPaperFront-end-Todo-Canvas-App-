@@ -23,7 +23,6 @@
   на котором можно размещать задачи, изображения, создавать связи между ними и организовывать проекты любым удобным способом.
 </p>
 
-
 <br>
 
 
@@ -839,6 +838,424 @@ npm run format</code></pre>
     <strong>Архитектура</strong> — соблюдайте правила зависимостей, не импортируйте из верхних слоев в нижние
   </li>
 </ol>
+
+<h3>Система коммитов Gitflow</h3>
+
+<h2> GitFlow — Система управления версиями</h2>
+
+<h3>📋 Общая схема</h3>
+
+<p>
+  Мы используем <strong>GitFlow</strong> — популярную модель ветвления, которая отлично подходит для проектов 
+  с четким циклом разработки и релизов.
+</p>
+
+<pre><code>main
+  ↑
+  └── develop
+        ↑
+        ├── feature/canvas-viewport
+        ├── feature/image-upload
+        ├── bugfix/dnd-auto-pan
+        ├── hotfix/critical-bug (из main)
+        └── release/v1.0.0 (в main и develop)
+</code></pre>
+
+<h3>🌿 Типы веток</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Ветка</th>
+      <th>Назначение</th>
+      <th>Базовая ветка</th>
+      <th>Куда вливается</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>main</strong></td>
+      <td>Продакшн-релизы</td>
+      <td>-</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td><strong>develop</strong></td>
+      <td>Основная разработка</td>
+      <td>main</td>
+      <td>main</td>
+    </tr>
+    <tr>
+      <td><strong>feature/*</strong></td>
+      <td>Новая функциональность</td>
+      <td>develop</td>
+      <td>develop</td>
+    </tr>
+    <tr>
+      <td><strong>bugfix/*</strong></td>
+      <td>Исправление ошибок</td>
+      <td>develop</td>
+      <td>develop</td>
+    </tr>
+    <tr>
+      <td><strong>hotfix/*</strong></td>
+      <td>Срочные исправления в продакшне</td>
+      <td>main</td>
+      <td>main и develop</td>
+    </tr>
+    <tr>
+      <td><strong>release/*</strong></td>
+      <td>Подготовка релиза</td>
+      <td>develop</td>
+      <td>main и develop</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>🏷️ Соглашение по именованию</h3>
+
+<pre><code>feature/[номер-задачи]-краткое-описание
+bugfix/[номер-задачи]-что-исправляем
+hotfix/[номер-задачи]-критичная-проблема
+release/v[версия]</code></pre>
+
+<p><strong>Примеры:</strong></p>
+<ul>
+  <li><code>feature/CANVAS-42-drag-and-drop-images</code></li>
+  <li><code>bugfix/CANVAS-15-fix-auto-pan-threshold</code></li>
+  <li><code>hotfix/CANVAS-101-fix-production-crash</code></li>
+  <li><code>release/v1.2.0</code></li>
+</ul>
+
+<h3>📊 Визуализация GitFlow</h3>
+
+<pre><code class="language-mermaid">
+gitGraph
+   commit
+   branch develop
+   checkout develop
+   commit
+   branch feature/canvas-dnd
+   checkout feature/canvas-dnd
+   commit
+   commit
+   checkout develop
+   merge feature/canvas-dnd
+   branch feature/image-upload
+   checkout feature/image-upload
+   commit
+   commit
+   checkout develop
+   merge feature/image-upload
+   branch release/v1.0.0
+   checkout release/v1.0.0
+   commit
+   checkout main
+   merge release/v1.0.0 tag: "v1.0.0"
+   checkout develop
+   merge release/v1.0.0
+   branch hotfix/v1.0.1
+   checkout hotfix/v1.0.1
+   commit
+   checkout main
+   merge hotfix/v1.0.1 tag: "v1.0.1"
+   checkout develop
+   merge hotfix/v1.0.1
+</code></pre>
+
+<h3>🔄 Жизненный цикл веток</h3>
+
+<h4>1. <strong>Feature-ветки</strong> (новая функциональность)</h4>
+
+<pre><code class="language-bash"># Создание новой фичи
+git checkout develop
+git pull origin develop
+git checkout -b feature/canvas-viewport-optimization
+
+# Работаем, делаем коммиты
+git add .
+git commit -m "feat(viewport): add throttling for pan events"
+git commit -m "feat(viewport): optimize grid rendering"
+
+# Когда фича готова
+git push origin feature/canvas-viewport-optimization
+# → Создаем Pull Request в develop
+</code></pre>
+
+<h4>2. <strong>Bugfix-ветки</strong> (исправление ошибок)</h4>
+
+<pre><code class="language-bash"># Нашли баг в develop
+git checkout develop
+git checkout -b bugfix/fix-image-resize
+
+# Исправляем
+git commit -m "fix(image-upload): correct aspect ratio on resize"
+
+# Вливаем обратно
+git push origin bugfix/fix-image-resize
+# → Pull Request в develop
+</code></pre>
+
+<h4>3. <strong>Release-ветки</strong> (подготовка к релизу)</h4>
+
+<pre><code class="language-bash"># Когда develop готов к релизу
+git checkout develop
+git checkout -b release/v1.2.0
+
+# Финальные правки, обновление версий
+npm version 1.2.0
+git commit -m "chore(release): bump version to 1.2.0"
+
+# Вливаем в main и develop
+git checkout main
+git merge --no-ff release/v1.2.0
+git tag -a v1.2.0 -m "Release version 1.2.0"
+git push origin main --tags
+
+git checkout develop
+git merge --no-ff release/v1.2.0
+git push origin develop
+
+# Удаляем release-ветку
+git branch -d release/v1.2.0
+</code></pre>
+
+<h4>4. <strong>Hotfix-ветки</strong> (срочные исправления в продакшне)</h4>
+
+<pre><code class="language-bash"># Критический баг в main
+git checkout main
+git checkout -b hotfix/fix-auth-crash
+
+# Исправляем
+git commit -m "hotfix(auth): fix undefined token crash"
+npm version patch  # 1.2.0 → 1.2.1
+
+# Вливаем в main и develop
+git checkout main
+git merge --no-ff hotfix/fix-auth-crash
+git tag -a v1.2.1 -m "Hotfix version 1.2.1"
+git push origin main --tags
+
+git checkout develop
+git merge --no-ff hotfix/fix-auth-crash
+git push origin develop
+
+# Удаляем hotfix-ветку
+git branch -d hotfix/fix-auth-crash
+</code></pre>
+
+<h3>📝 Правила коммитов (Conventional Commits)</h3>
+
+<p>
+  Используем <strong><a href="https://www.conventionalcommits.org/">Conventional Commits</a></strong> 
+  для автоматической генерации changelog:
+</p>
+
+<pre><code>&lt;type&gt;(&lt;scope&gt;): &lt;description&gt;
+
+[optional body]
+
+[optional footer]
+</code></pre>
+
+<p><strong>Типы коммитов:</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>Когда использовать</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>feat</strong></td>
+      <td>Новая функциональность</td>
+    </tr>
+    <tr>
+      <td><strong>fix</strong></td>
+      <td>Исправление бага</td>
+    </tr>
+    <tr>
+      <td><strong>docs</strong></td>
+      <td>Изменения в документации</td>
+    </tr>
+    <tr>
+      <td><strong>style</strong></td>
+      <td>Форматирование, отступы, точки с запятой (не меняет код)</td>
+    </tr>
+    <tr>
+      <td><strong>refactor</strong></td>
+      <td>Рефакторинг без изменения функциональности</td>
+    </tr>
+    <tr>
+      <td><strong>perf</strong></td>
+      <td>Оптимизация производительности</td>
+    </tr>
+    <tr>
+      <td><strong>test</strong></td>
+      <td>Добавление/изменение тестов</td>
+    </tr>
+    <tr>
+      <td><strong>chore</strong></td>
+      <td>Обновление зависимостей, настройка сборки</td>
+    </tr>
+    <tr>
+      <td><strong>revert</strong></td>
+      <td>Откат изменений</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Примеры:</strong></p>
+<pre><code class="language-bash">git commit -m "feat(todo-nodes): add keyboard shortcuts for delete"
+git commit -m "fix(canvas-viewport): correct zoom center point"
+git commit -m "docs(readme): update installation instructions"
+git commit -m "perf(image-upload): optimize base64 conversion"
+git commit -m "test(project-management): add unit tests for slice"
+</code></pre>
+
+<h3>🔧 Настройка Git hooks (Husky + lint-staged)</h3>
+
+<p>Для автоматической проверки кода перед коммитами:</p>
+
+<pre><code class="language-json">// package.json
+{
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged",
+      "commit-msg": "commitlint -E HUSKY_GIT_PARAMS"
+    }
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  }
+}
+</code></pre>
+
+<h3>🚦 Правила работы с Pull Request'ами</h3>
+
+<h4>Создание PR</h4>
+<ol>
+  <li>Название PR должно соответствовать формату: <code>[Type] Краткое описание</code>
+    <ul>
+      <li>Пример: <code>[Feature] Добавить авто-панорамирование при DnD</code></li>
+    </ul>
+  </li>
+  <li>В описании укажи:
+    <ul>
+      <li>Что сделано</li>
+      <li>Как тестировать</li>
+      <li>Связанные issues (Closes #123)</li>
+      <li>Скриншоты (для UI изменений)</li>
+    </ul>
+  </li>
+</ol>
+
+<h4>Требования к PR</h4>
+<ul>
+  <li>✅ Нет конфликтов с target-веткой</li>
+  <li>✅ Обновлена документация (если нужно)</li>
+</ul>
+
+
+<h3> Что делать в нештатных ситуациях</h3>
+
+<h4>Случайно закоммитил в develop</h4>
+<pre><code class="language-bash"># Откатываем последний коммит, но сохраняем изменения
+git reset --soft HEAD~1
+# Создаем правильную ветку
+git checkout -b feature/my-feature
+git commit -m "feat: my feature"
+</code></pre>
+
+<h4>Конфликт при rebase</h4>
+<pre><code class="language-bash">git rebase develop
+# → возник конфликт
+# Исправляем конфликты в файлах
+git add .
+git rebase --continue
+</code></pre>
+
+<h4>Надо отменить push</h4>
+<pre><code class="language-bash"># Если никто не успел стянуть изменения
+git reset --hard HEAD~1
+git push --force-with-lease
+</code></pre>
+
+
+
+<h3>📚 Полезные алиасы для Git</h3>
+
+<p>Добавь в <code>~/.gitconfig</code>:</p>
+
+<pre><code class="language-ini">[alias]
+  co = checkout
+  br = branch
+  ci = commit
+  st = status
+  unstage = reset HEAD --
+  last = log -1 HEAD
+  graph = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)&lt;%an&gt;%Creset' --abbrev-commit
+  feature = checkout -b feature/
+  bugfix = checkout -b bugfix/
+  hotfix = checkout -b hotfix/
+  release = checkout -b release/
+</code></pre>
+
+<h3>📌 Краткое резюме для команды</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Действие</th>
+      <th>Ветка</th>
+      <th>Команда</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Начать новую фичу</td>
+      <td>feature/*</td>
+      <td><code>git checkout -b feature/name develop</code></td>
+    </tr>
+    <tr>
+      <td>Исправить баг</td>
+      <td>bugfix/*</td>
+      <td><code>git checkout -b bugfix/name develop</code></td>
+    </tr>
+    <tr>
+      <td>Срочный фикс в прод</td>
+      <td>hotfix/*</td>
+      <td><code>git checkout -b hotfix/name main</code></td>
+    </tr>
+    <tr>
+      <td>Подготовить релиз</td>
+      <td>release/*</td>
+      <td><code>git checkout -b release/v1.0.0 develop</code></td>
+    </tr>
+    <tr>
+      <td>Влить фичу</td>
+      <td>develop</td>
+      <td>Pull Request feature/* → develop</td>
+    </tr>
+    <tr>
+      <td>Влить хотфикс</td>
+      <td>main, develop</td>
+      <td>Pull Request hotfix/* → main (потом в develop)</td>
+    </tr>
+    <tr>
+      <td>Сделать релиз</td>
+      <td>main</td>
+      <td>Pull Request release/* → main</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
 
 <h3>Полезные хуки</h3>
 
