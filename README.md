@@ -1,5 +1,5 @@
 <h1 align="center">🎨 Lil Papper - Canvas App</h1> 
-<h2 align="center">DEV Branch</h2> 
+<h3 align="center">DEV Branch</h3> 
 
 <p align="center">
   <strong>Интерактивное приложение для управления задачами на бесконечном холсте</strong><br />
