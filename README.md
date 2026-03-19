@@ -1042,6 +1042,10 @@ git branch -d hotfix/fix-auth-crash
 [optional footer]
 </code></pre>
 
+
+
+
+
 <p><strong>Типы коммитов:</strong></p>
 
 <table>
@@ -1099,26 +1103,22 @@ git commit -m "perf(image-upload): optimize base64 conversion"
 git commit -m "test(project-management): add unit tests for slice"
 </code></pre>
 
-<h3>🔧 Настройка Git hooks (Husky + lint-staged)</h3>
+<pre><code class="language-bash">
+# Посмотреть все теги
+git tag -l
+# v0.0.1
+# v0.0.2
 
-<p>Для автоматической проверки кода перед коммитами:</p>
+# Посмотреть последние коммиты
+git log --oneline -5
+# f3c59df feat(changelog):add Auto ChangeLog - Conventional Commits
+# f392c50 fix: исправление
+# ... и так далее
 
-<pre><code class="language-json">// package.json
-{
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged",
-      "commit-msg": "commitlint -E HUSKY_GIT_PARAMS"
-    }
-  },
-  "lint-staged": {
-    "*.{ts,tsx}": [
-      "eslint --fix",
-      "prettier --write"
-    ]
-  }
-}
+# Посмотреть разницу между версиями
+git diff v0.0.1 v0.0.2
 </code></pre>
+
 
 
 <h4>Требования к PR</h4>
