@@ -927,42 +927,6 @@ release/v[версия]</code></pre>
   <li><code>release/v1.2.0</code></li>
 </ul>
 
-<h3>📊 Визуализация GitFlow</h3>
-
-<pre><code class="language-mermaid">
-gitGraph
-   commit
-   branch develop
-   checkout develop
-   commit
-   branch feature/canvas-dnd
-   checkout feature/canvas-dnd
-   commit
-   commit
-   checkout develop
-   merge feature/canvas-dnd
-   branch feature/image-upload
-   checkout feature/image-upload
-   commit
-   commit
-   checkout develop
-   merge feature/image-upload
-   branch release/v1.0.0
-   checkout release/v1.0.0
-   commit
-   checkout main
-   merge release/v1.0.0 tag: "v1.0.0"
-   checkout develop
-   merge release/v1.0.0
-   branch hotfix/v1.0.1
-   checkout hotfix/v1.0.1
-   commit
-   checkout main
-   merge hotfix/v1.0.1 tag: "v1.0.1"
-   checkout develop
-   merge hotfix/v1.0.1
-</code></pre>
-
 <h3>🔄 Жизненный цикл веток</h3>
 
 <h4>1. <strong>Feature-ветки</strong> (новая функциональность)</h4>
@@ -1136,24 +1100,6 @@ git commit -m "test(project-management): add unit tests for slice"
 }
 </code></pre>
 
-<h3>🚦 Правила работы с Pull Request'ами</h3>
-
-<h4>Создание PR</h4>
-<ol>
-  <li>Название PR должно соответствовать формату: <code>[Type] Краткое описание</code>
-    <ul>
-      <li>Пример: <code>[Feature] Добавить авто-панорамирование при DnD</code></li>
-    </ul>
-  </li>
-  <li>В описании укажи:
-    <ul>
-      <li>Что сделано</li>
-      <li>Как тестировать</li>
-      <li>Связанные issues (Closes #123)</li>
-      <li>Скриншоты (для UI изменений)</li>
-    </ul>
-  </li>
-</ol>
 
 <h4>Требования к PR</h4>
 <ul>
