@@ -1,5 +1,4 @@
-
-<h1 align="center">🎨 Canvas Todo App</h1>
+<h1 align="center">🎨 Lil Papper - Canvas Todo App</h1> 
 
 <p align="center">
   <strong>Интерактивное приложение для управления задачами на бесконечном холсте</strong><br />
@@ -7,23 +6,21 @@
 </p>
 
 <p align="center">
+  <img src="./public/Logo.png" alt="Lil Papper" width="30%" height="30%" />
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/React-18-blue" alt="React 18" />
   <img src="https://img.shields.io/badge/TypeScript-5.0-blue" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Redux_Toolkit-2.0-purple" alt="Redux Toolkit" />
-  <img src="https://img.shields.io/badge/Dexie.js-4.0-green" alt="Dexie.js" />
+  <img src="https://img.shields.io/badge/Konva.js-9.0-orange" alt="Konva.js" />
   <img src="https://img.shields.io/badge/FSD-Architecture-green" alt="FSD Architecture" />
 </p>
 
-
-<h2>📋 О приложении</h2>
-
-<p>
-  <strong>Canvas Todo App</strong> — это полноценное визуальное рабочее пространство, 
-  вдохновленное такими инструментами как Miro, Figma и Notion. Вместо скучных списков вы получаете <strong>бесконечный холст</strong>, 
-  на котором можно размещать задачи, изображения, создавать связи между ними и организовывать проекты любым удобным способом.
+<p align="center">
+  <img src="./public/example.png" alt="Example" />
 </p>
 
-<br>
 
 
 ## Наполнение проекта
