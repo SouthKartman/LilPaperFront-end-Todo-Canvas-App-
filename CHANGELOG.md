@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.7](https://github.com/SouthKartman/LilPaperFront-end-Todo-Canvas-App-/compare/v0.0.6...v0.0.7) (2026-03-20)
+
+
+### Features
+
+* **test:** добавить тестовую функцию А ([e7d2db0](https://github.com/SouthKartman/LilPaperFront-end-Todo-Canvas-App-/commit/e7d2db0abd86d44dbb8a8d6c5c599896b3f64c73))
+* **test:** добавить тестовую функцию Б ([27a32df](https://github.com/SouthKartman/LilPaperFront-end-Todo-Canvas-App-/commit/27a32dff8c46d7784d1a8d02522d7dfd8a295838))
+
+
+### Bug Fixes
+
+* **test:** исправить баг в тестовой функции ([fb1c93c](https://github.com/SouthKartman/LilPaperFront-end-Todo-Canvas-App-/commit/fb1c93cc88dba33511b28d6355163cce19472a02))
+
 ### [0.0.6](https://github.com/SouthKartman/LilPaperFront-end-Todo-Canvas-App-/compare/v0.0.5...v0.0.6) (2026-03-20)
 
 
