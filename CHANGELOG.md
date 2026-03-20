@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.8](https://github.com/SouthKartman/LilPaperFront-end-Todo-Canvas-App-/compare/v0.0.7...v0.0.8) (2026-03-20)
+
+
+### Features
+
+* **canvas:** добавить тестовый компонент холста ([c85a643](https://github.com/SouthKartman/LilPaperFront-end-Todo-Canvas-App-/commit/c85a6436951f08239081683ffff953ad1cad66a3))
+* **canvas:** добавить функцию зума ([b558fbb](https://github.com/SouthKartman/LilPaperFront-end-Todo-Canvas-App-/commit/b558fbbf6a368e0b39f070b84ec36ae37f2bcc14))
+
+
+### Bug Fixes
+
+* **canvas:** исправить баг с центрированием ([08d47eb](https://github.com/SouthKartman/LilPaperFront-end-Todo-Canvas-App-/commit/08d47eb723e04a3486f13cba298e6972cb05e37e))
+
 ### [0.0.7](https://github.com/SouthKartman/LilPaperFront-end-Todo-Canvas-App-/compare/v0.0.6...v0.0.7) (2026-03-20)
 
 
