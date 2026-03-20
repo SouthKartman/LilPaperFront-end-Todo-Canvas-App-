@@ -40,7 +40,7 @@ export const CanvasToolbar: React.FC = () => {
     openModal(
       <StorageManager modalMode={true} />,
       {
-        title: '📁 Управление хранилищем',
+        title: ' ',
         width: '800px',
         height: 'auto',
         onClose: () => {

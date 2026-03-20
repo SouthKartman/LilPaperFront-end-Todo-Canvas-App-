@@ -1,4 +1,5 @@
 /* src/features/storage/ui/StorageManager/StorageManager.css */
+
 .storage-manager {
   background: #ffffff;
   border-radius: 12px;
@@ -14,6 +15,21 @@
   z-index: 1000;
   max-height: 80vh;
   overflow-y: auto;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Модальный режим */
+.storage-manager-modal {
+  position: relative;
+  bottom: auto;
+  right: auto;
+  margin: 0;
+  width: 100%;
+  max-width: 100%;
+  box-shadow: none;
+  border: none;
+  background: transparent;
+  padding: 0;
 }
 
 .storage-header {
@@ -29,6 +45,50 @@
   margin: 0;
   color: #333;
   font-size: 18px;
+  font-weight: 600;
+}
+
+.storage-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.storage-close-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #999;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+}
+
+.storage-close-btn:hover {
+  background: #f0f0f0;
+  color: #666;
+}
+
+.storage-btn-refresh {
+  background: none;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.storage-btn-refresh:hover:not(:disabled) {
+  background: #f8f9fa;
+  border-color: #adb5bd;
 }
 
 .storage-comparison {
@@ -164,40 +224,26 @@
   background: #f8f9fa;
 }
 
-.storage-btn-refresh {
-  min-width: 40px;
-  width: 40px;
-  flex: 0 0 auto;
-  padding: 8px;
-}
-
-.storage-btn-save {
-  background: #f8f9fa;
-  border-color: #ced4da;
-}
-
-.storage-btn-save:hover:not(:disabled) {
-  background: #e9ecef;
-}
-
-.storage-btn-migrate {
-  background: #f8f9fa;
-  border-color: #ced4da;
-}
-
-.storage-btn-clear-idb {
-  background: #f8f9fa;
-  border-color: #ced4da;
-}
-
-.storage-btn-import {
-  background: #f8f9fa;
-  border-color: #ced4da;
-}
-
+/* Все кнопки в белом стиле */
+.storage-btn-save,
+.storage-btn-export,
+.storage-btn-migrate,
+.storage-btn-clear-idb,
+.storage-btn-import,
 .storage-btn-clear {
+  background: #ffffff;
+  color: #212529;
+  border: 1px solid #e0e0e0;
+}
+
+.storage-btn-save:hover:not(:disabled),
+.storage-btn-export:hover:not(:disabled),
+.storage-btn-migrate:hover:not(:disabled),
+.storage-btn-clear-idb:hover:not(:disabled),
+.storage-btn-import:hover:not(:disabled),
+.storage-btn-clear:hover:not(:disabled) {
   background: #f8f9fa;
-  border-color: #ced4da;
+  border-color: #adb5bd;
 }
 
 .storage-info {
@@ -207,6 +253,42 @@
   border: 1px solid #e9ecef;
   font-size: 12px;
   color: #495057;
+}
+
+.progress-container {
+  margin-bottom: 16px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #667eea;
+  transition: width 0.3s ease;
+  border-radius: 4px;
+}
+
+.progress-message {
+  font-size: 12px;
+  color: #666;
+  margin-top: 8px;
+  word-break: break-word;
+}
+
+.progress-percent {
+  font-size: 12px;
+  font-weight: 500;
+  color: #667eea;
+  margin-top: 4px;
 }
 
 /* Кастомный скроллбар */
@@ -248,88 +330,28 @@
   .storage-btn {
     width: 100%;
   }
-}
-
-
-/* Модальный режим */
-.storage-manager-modal {
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 20px;
-  width: 100%;
-  max-width: 100%;
-  max-height: 80vh;
-  overflow-y: auto;
-  box-sizing: border-box;
-}
-
-/* Отключаем абсолютное позиционирование в модальном режиме */
-.storage-manager-modal.storage-manager {
-  position: relative;
-  bottom: auto;
-  right: auto;
-  margin: 0;
-  box-shadow: none;
-  border: none;
-}
-
-/* Адаптируем сетку для модального окна */
-.storage-manager-modal .storage-comparison {
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-/* Делаем секции более компактными */
-.storage-manager-modal .storage-section {
-  padding: 12px;
-}
-
-/* Адаптируем кнопки */
-.storage-manager-modal .storage-actions {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 8px;
-}
-
-.storage-manager-modal .storage-btn {
-  min-width: auto;
-  padding: 8px 10px;
-  font-size: 12px;
-}
-
-/* Убираем лишние отступы */
-.storage-manager-modal .storage-header {
-  margin-top: 0;
-  padding-top: 0;
-}
-
-/* Стили для модального окна (если нужно настроить само модальное окно) */
-:global(.modal-content) {
-  padding: 0 !important;
-  overflow: hidden;
-  border-radius: 16px;
-}
-
-:global(.modal-content) .storage-manager-modal {
-  border-radius: 0;
-  max-height: calc(80vh - 60px); /* Учитываем высоту заголовка модального окна */
-}
-
-/* Адаптивность для модального режима */
-@media (max-width: 768px) {
-  .storage-manager-modal {
-    padding: 16px;
-  }
   
   .storage-manager-modal .storage-comparison {
     grid-template-columns: 1fr;
   }
   
   .storage-manager-modal .storage-actions {
-    grid-template-columns: 1fr;
+    flex-direction: column;
   }
-  
-  .storage-manager-modal .storage-btn {
-    width: 100%;
+}
+
+/* Анимация появления */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.storage-manager {
+  animation: fadeIn 0.2s ease;
 }

@@ -13,6 +13,9 @@ export const selectProjectsInOrder = createSelector(
   (projectState) => {
     const { projects, projectOrder } = projectState;
     
+    // Защита от undefined
+    if (!projects) return [];
+    
     // Если есть порядок, используем его
     if (projectOrder && projectOrder.length > 0) {
       return projectOrder
@@ -28,26 +31,45 @@ export const selectProjectsInOrder = createSelector(
 // Используем ProjectsInOrder для всех проектов
 export const selectAllProjects = selectProjectsInOrder;
 
-// Недавние проекты
+// Недавние проекты (с защитой от undefined)
 export const selectRecentProjects = createSelector(
   [selectAllProjects],
   (projects) => {
+    // Защита от undefined или пустого массива
+    if (!projects || !Array.isArray(projects) || projects.length === 0) {
+      return [];
+    }
+    
     return [...projects]
-      .filter(p => !p.archived)
+      .filter(p => p && !p.archived) // Проверяем что проект существует
       .sort((a, b) => {
-        const dateA = a.metadata.updatedAt instanceof Date ? a.metadata.updatedAt : new Date(a.metadata.updatedAt);
-        const dateB = b.metadata.updatedAt instanceof Date ? b.metadata.updatedAt : new Date(b.metadata.updatedAt);
+        // Защита от undefined в metadata
+        const getDate = (project: any) => {
+          if (!project?.metadata) return new Date(0);
+          
+          const dateValue = project.metadata.updatedAt;
+          if (!dateValue) return new Date(0);
+          
+          return dateValue instanceof Date ? dateValue : new Date(dateValue);
+        };
+        
+        const dateA = getDate(a);
+        const dateB = getDate(b);
+        
         return dateB.getTime() - dateA.getTime();
       })
       .slice(0, 5);
   }
 );
 
-// Остальные селекторы
+// Остальные селекторы с защитой от undefined
 export const selectCurrentProject = createSelector(
   [selectProjectState, selectCurrentProjectId],
-  (projectState, currentProjectId) => 
-    currentProjectId ? projectState.projects[currentProjectId] : null
+  (projectState, currentProjectId) => {
+    // Защита от undefined
+    if (!projectState?.projects || !currentProjectId) return null;
+    return projectState.projects[currentProjectId] || null;
+  }
 );
 
 export const selectCurrentPageId = createSelector(
@@ -57,14 +79,18 @@ export const selectCurrentPageId = createSelector(
 
 export const selectCurrentPage = createSelector(
   [selectProjectState, selectCurrentPageId],
-  (projectState, currentPageId) => 
-    currentPageId ? projectState.pages[currentPageId] : null
+  (projectState, currentPageId) => {
+    // Защита от undefined
+    if (!projectState?.pages || !currentPageId) return null;
+    return projectState.pages[currentPageId] || null;
+  }
 );
 
 export const selectCurrentCanvas = createSelector(
   [selectCurrentPage, (state: RootState) => state.project.canvases],
   (currentPage, canvases) => {
-    if (!currentPage || !currentPage.canvasId) return null;
+    // Защита от undefined
+    if (!currentPage || !currentPage.canvasId || !canvases) return null;
     return canvases[currentPage.canvasId] || null;
   }
 );
@@ -92,26 +118,43 @@ export const selectCurrentCanvasBackground = createSelector(
 export const selectProjectPages = createSelector(
   [selectCurrentProject, selectProjectState],
   (currentProject, projectState) => {
-    if (!currentProject) return [];
+    // Защита от undefined
+    if (!currentProject || !currentProject.pageIds || !projectState?.pages) return [];
+    
     return currentProject.pageIds
       .map(pageId => projectState.pages[pageId])
       .filter(Boolean)
-      .sort((a, b) => a.metadata.order - b.metadata.order);
+      .sort((a, b) => (a?.metadata?.order || 0) - (b?.metadata?.order || 0));
   }
 );
 
 export const selectProjectById = (projectId: string) => 
-  (state: RootState) => state.project.projects[projectId];
+  (state: RootState) => {
+    // Защита от undefined
+    if (!state?.project?.projects) return null;
+    return state.project.projects[projectId] || null;
+  };
 
 export const selectPageById = (pageId: string) => 
-  (state: RootState) => state.project.pages[pageId];
+  (state: RootState) => {
+    // Защита от undefined
+    if (!state?.project?.pages) return null;
+    return state.project.pages[pageId] || null;
+  };
 
 export const selectCanvasByPageId = (pageId: string) => 
   (state: RootState) => {
+    // Защита от undefined
+    if (!state?.project?.pages || !state?.project?.canvases) return null;
+    
     const page = state.project.pages[pageId];
     if (!page?.canvasId) return null;
     return state.project.canvases[page.canvasId] || null;
   };
 
 export const selectCanvasById = (canvasId: string) => 
-  (state: RootState) => state.project.canvases[canvasId];
+  (state: RootState) => {
+    // Защита от undefined
+    if (!state?.project?.canvases) return null;
+    return state.project.canvases[canvasId] || null;
+  };
