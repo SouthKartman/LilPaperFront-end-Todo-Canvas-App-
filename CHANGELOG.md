@@ -9,4 +9,5 @@ All notable changes to this project will be documented in this file. See [standa
 
 ### Docs
 
-* **AutoChangeLog:** добавить ChangeLog 
+* **AutoChangeLog:** добавить ChangeLog;
+* **Settings Branches:** добавить ветки DEV и MinVer. для минимальной версии проекта;
