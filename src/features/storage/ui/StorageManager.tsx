@@ -280,16 +280,66 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
 
   // ============ ИМПОРТ ============
   
-  // Функция для создания нового проекта
+  // Фильтрация изображений - оставляем только те, для которых есть файлы в ZIP
+  const filterImagesByFiles = useCallback((
+    imageNodesData: Record<string, any>,
+    zipImages?: Map<string, Blob>
+  ): { filteredImages: Record<string, any>; missingCount: number; missingNames: string[] } => {
+    const filteredImages: Record<string, any> = {};
+    const missingNames: string[] = [];
+    
+    if (!zipImages || zipImages.size === 0) {
+      // Если нет ZIP с изображениями, пропускаем все изображения
+      for (const [id, imageNode] of Object.entries(imageNodesData)) {
+        const fileName = (imageNode as any).originalName || 'unknown';
+        missingNames.push(fileName);
+        console.warn(`⚠️ Изображение пропущено (нет файла в архиве): ${fileName}`);
+      }
+      return { filteredImages: {}, missingCount: Object.keys(imageNodesData).length, missingNames };
+    }
+    
+    for (const [id, imageNode] of Object.entries(imageNodesData)) {
+      const filePath = (imageNode as any).filePath;
+      const fileName = filePath?.split('/').pop() || (imageNode as any).originalName;
+      let fileFound = false;
+      
+      // Ищем файл в ZIP
+      for (const [storedFileName] of zipImages) {
+        if (storedFileName.includes(fileName) || storedFileName === fileName) {
+          fileFound = true;
+          break;
+        }
+      }
+      
+      if (fileFound) {
+        filteredImages[id] = imageNode;
+      } else {
+        missingNames.push((imageNode as any).originalName || fileName || id);
+        console.warn(`⚠️ Изображение пропущено (файл не найден): ${(imageNode as any).originalName || fileName}`);
+      }
+    }
+    
+    return {
+      filteredImages,
+      missingCount: Object.keys(imageNodesData).length - Object.keys(filteredImages).length,
+      missingNames,
+    };
+  }, []);
+  
+  // Создание нового проекта
   const createNewProject = useCallback(async (
     todoNodesData: Record<string, any>,
     imageNodesData: Record<string, any>,
     projectStateData: any,
-    projectName: string
+    projectName: string,
+    zipImages?: Map<string, Blob>
   ) => {
     const newProjectId = `proj_${Date.now()}`;
     const newProjectName = `${projectName}_${new Date().toISOString().slice(0, 10)}`;
     const now = new Date().toISOString();
+    
+    // Фильтруем изображения
+    const { filteredImages, missingCount } = filterImagesByFiles(imageNodesData, zipImages);
     
     // Создаем страницы
     const newPages: Record<string, any> = {};
@@ -367,9 +417,9 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
       };
     }
     
-    // Создаем изображения
+    // Создаем изображения (только те, для которых есть файлы)
     const newImageNodes: Record<string, any> = {};
-    const imageEntries = Object.entries(imageNodesData);
+    const imageEntries = Object.entries(filteredImages);
     
     for (let i = 0; i < imageEntries.length; i++) {
       const [oldId, image] = imageEntries[i];
@@ -394,7 +444,7 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
       };
     }
     
-    // Группируем ноды по страницам для добавления в канвасы
+    // Группируем ноды по страницам
     const nodesByPage: Map<string, string[]> = new Map();
     
     for (const [id, todo] of Object.entries(newTodoNodes)) {
@@ -409,7 +459,7 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
       nodesByPage.get(pageId)!.push(id);
     }
     
-    // Обновляем канвасы с ID нод
+    // Обновляем канвасы
     for (const [canvasId, canvas] of Object.entries(newCanvases)) {
       const pageId = (canvas as any).pageId;
       const nodeIds = nodesByPage.get(pageId) || [];
@@ -432,19 +482,31 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
       metadata: { createdAt: now, updatedAt: now },
     });
     
-    return { newProjectId, newProjectName, todoNodes: newTodoNodes, imageNodes: newImageNodes, pages: newPages, canvases: newCanvases };
-  }, []);
+    return { 
+      newProjectId, 
+      newProjectName, 
+      todoNodes: newTodoNodes, 
+      imageNodes: newImageNodes, 
+      pages: newPages, 
+      canvases: newCanvases,
+      missingImagesCount: missingCount 
+    };
+  }, [filterImagesByFiles]);
   
-  // Функция для добавления к существующему проекту
+  // Добавление к существующему проекту
   const addToExistingProject = useCallback(async (
     targetProjectId: string,
     todoNodesData: Record<string, any>,
     imageNodesData: Record<string, any>,
-    projectStateData: any
+    projectStateData: any,
+    zipImages?: Map<string, Blob>
   ) => {
     const now = new Date().toISOString();
     const existingProject = await db.projects.get(targetProjectId);
     if (!existingProject) throw new Error('Проект не найден');
+    
+    // Фильтруем изображения
+    const { filteredImages, missingCount } = filterImagesByFiles(imageNodesData, zipImages);
     
     const existingPages = await db.pages.where('projectId').equals(targetProjectId).toArray();
     const existingCanvases = await db.canvases.toArray();
@@ -509,8 +571,8 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
       });
     }
     
-    // Создаем новые изображения
-    const imageEntries = Object.entries(imageNodesData);
+    // Создаем новые изображения (только те, для которых есть файлы)
+    const imageEntries = Object.entries(filteredImages);
     const newImages = [];
     for (let i = 0; i < imageEntries.length; i++) {
       const [oldId, image] = imageEntries[i];
@@ -560,8 +622,8 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
       metadata: { ...existingProject.metadata, updatedAt: now },
     });
     
-    return { addedTodos: newTodos.length, addedImages: newImages.length };
-  }, []);
+    return { addedTodos: newTodos.length, addedImages: newImages.length, missingImagesCount: missingCount };
+  }, [filterImagesByFiles]);
   
   // Завершение импорта
   const completeImport = useCallback(async (result: any, isNewProject: boolean, targetProjectId?: string) => {
@@ -577,6 +639,7 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
     
     const newProjectId = result.newProjectId || targetProjectId;
     const newProjectName = result.newProjectName || (result.project?.name) || 'Импортированный проект';
+    const missingImagesCount = result.missingImagesCount || 0;
     
     if (isNewProject && result.todoNodes) {
       dispatch(importNodes(result.todoNodes));
@@ -597,13 +660,14 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
     
     setProgress(100);
     const addedMessage = result.addedTodos ? `Добавлено задач: ${result.addedTodos}, изображений: ${result.addedImages}` : '';
-    setProgressMessage(`✅ Импорт завершен! ${addedMessage}`);
+    const missingMessage = missingImagesCount > 0 ? `\n\n⚠️ Пропущено изображений: ${missingImagesCount} (файлы не найдены)` : '';
+    setProgressMessage(`✅ Импорт завершен! ${addedMessage}${missingMessage}`);
     
     setTimeout(() => { setProgress(0); setProgressMessage(''); }, 3000);
     
     const message = isNewProject
-      ? `✅ Новый проект "${newProjectName}" создан!\n\n📝 Задач: ${Object.keys(result.todoNodes || {}).length}\n🖼️ Изображений: ${Object.keys(result.imageNodes || {}).length}\n📄 Страниц: ${Object.keys(result.pages || {}).length}\n\n🔄 Страница будет обновлена...`
-      : `✅ Проект обновлен!\n\n${addedMessage}\n\n🔄 Страница будет обновлена...`;
+      ? `✅ Новый проект "${newProjectName}" создан!\n\n📝 Задач: ${Object.keys(result.todoNodes || {}).length}\n🖼️ Изображений: ${Object.keys(result.imageNodes || {}).length}\n📄 Страниц: ${Object.keys(result.pages || {}).length}${missingMessage}\n\n🔄 Страница будет обновлена...`
+      : `✅ Проект обновлен!\n\n${addedMessage}${missingMessage}\n\n🔄 Страница будет обновлена...`;
     
     alert(message);
     
@@ -615,7 +679,7 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
   }, [dispatch, loadStats, modalMode, onClose, onImportComplete, onProjectCreated, refreshPage]);
   
   // Основная функция импорта
-  const performImport = useCallback(async (importData: any) => {
+  const performImport = useCallback(async (importData: any, zipImages?: Map<string, Blob>) => {
     setIsImporting(true);
     setProgress(0);
     setProgressMessage('Обработка данных...');
@@ -635,13 +699,13 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
       
       if (existingProject && Object.keys(todoNodesData).length > 0) {
         setShowConfirmDialog(true);
-        setPendingImportData({ importData, todoNodesData, imageNodesData, projectStateData, projectName, sourceProjectId });
+        setPendingImportData({ importData, todoNodesData, imageNodesData, projectStateData, projectName, sourceProjectId, zipImages });
         setIsImporting(false);
         return;
       } else {
         setProgress(30);
         setProgressMessage(`Создание нового проекта...`);
-        const result = await createNewProject(todoNodesData, imageNodesData, projectStateData, projectName);
+        const result = await createNewProject(todoNodesData, imageNodesData, projectStateData, projectName, zipImages);
         await completeImport(result, true);
       }
     } catch (error) {
@@ -662,8 +726,8 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
     setProgressMessage('Добавление к существующему проекту...');
     
     try {
-      const { todoNodesData, imageNodesData, projectStateData, sourceProjectId } = pendingImportData;
-      const result = await addToExistingProject(sourceProjectId, todoNodesData, imageNodesData, projectStateData);
+      const { todoNodesData, imageNodesData, projectStateData, sourceProjectId, zipImages } = pendingImportData;
+      const result = await addToExistingProject(sourceProjectId, todoNodesData, imageNodesData, projectStateData, zipImages);
       await completeImport(result, false, sourceProjectId);
     } catch (error) {
       console.error('❌ Ошибка добавления:', error);
@@ -682,8 +746,8 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
     setProgressMessage('Создание нового проекта...');
     
     try {
-      const { todoNodesData, imageNodesData, projectStateData, projectName } = pendingImportData;
-      const result = await createNewProject(todoNodesData, imageNodesData, projectStateData, projectName);
+      const { todoNodesData, imageNodesData, projectStateData, projectName, zipImages } = pendingImportData;
+      const result = await createNewProject(todoNodesData, imageNodesData, projectStateData, projectName, zipImages);
       await completeImport(result, true);
     } catch (error) {
       console.error('❌ Ошибка создания проекта:', error);
@@ -709,15 +773,35 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
     
     try {
       let projectData: any;
+      let zipImages: Map<string, Blob> | undefined;
+      
       if (file.name.endsWith('.canvas')) {
         const zip = await JSZip.loadAsync(file);
         const manifestFile = zip.file('project.json');
         if (!manifestFile) throw new Error('project.json не найден в архиве');
         projectData = JSON.parse(await manifestFile.async('string'));
+        
+        // Извлекаем изображения из ZIP
+        const imagesFolder = zip.folder('images');
+        if (imagesFolder) {
+          zipImages = new Map();
+          const imageFiles = Object.values(imagesFolder.files).filter(f => !f.dir);
+          
+          for (const imageFile of imageFiles) {
+            try {
+              const blob = await imageFile.async('blob');
+              zipImages.set(imageFile.name, blob);
+            } catch (err) {
+              console.warn(`Не удалось прочитать файл ${imageFile.name}:`, err);
+            }
+          }
+          console.log(`📦 Найдено изображений в ZIP: ${zipImages.size}`);
+        }
       } else {
         projectData = JSON.parse(await file.text());
       }
-      await performImport(projectData);
+      
+      await performImport(projectData, zipImages);
     } catch (error) {
       console.error('❌ Ошибка чтения файла:', error);
       alert(`❌ Ошибка при чтении файла:\n${error instanceof Error ? error.message : 'Неизвестная ошибка'}`);
