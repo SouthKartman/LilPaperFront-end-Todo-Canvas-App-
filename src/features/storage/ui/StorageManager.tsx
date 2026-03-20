@@ -87,6 +87,12 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingImportData, setPendingImportData] = useState<any>(null);
 
+  const refreshPage = useCallback(() => {
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
+  }, []);
+
   const loadStats = useCallback(async () => {
     setIsRefreshing(true);
     try {
@@ -274,199 +280,6 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
 
   // ============ ИМПОРТ ============
   
-  // Функция для добавления заметок к существующему проекту
-  const addToExistingProject = useCallback(async (
-    targetProjectId: string,
-    todoNodesData: Record<string, any>,
-    imageNodesData: Record<string, any>,
-    projectStateData: any
-  ) => {
-    const now = new Date().toISOString();
-    
-    // Получаем текущие данные проекта
-    const existingProject = await db.projects.get(targetProjectId);
-    if (!existingProject) {
-      throw new Error('Проект не найден');
-    }
-    
-    // Получаем существующие страницы и канвасы
-    const existingPages = await db.pages.where('projectId').equals(targetProjectId).toArray();
-    const existingCanvases = await db.canvases.toArray();
-    
-    // Создаем карту существующих страниц
-    const existingPagesMap = new Map();
-    existingPages.forEach(page => {
-      existingPagesMap.set(page.name, page);
-    });
-    
-    // Создаем карты для новых ID
-    const pageIdMap = new Map<string, string>();
-    const todoIdMap = new Map<string, string>();
-    const imageIdMap = new Map<string, string>();
-    
-    // Определяем смещение для позиций (чтобы новые ноды не накладывались)
-    const existingTodos = await db.todos.where('projectId').equals(targetProjectId).toArray();
-    const maxX = Math.max(...existingTodos.map(t => t.position?.x || 0), 0);
-    const maxY = Math.max(...existingTodos.map(t => t.position?.y || 0), 0);
-    const offsetX = maxX + 300;
-    const offsetY = maxY + 150;
-    
-    // Создаем новые страницы (если их нет)
-    const oldPages = projectStateData.pages || {};
-    let pageIndex = existingPages.length;
-    const newPagesList: any[] = [];
-    
-    for (const [oldPageId, page] of Object.entries(oldPages)) {
-      const pageName = (page as any).name || `Страница ${pageIndex + 1}`;
-      
-      // Проверяем, есть ли уже страница с таким именем
-      let newPageId = existingPagesMap.get(pageName)?.id;
-      
-      if (!newPageId) {
-        // Создаем новую страницу
-        newPageId = `${targetProjectId}_page_${Date.now()}_${pageIndex}`;
-        pageIdMap.set(oldPageId, newPageId);
-        
-        const newPage = {
-          id: newPageId,
-          name: pageName,
-          projectId: targetProjectId,
-          canvasId: `${targetProjectId}_canvas_${Date.now()}_${pageIndex}`,
-          metadata: {
-            createdAt: now,
-            updatedAt: now,
-            order: pageIndex,
-          },
-        };
-        
-        await db.pages.put(newPage);
-        newPagesList.push(newPage);
-        pageIndex++;
-      } else {
-        pageIdMap.set(oldPageId, newPageId);
-      }
-    }
-    
-    // Создаем новые задачи
-    const todoEntries = Object.entries(todoNodesData);
-    const newTodos = [];
-    
-    for (let i = 0; i < todoEntries.length; i++) {
-      const [oldId, todo] = todoEntries[i];
-      const newId = `${targetProjectId}_todo_${Date.now()}_${i}`;
-      todoIdMap.set(oldId, newId);
-      
-      const oldPageId = (todo as any).pageId;
-      const newPageId = pageIdMap.get(oldPageId) || existingPages[0]?.id || null;
-      
-      newTodos.push({
-        id: newId,
-        title: (todo as any).title || 'Новая задача',
-        description: (todo as any).description || '',
-        status: (todo as any).status || 'todo',
-        priority: (todo as any).priority || 'medium',
-        createdAt: now,
-        updatedAt: now,
-        tags: (todo as any).tags || [],
-        position: {
-          x: ((todo as any).position?.x || 100) + offsetX,
-          y: ((todo as any).position?.y || 100) + offsetY,
-        },
-        size: (todo as any).size || { width: 280, height: 150 },
-        pageId: newPageId,
-        projectId: targetProjectId,
-      });
-    }
-    
-    // Создаем новые изображения
-    const imageEntries = Object.entries(imageNodesData);
-    const newImages = [];
-    
-    for (let i = 0; i < imageEntries.length; i++) {
-      const [oldId, image] = imageEntries[i];
-      const newId = `${targetProjectId}_img_${Date.now()}_${i}`;
-      imageIdMap.set(oldId, newId);
-      
-      const oldPageId = (image as any).pageId;
-      const newPageId = pageIdMap.get(oldPageId) || existingPages[0]?.id || null;
-      
-      newImages.push({
-        id: newId,
-        type: 'image',
-        position: {
-          x: ((image as any).position?.x || 100) + offsetX,
-          y: ((image as any).position?.y || 100) + offsetY,
-        },
-        size: (image as any).size || { width: 300, height: 200 },
-        zIndex: (image as any).zIndex || 1000,
-        filePath: (image as any).filePath || '',
-        originalName: (image as any).originalName || 'image.jpg',
-        fileSize: (image as any).fileSize || 0,
-        mimeType: (image as any).mimeType || 'image/jpeg',
-        createdAt: now,
-        updatedAt: now,
-        pageId: newPageId,
-        projectId: targetProjectId,
-      });
-    }
-    
-    // Сохраняем новые задачи
-    if (newTodos.length > 0) {
-      await db.todos.bulkPut(newTodos);
-    }
-    
-    // Сохраняем новые изображения
-    if (newImages.length > 0) {
-      await db.images.bulkPut(newImages);
-    }
-    
-    // Обновляем канвасы (добавляем новые ноды)
-    const existingCanvasesMap = new Map();
-    existingCanvases.forEach(canvas => {
-      existingCanvasesMap.set(canvas.pageId, canvas);
-    });
-    
-    for (const [oldCanvasId, canvas] of Object.entries(projectStateData.canvases || {})) {
-      const pageId = pageIdMap.get((canvas as any).pageId);
-      if (pageId) {
-        const existingCanvas = existingCanvasesMap.get(pageId);
-        if (existingCanvas) {
-          const oldNodeIds = (canvas as any).nodes || [];
-          const newNodeIds = [];
-          
-          for (const oldId of oldNodeIds) {
-            if (todoIdMap.has(oldId)) {
-              newNodeIds.push(todoIdMap.get(oldId)!);
-            } else if (imageIdMap.has(oldId)) {
-              newNodeIds.push(imageIdMap.get(oldId)!);
-            }
-          }
-          
-          if (newNodeIds.length > 0) {
-            await db.canvases.update(existingCanvas.id, {
-              nodes: [...(existingCanvas.nodes || []), ...newNodeIds],
-              updatedAt: now,
-            });
-          }
-        }
-      }
-    }
-    
-    // Обновляем проект
-    await db.projects.update(targetProjectId, {
-      updatedAt: now,
-      metadata: {
-        ...existingProject.metadata,
-        updatedAt: now,
-      },
-    });
-    
-    return {
-      addedTodos: newTodos.length,
-      addedImages: newImages.length,
-    };
-  }, []);
-  
   // Функция для создания нового проекта
   const createNewProject = useCallback(async (
     todoNodesData: Record<string, any>,
@@ -505,17 +318,17 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
     // Создаем канвасы
     const newCanvases: Record<string, any> = {};
     const oldCanvases = projectStateData.canvases || {};
-    const oldCanvasesList = Object.values(oldCanvases);
+    const oldCanvasList = Object.values(oldCanvases);
     
     for (let i = 0; i < pageIndex; i++) {
       const newPageId = Object.keys(newPages)[i];
       const newCanvasId = `${newProjectId}_canvas_${Date.now()}_${i}`;
-      const oldCanvas = oldCanvasesList[i] as any;
+      const oldCanvas = oldCanvasList[i] as any;
       
       newCanvases[newCanvasId] = {
         id: newCanvasId,
         pageId: newPageId,
-        nodes: oldCanvas?.nodes || [],
+        nodes: [],
         viewport: oldCanvas?.viewport || { x: 0, y: 0, zoom: 1 },
         background: oldCanvas?.background || '#f0f0f0',
         grid: oldCanvas?.grid || { size: 20, color: '#e0e0e0', isVisible: true },
@@ -581,22 +394,33 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
       };
     }
     
+    // Группируем ноды по страницам для добавления в канвасы
+    const nodesByPage: Map<string, string[]> = new Map();
+    
+    for (const [id, todo] of Object.entries(newTodoNodes)) {
+      const pageId = (todo as any).pageId;
+      if (!nodesByPage.has(pageId)) nodesByPage.set(pageId, []);
+      nodesByPage.get(pageId)!.push(id);
+    }
+    
+    for (const [id, image] of Object.entries(newImageNodes)) {
+      const pageId = (image as any).pageId;
+      if (!nodesByPage.has(pageId)) nodesByPage.set(pageId, []);
+      nodesByPage.get(pageId)!.push(id);
+    }
+    
+    // Обновляем канвасы с ID нод
+    for (const [canvasId, canvas] of Object.entries(newCanvases)) {
+      const pageId = (canvas as any).pageId;
+      const nodeIds = nodesByPage.get(pageId) || [];
+      newCanvases[canvasId] = { ...canvas, nodes: nodeIds };
+    }
+    
     // Сохраняем в базу
-    for (const page of Object.values(newPages)) {
-      await db.pages.put(page);
-    }
-    
-    for (const canvas of Object.values(newCanvases)) {
-      await db.canvases.put(canvas);
-    }
-    
-    if (Object.keys(newTodoNodes).length > 0) {
-      await db.todos.bulkPut(Object.values(newTodoNodes));
-    }
-    
-    if (Object.keys(newImageNodes).length > 0) {
-      await db.images.bulkPut(Object.values(newImageNodes));
-    }
+    for (const page of Object.values(newPages)) await db.pages.put(page);
+    for (const canvas of Object.values(newCanvases)) await db.canvases.put(canvas);
+    if (Object.keys(newTodoNodes).length > 0) await db.todos.bulkPut(Object.values(newTodoNodes));
+    if (Object.keys(newImageNodes).length > 0) await db.images.bulkPut(Object.values(newImageNodes));
     
     await db.projects.put({
       id: newProjectId,
@@ -605,20 +429,138 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
       currentPageId: Object.keys(newPages)[0] || null,
       createdAt: now,
       updatedAt: now,
-      metadata: {
-        createdAt: now,
-        updatedAt: now,
-      },
+      metadata: { createdAt: now, updatedAt: now },
     });
     
-    return {
-      newProjectId,
-      newProjectName,
-      todoNodes: newTodoNodes,
-      imageNodes: newImageNodes,
-      pages: newPages,
-      canvases: newCanvases,
-    };
+    return { newProjectId, newProjectName, todoNodes: newTodoNodes, imageNodes: newImageNodes, pages: newPages, canvases: newCanvases };
+  }, []);
+  
+  // Функция для добавления к существующему проекту
+  const addToExistingProject = useCallback(async (
+    targetProjectId: string,
+    todoNodesData: Record<string, any>,
+    imageNodesData: Record<string, any>,
+    projectStateData: any
+  ) => {
+    const now = new Date().toISOString();
+    const existingProject = await db.projects.get(targetProjectId);
+    if (!existingProject) throw new Error('Проект не найден');
+    
+    const existingPages = await db.pages.where('projectId').equals(targetProjectId).toArray();
+    const existingCanvases = await db.canvases.toArray();
+    const existingPagesMap = new Map(existingPages.map(p => [p.name, p]));
+    
+    const pageIdMap = new Map<string, string>();
+    const todoIdMap = new Map<string, string>();
+    const imageIdMap = new Map<string, string>();
+    
+    const existingTodos = await db.todos.where('projectId').equals(targetProjectId).toArray();
+    const maxX = Math.max(...existingTodos.map(t => t.position?.x || 0), 0);
+    const maxY = Math.max(...existingTodos.map(t => t.position?.y || 0), 0);
+    const offsetX = maxX + 300;
+    const offsetY = maxY + 150;
+    
+    const oldPages = projectStateData.pages || {};
+    let pageIndex = existingPages.length;
+    
+    for (const [oldPageId, page] of Object.entries(oldPages)) {
+      const pageName = (page as any).name || `Страница ${pageIndex + 1}`;
+      let newPageId = existingPagesMap.get(pageName)?.id;
+      
+      if (!newPageId) {
+        const newCanvasId = `${targetProjectId}_canvas_${Date.now()}_${pageIndex}`;
+        newPageId = `${targetProjectId}_page_${Date.now()}_${pageIndex}`;
+        pageIdMap.set(oldPageId, newPageId);
+        
+        await db.pages.put({
+          id: newPageId, name: pageName, projectId: targetProjectId, canvasId: newCanvasId,
+          metadata: { createdAt: now, updatedAt: now, order: pageIndex },
+        });
+        
+        await db.canvases.put({
+          id: newCanvasId, pageId: newPageId, nodes: [],
+          viewport: { x: 0, y: 0, zoom: 1 }, background: '#f0f0f0',
+          grid: { size: 20, color: '#e0e0e0', isVisible: true },
+          metadata: { createdAt: now, updatedAt: now },
+        });
+        pageIndex++;
+      } else {
+        pageIdMap.set(oldPageId, newPageId);
+      }
+    }
+    
+    // Создаем новые задачи
+    const todoEntries = Object.entries(todoNodesData);
+    const newTodos = [];
+    for (let i = 0; i < todoEntries.length; i++) {
+      const [oldId, todo] = todoEntries[i];
+      const newId = `${targetProjectId}_todo_${Date.now()}_${i}`;
+      todoIdMap.set(oldId, newId);
+      const oldPageId = (todo as any).pageId;
+      const newPageId = pageIdMap.get(oldPageId) || existingPages[0]?.id || null;
+      
+      newTodos.push({
+        id: newId, title: (todo as any).title || 'Новая задача',
+        description: (todo as any).description || '', status: (todo as any).status || 'todo',
+        priority: (todo as any).priority || 'medium', createdAt: now, updatedAt: now,
+        tags: (todo as any).tags || [],
+        position: { x: ((todo as any).position?.x || 100) + offsetX, y: ((todo as any).position?.y || 100) + offsetY },
+        size: (todo as any).size || { width: 280, height: 150 }, pageId: newPageId, projectId: targetProjectId,
+      });
+    }
+    
+    // Создаем новые изображения
+    const imageEntries = Object.entries(imageNodesData);
+    const newImages = [];
+    for (let i = 0; i < imageEntries.length; i++) {
+      const [oldId, image] = imageEntries[i];
+      const newId = `${targetProjectId}_img_${Date.now()}_${i}`;
+      imageIdMap.set(oldId, newId);
+      const oldPageId = (image as any).pageId;
+      const newPageId = pageIdMap.get(oldPageId) || existingPages[0]?.id || null;
+      
+      newImages.push({
+        id: newId, type: 'image',
+        position: { x: ((image as any).position?.x || 100) + offsetX, y: ((image as any).position?.y || 100) + offsetY },
+        size: (image as any).size || { width: 300, height: 200 }, zIndex: (image as any).zIndex || 1000,
+        filePath: (image as any).filePath || '', originalName: (image as any).originalName || 'image.jpg',
+        fileSize: (image as any).fileSize || 0, mimeType: (image as any).mimeType || 'image/jpeg',
+        createdAt: now, updatedAt: now, pageId: newPageId, projectId: targetProjectId,
+      });
+    }
+    
+    if (newTodos.length > 0) await db.todos.bulkPut(newTodos);
+    if (newImages.length > 0) await db.images.bulkPut(newImages);
+    
+    // Группируем новые ноды по страницам
+    const nodesByPage: Map<string, string[]> = new Map();
+    for (const todo of newTodos) {
+      if (!nodesByPage.has(todo.pageId)) nodesByPage.set(todo.pageId, []);
+      nodesByPage.get(todo.pageId)!.push(todo.id);
+    }
+    for (const image of newImages) {
+      if (!nodesByPage.has(image.pageId)) nodesByPage.set(image.pageId, []);
+      nodesByPage.get(image.pageId)!.push(image.id);
+    }
+    
+    // Обновляем канвасы
+    const existingCanvasesMap = new Map(existingCanvases.map(c => [c.pageId, c]));
+    for (const [pageId, nodeIds] of nodesByPage) {
+      const existingCanvas = existingCanvasesMap.get(pageId);
+      if (existingCanvas) {
+        await db.canvases.update(existingCanvas.id, {
+          nodes: [...(existingCanvas.nodes || []), ...nodeIds],
+          updatedAt: now,
+        });
+      }
+    }
+    
+    await db.projects.update(targetProjectId, {
+      updatedAt: now,
+      metadata: { ...existingProject.metadata, updatedAt: now },
+    });
+    
+    return { addedTodos: newTodos.length, addedImages: newImages.length };
   }, []);
   
   // Завершение импорта
@@ -626,24 +568,12 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
     setProgress(80);
     setProgressMessage('Обновление состояния...');
     
-    // Обновляем Redux
     const allProjects = await db.projects.toArray();
-    const projectsMap = allProjects.reduce((acc, p) => {
-      acc[p.id] = p;
-      return acc;
-    }, {} as Record<string, any>);
-    
+    const projectsMap = allProjects.reduce((acc, p) => { acc[p.id] = p; return acc; }, {} as Record<string, any>);
     const allPages = await db.pages.toArray();
-    const pagesMap = allPages.reduce((acc, p) => {
-      acc[p.id] = p;
-      return acc;
-    }, {} as Record<string, any>);
-    
+    const pagesMap = allPages.reduce((acc, p) => { acc[p.id] = p; return acc; }, {} as Record<string, any>);
     const allCanvases = await db.canvases.toArray();
-    const canvasesMap = allCanvases.reduce((acc, c) => {
-      acc[c.id] = c;
-      return acc;
-    }, {} as Record<string, any>);
+    const canvasesMap = allCanvases.reduce((acc, c) => { acc[c.id] = c; return acc; }, {} as Record<string, any>);
     
     const newProjectId = result.newProjectId || targetProjectId;
     const newProjectName = result.newProjectName || (result.project?.name) || 'Импортированный проект';
@@ -661,9 +591,7 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
       projectOrder: allProjects.map(p => p.id),
     }));
     
-    if (isNewProject) {
-      dispatch(setCurrentProject(newProjectId));
-    }
+    if (isNewProject) dispatch(setCurrentProject(newProjectId));
     
     await loadStats();
     
@@ -671,26 +599,20 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
     const addedMessage = result.addedTodos ? `Добавлено задач: ${result.addedTodos}, изображений: ${result.addedImages}` : '';
     setProgressMessage(`✅ Импорт завершен! ${addedMessage}`);
     
-    setTimeout(() => {
-      setProgress(0);
-      setProgressMessage('');
-    }, 3000);
+    setTimeout(() => { setProgress(0); setProgressMessage(''); }, 3000);
     
     const message = isNewProject
-      ? `✅ Новый проект "${newProjectName}" создан!\n\n📝 Задач: ${Object.keys(result.todoNodes || {}).length}\n🖼️ Изображений: ${Object.keys(result.imageNodes || {}).length}\n📄 Страниц: ${Object.keys(result.pages || {}).length}`
-      : `✅ Проект обновлен!\n\n${addedMessage}`;
+      ? `✅ Новый проект "${newProjectName}" создан!\n\n📝 Задач: ${Object.keys(result.todoNodes || {}).length}\n🖼️ Изображений: ${Object.keys(result.imageNodes || {}).length}\n📄 Страниц: ${Object.keys(result.pages || {}).length}\n\n🔄 Страница будет обновлена...`
+      : `✅ Проект обновлен!\n\n${addedMessage}\n\n🔄 Страница будет обновлена...`;
     
     alert(message);
     
     if (modalMode && onClose) onClose();
     if (onImportComplete) onImportComplete();
+    if (isNewProject && onProjectCreated) onProjectCreated(newProjectId);
     
-    // Вызываем колбэк для родительского компонента о создании нового проекта
-    if (isNewProject && onProjectCreated) {
-      onProjectCreated(newProjectId);
-    }
-    
-  }, [dispatch, loadStats, modalMode, onClose, onImportComplete, onProjectCreated]);
+    refreshPage();
+  }, [dispatch, loadStats, modalMode, onClose, onImportComplete, onProjectCreated, refreshPage]);
   
   // Основная функция импорта
   const performImport = useCallback(async (importData: any) => {
@@ -699,51 +621,41 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
     setProgressMessage('Обработка данных...');
     
     try {
-      // Извлекаем данные
       const todoNodesData = importData.data?.todoNodes || importData.todoNodes || {};
       const imageNodesData = importData.data?.imageNodes || importData.imageNodes || {};
       const projectStateData = importData.data?.project || importData.project || {};
       const projectName = projectStateData.projects?.[projectStateData.currentProjectId]?.name || 
-                          importData.stats?.projectName || 
-                          'Импортированный проект';
+                          importData.stats?.projectName || 'Импортированный проект';
       const sourceProjectId = importData.project?.id || projectStateData.currentProjectId;
       
       setProgress(20);
       setProgressMessage(`Анализ данных: ${Object.keys(todoNodesData).length} задач, ${Object.keys(imageNodesData).length} изображений`);
       
-      // Проверяем, существует ли проект с таким ID
       const existingProject = sourceProjectId ? await db.projects.get(sourceProjectId) : null;
       
       if (existingProject && Object.keys(todoNodesData).length > 0) {
-        // Проект существует, спрашиваем пользователя
         setShowConfirmDialog(true);
         setPendingImportData({ importData, todoNodesData, imageNodesData, projectStateData, projectName, sourceProjectId });
         setIsImporting(false);
         return;
       } else {
-        // Создаем новый проект
         setProgress(30);
         setProgressMessage(`Создание нового проекта...`);
         const result = await createNewProject(todoNodesData, imageNodesData, projectStateData, projectName);
         await completeImport(result, true);
       }
-      
     } catch (error) {
       console.error('❌ Ошибка импорта:', error);
       alert(`❌ Ошибка при импорте:\n${error instanceof Error ? error.message : 'Неизвестная ошибка'}`);
       setProgress(0);
       setProgressMessage('');
     } finally {
-      if (!showConfirmDialog) {
-        setIsImporting(false);
-      }
+      if (!showConfirmDialog) setIsImporting(false);
     }
   }, [createNewProject, completeImport]);
   
-  // Обработчик подтверждения добавления к существующему проекту
   const handleConfirmAddToExisting = useCallback(async () => {
     if (!pendingImportData) return;
-    
     setShowConfirmDialog(false);
     setIsImporting(true);
     setProgress(0);
@@ -751,16 +663,8 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
     
     try {
       const { todoNodesData, imageNodesData, projectStateData, sourceProjectId } = pendingImportData;
-      
-      const result = await addToExistingProject(
-        sourceProjectId,
-        todoNodesData,
-        imageNodesData,
-        projectStateData
-      );
-      
+      const result = await addToExistingProject(sourceProjectId, todoNodesData, imageNodesData, projectStateData);
       await completeImport(result, false, sourceProjectId);
-      
     } catch (error) {
       console.error('❌ Ошибка добавления:', error);
       alert(`❌ Ошибка при добавлении:\n${error instanceof Error ? error.message : 'Неизвестная ошибка'}`);
@@ -772,7 +676,6 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
   
   const handleConfirmCreateNew = useCallback(async () => {
     if (!pendingImportData) return;
-    
     setShowConfirmDialog(false);
     setIsImporting(true);
     setProgress(0);
@@ -780,11 +683,8 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
     
     try {
       const { todoNodesData, imageNodesData, projectStateData, projectName } = pendingImportData;
-      
       const result = await createNewProject(todoNodesData, imageNodesData, projectStateData, projectName);
-      
       await completeImport(result, true);
-      
     } catch (error) {
       console.error('❌ Ошибка создания проекта:', error);
       alert(`❌ Ошибка при создании проекта:\n${error instanceof Error ? error.message : 'Неизвестная ошибка'}`);
@@ -794,7 +694,6 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
     }
   }, [pendingImportData, createNewProject, completeImport]);
   
-  // Обработчик выбора файла
   const handleFileSelect = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -810,23 +709,15 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
     
     try {
       let projectData: any;
-      
       if (file.name.endsWith('.canvas')) {
         const zip = await JSZip.loadAsync(file);
         const manifestFile = zip.file('project.json');
-        if (!manifestFile) {
-          throw new Error('project.json не найден в архиве');
-        }
-        const manifestContent = await manifestFile.async('string');
-        projectData = JSON.parse(manifestContent);
+        if (!manifestFile) throw new Error('project.json не найден в архиве');
+        projectData = JSON.parse(await manifestFile.async('string'));
       } else {
-        const text = await file.text();
-        projectData = JSON.parse(text);
+        projectData = JSON.parse(await file.text());
       }
-      
-      // Начинаем импорт
       await performImport(projectData);
-      
     } catch (error) {
       console.error('❌ Ошибка чтения файла:', error);
       alert(`❌ Ошибка при чтении файла:\n${error instanceof Error ? error.message : 'Неизвестная ошибка'}`);
@@ -841,7 +732,6 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
     try {
       const successTodos = TodoStorage.saveTodos(todoNodes);
       const successImages = ImageStorage.saveImages(imageNodes);
-      
       const projectState = {
         currentProjectId: project.currentProjectId,
         projects: project.projects || {},
@@ -849,17 +739,11 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
         canvases: project.canvases || {},
       };
       const successProject = TodoStorage.saveProjectState(projectState);
-      
       await TodoIndexedDBStorage.saveTodos(todoNodes);
       await ImageIndexedDBStorage.saveImages(imageNodes);
       await ProjectIndexedDBStorage.saveProject(projectState);
-      
       await loadStats();
-      
-      const savedCount = 
-        (successTodos ? Object.keys(todoNodes).length : 0) +
-        (successImages ? Object.keys(imageNodes).length : 0);
-      
+      const savedCount = (successTodos ? Object.keys(todoNodes).length : 0) + (successImages ? Object.keys(imageNodes).length : 0);
       alert(`✅ Сохранено в оба хранилища: ${savedCount} элементов`);
     } catch (error) {
       console.error('❌ Ошибка сохранения:', error);
@@ -870,25 +754,16 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
   }, [todoNodes, imageNodes, project, loadStats]);
 
   const handleMigrate = useCallback(async () => {
-    if (!window.confirm('Перенести данные из localStorage в IndexedDB? Старые данные останутся как резервная копия.')) {
-      return;
-    }
+    if (!window.confirm('Перенести данные из localStorage в IndexedDB? Старые данные останутся как резервная копия.')) return;
     setIsSaving(true);
     try {
       const localTodos = TodoStorage.loadTodos();
       const localImages = ImageStorage.loadImages();
       const localProjectStr = localStorage.getItem('project_state');
       const localProject = localProjectStr ? JSON.parse(localProjectStr) : null;
-      
-      if (Object.keys(localTodos).length > 0) {
-        await TodoIndexedDBStorage.saveTodos(localTodos);
-      }
-      if (Object.keys(localImages).length > 0) {
-        await ImageIndexedDBStorage.saveImages(localImages);
-      }
-      if (localProject) {
-        await ProjectIndexedDBStorage.saveProject(localProject);
-      }
+      if (Object.keys(localTodos).length > 0) await TodoIndexedDBStorage.saveTodos(localTodos);
+      if (Object.keys(localImages).length > 0) await ImageIndexedDBStorage.saveImages(localImages);
+      if (localProject) await ProjectIndexedDBStorage.saveProject(localProject);
       await loadStats();
       alert(`✅ Миграция завершена! Перенесено: ${Object.keys(localTodos).length} задач, ${Object.keys(localImages).length} изображений`);
     } catch (error) {
@@ -900,19 +775,9 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
   }, [loadStats]);
 
   const handleClearIndexedDB = useCallback(async () => {
-    if (!window.confirm('Очистить IndexedDB? Это действие нельзя отменить.')) {
-      return;
-    }
+    if (!window.confirm('Очистить IndexedDB? Это действие нельзя отменить.')) return;
     try {
-      await Promise.all([
-        db.todos.clear(),
-        db.images.clear(),
-        db.projects.clear(),
-        db.pages.clear(),
-        db.canvases.clear(),
-        db.fileStorage.clear(),
-        db.fileMetadata.clear(),
-      ]);
+      await Promise.all([db.todos.clear(), db.images.clear(), db.projects.clear(), db.pages.clear(), db.canvases.clear(), db.fileStorage.clear(), db.fileMetadata.clear()]);
       await loadStats();
       alert('✅ IndexedDB очищена');
     } catch (error) {
@@ -940,18 +805,13 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
 
   const formatDate = (date: Date | null) => {
     if (!date) return 'Никогда';
-    return date.toLocaleTimeString('ru-RU', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
+    return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   };
 
   const containerClass = modalMode ? 'storage-manager storage-manager-modal' : 'storage-manager';
 
   return (
     <div className={containerClass}>
-      {/* Диалог подтверждения */}
       {showConfirmDialog && (
         <div className="confirm-dialog-overlay">
           <div className="confirm-dialog">
@@ -967,14 +827,7 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
                 <span className="btn-desc">Будет создан отдельный проект</span>
               </button>
             </div>
-            <button 
-              className="confirm-cancel"
-              onClick={() => {
-                setShowConfirmDialog(false);
-                setPendingImportData(null);
-                setIsImporting(false);
-              }}
-            >
+            <button className="confirm-cancel" onClick={() => { setShowConfirmDialog(false); setPendingImportData(null); setIsImporting(false); }}>
               Отмена
             </button>
           </div>
@@ -984,12 +837,7 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
       <div className="storage-header">
         <h3>💾 Управление хранилищем</h3>
         <div className="storage-header-actions">
-          <button 
-            onClick={loadStats} 
-            className="storage-btn storage-btn-refresh"
-            disabled={isRefreshing}
-            title="Обновить статистику"
-          >
+          <button onClick={loadStats} className="storage-btn storage-btn-refresh" disabled={isRefreshing} title="Обновить статистику">
             {isRefreshing ? '🔄' : '↻'}
           </button>
         </div>
@@ -997,9 +845,7 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
       
       {(isExporting || isImporting) && progress > 0 && (
         <div className="progress-container">
-          <div className="progress-bar">
-            <div className="progress-fill" style={{ width: `${progress}%` }} />
-          </div>
+          <div className="progress-bar"><div className="progress-fill" style={{ width: `${progress}%` }} /></div>
           <div className="progress-message">{progressMessage}</div>
           <div className="progress-percent">{progress}%</div>
         </div>
@@ -1007,10 +853,7 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
       
       <div className="storage-comparison">
         <div className={`storage-section ${activeStorage === 'localStorage' ? 'active' : ''}`}>
-          <div className="storage-section-header">
-            <h4>📦 localStorage</h4>
-            <span className="storage-badge">Старое хранилище</span>
-          </div>
+          <div className="storage-section-header"><h4>📦 localStorage</h4><span className="storage-badge">Старое хранилище</span></div>
           <div className="storage-stats">
             <div className="stat-item"><span className="stat-label">📝 Задачи:</span><span className="stat-value">{stats.localStorage.todos}</span></div>
             <div className="stat-item"><span className="stat-label">🖼️ Изображения:</span><span className="stat-value">{stats.localStorage.images}</span></div>
@@ -1021,10 +864,7 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
         </div>
 
         <div className={`storage-section ${activeStorage === 'indexedDB' ? 'active' : ''}`}>
-          <div className="storage-section-header">
-            <h4>🗄️ IndexedDB</h4>
-            <span className="storage-badge storage-badge-new">Новое хранилище</span>
-          </div>
+          <div className="storage-section-header"><h4>🗄️ IndexedDB</h4><span className="storage-badge storage-badge-new">Новое хранилище</span></div>
           <div className="storage-stats">
             <div className="stat-item"><span className="stat-label">📝 Задачи:</span><span className="stat-value">{stats.indexedDB.todos}</span></div>
             <div className="stat-item"><span className="stat-label">🖼️ Изображения:</span><span className="stat-value">{stats.indexedDB.images}</span></div>
@@ -1077,94 +917,32 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
 
       <style>{`
         .confirm-dialog-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0, 0, 0, 0.5);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 2000;
+          position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+          background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 2000;
         }
-        
         .confirm-dialog {
-          background: white;
-          border-radius: 16px;
-          padding: 24px;
-          max-width: 450px;
-          width: 90%;
-          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+          background: white; border-radius: 16px; padding: 24px; max-width: 450px; width: 90%;
+          box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         }
-        
-        .confirm-dialog h3 {
-          margin: 0 0 12px 0;
-          font-size: 20px;
-          color: #333;
-        }
-        
-        .confirm-dialog p {
-          margin: 0 0 20px 0;
-          color: #666;
-        }
-        
-        .confirm-dialog-buttons {
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-          margin-bottom: 16px;
-        }
-        
+        .confirm-dialog h3 { margin: 0 0 12px 0; font-size: 20px; color: #333; }
+        .confirm-dialog p { margin: 0 0 20px 0; color: #666; }
+        .confirm-dialog-buttons { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
         .confirm-btn {
-          padding: 14px 16px;
-          border: 2px solid #e0e0e0;
-          border-radius: 12px;
-          background: white;
-          cursor: pointer;
-          text-align: left;
-          font-size: 16px;
-          font-weight: 600;
-          transition: all 0.2s;
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
+          padding: 14px 16px; border: 2px solid #e0e0e0; border-radius: 12px; background: white;
+          cursor: pointer; text-align: left; font-size: 16px; font-weight: 600;
+          transition: all 0.2s; display: flex; flex-direction: column; gap: 4px;
         }
-        
-        .confirm-btn:hover {
-          border-color: #667eea;
-          background: #f8f9ff;
-          transform: translateY(-2px);
-        }
-        
-        .confirm-btn.add {
-          border-left: 4px solid #4caf50;
-        }
-        
-        .confirm-btn.new {
-          border-left: 4px solid #2196f3;
-        }
-        
-        .btn-desc {
-          font-size: 12px;
-          font-weight: normal;
-          color: #999;
-        }
-        
-        .confirm-cancel {
-          width: 100%;
-          padding: 10px;
-          border: 1px solid #e0e0e0;
-          border-radius: 8px;
-          background: white;
-          cursor: pointer;
-          font-size: 14px;
-          transition: all 0.2s;
-        }
-        
-        .confirm-cancel:hover {
-          background: #f5f5f5;
-        }
+        .confirm-btn:hover { border-color: #667eea; background: #f8f9ff; transform: translateY(-2px); }
+        .confirm-btn.add { border-left: 4px solid #4caf50; }
+        .confirm-btn.new { border-left: 4px solid #2196f3; }
+        .btn-desc { font-size: 12px; font-weight: normal; color: #999; }
+        .confirm-cancel { width: 100%; padding: 10px; border: 1px solid #e0e0e0; border-radius: 8px; background: white; cursor: pointer; font-size: 14px; }
+        .confirm-cancel:hover { background: #f5f5f5; }
+        .progress-container { margin: 16px 0; padding: 12px; background: #f8f9fa; border-radius: 8px; }
+        .progress-bar { width: 100%; height: 8px; background: #e9ecef; border-radius: 4px; overflow: hidden; }
+        .progress-fill { height: 100%; background: #667eea; transition: width 0.3s ease; border-radius: 4px; }
+        .progress-message { font-size: 12px; color: #666; margin-top: 8px; }
+        .progress-percent { font-size: 12px; font-weight: 500; color: #667eea; margin-top: 4px; }
       `}</style>
     </div>
   );
