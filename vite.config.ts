@@ -10,14 +10,12 @@ export default defineConfig({
     react(),
     svgr(),
     VitePWA({
-      registerType: 'autoUpdate',
       strategies: 'injectManifest',
       srcDir: 'src/service-worker',
-      filename: 'sw.ts', 
+      filename: 'sw.ts',
+      registerType: 'autoUpdate',
+      injectRegister: 'auto',
       includeAssets: ['Logo.png', 'favicon.ico'],
-      injectManifest: {
-          swDest: 'dist/sw.js',      // куда попадет результат после сборки
-      },
       manifest: {
         name: 'Lil Papper',
         short_name: 'LilPapper',
@@ -40,18 +38,18 @@ export default defineConfig({
           },
         ],
       },
-      // Используем стратегию без генерации Workbox
-      strategies: 'injectManifest',
-      srcDir: 'src/service-worker',
-      filename: 'sw.ts',
       injectManifest: {
-        globPatterns: [],
+        // Указываем, какие файлы включить в манифест (self.__WB_MANIFEST)
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        // Это поле лучше оставить пустым или удалить, плагин сам разберется
+        swDest: undefined, 
       },
       devOptions: {
         enabled: true,
         type: 'module',
       },
     }),
+
   ],
   resolve: {
     alias: {
