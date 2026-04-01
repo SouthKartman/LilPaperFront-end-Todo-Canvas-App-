@@ -9,6 +9,8 @@ import { handleImageRequest } from './handlers/imageHandler';
 import { handleApiRequest } from './handlers/apiHandler';
 import { handleFontRequest } from './handlers/fontHandler';
 
+const manifest = self.__WB_MANIFEST; 
+
 // Установка Service Worker
 self.addEventListener('install', (event) => {
   console.log('[SW] Установка версии:', SW_CONFIG.version);

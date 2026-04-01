@@ -11,7 +11,13 @@ export default defineConfig({
     svgr(),
     VitePWA({
       registerType: 'autoUpdate',
+      strategies: 'injectManifest',
+      srcDir: 'src/service-worker',
+      filename: 'sw.ts', 
       includeAssets: ['Logo.png', 'favicon.ico'],
+      injectManifest: {
+          swDest: 'dist/sw.js',      // куда попадет результат после сборки
+      },
       manifest: {
         name: 'Lil Papper',
         short_name: 'LilPapper',
