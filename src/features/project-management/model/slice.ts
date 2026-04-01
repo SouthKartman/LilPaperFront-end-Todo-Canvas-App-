@@ -1,13 +1,17 @@
-// src/features/project-management/model/slice.ts
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { CanvasProject, CanvasPage, Canvas, generateId } from '@entities/canvas/model/types';
+import { ProjectIndexedDBStorage } from '@shared/api/storage/indexedDB/projectStorage';
+import { TodoIndexedDBStorage } from '@shared/api/storage/indexedDB/todoStorage';
+import { ImageIndexedDBStorage } from '@shared/api/storage/indexedDB/imageStorage';
 
 interface ProjectState {
   currentProjectId: string | null;
   projects: Record<string, CanvasProject>;
   pages: Record<string, CanvasPage>;
   canvases: Record<string, Canvas>;
-  projectOrder: string[]; // Массив для хранения порядка проектов
+  projectOrder: string[];
+  loading: boolean;
+  error: string | null;
 }
 
 const initialState: ProjectState = {
@@ -15,8 +19,124 @@ const initialState: ProjectState = {
   projects: {},
   pages: {},
   canvases: {},
-  projectOrder: [], // Инициализируем пустым массивом
+  projectOrder: [],
+  loading: false,
+  error: null,
 };
+
+// 🆕 THUNK ДЛЯ ПЕРЕИМЕНОВАНИЯ ПРОЕКТА В INDEXEDDB
+export const renameProjectInDB = createAsyncThunk(
+  'project/renameProjectInDB',
+  async ({ projectId, name }: { projectId: string; name: string }, { rejectWithValue }) => {
+    try {
+      const success = await ProjectIndexedDBStorage.updateProject(projectId, { name });
+      
+      if (!success) {
+        throw new Error('Не удалось переименовать проект в базе данных');
+      }
+      
+      console.log(`✅ Проект ${projectId} переименован в "${name}" в IndexedDB`);
+      
+      return { projectId, name };
+    } catch (error) {
+      console.error('❌ Ошибка при переименовании проекта в БД:', error);
+      return rejectWithValue(error instanceof Error ? error.message : 'Ошибка переименования');
+    }
+  }
+);
+
+// 🆕 THUNK ДЛЯ УДАЛЕНИЯ СТРАНИЦЫ ИЗ INDEXEDDB
+export const deletePageFromDB = createAsyncThunk(
+  'project/deletePageFromDB',
+  async ({ projectId, pageId }: { projectId: string; pageId: string }, { dispatch, getState, rejectWithValue }) => {
+    try {
+      const state = getState() as any;
+      const page = state.project.pages[pageId];
+      
+      if (!page) {
+        throw new Error('Страница не найдена');
+      }
+      
+      // Получаем все задачи на этой странице
+      const todos = Object.values(state.todoNodes.nodes || {});
+      const pageTodos = todos.filter((todo: any) => todo.pageId === pageId);
+      
+      // Удаляем все задачи страницы из IndexedDB
+      if (pageTodos.length > 0) {
+        const todoIds = pageTodos.map((todo: any) => todo.id);
+        await TodoIndexedDBStorage.deleteTodos(todoIds);
+        console.log(`✅ Удалено ${todoIds.length} задач страницы ${pageId} из IndexedDB`);
+      }
+      
+      // Получаем все изображения на этой странице
+      const images = Object.values(state.imageNodes?.nodes || {});
+      const pageImages = images.filter((img: any) => img.pageId === pageId);
+      
+      // Удаляем все изображения страницы из IndexedDB
+      if (pageImages.length > 0) {
+        const imageIds = pageImages.map((img: any) => img.id);
+        await ImageIndexedDBStorage.deleteImages(imageIds);
+        console.log(`✅ Удалено ${imageIds.length} изображений страницы ${pageId} из IndexedDB`);
+      }
+      
+      // Удаляем страницу и ее полотно из IndexedDB
+      const success = await ProjectIndexedDBStorage.deletePage(pageId);
+      
+      if (!success) {
+        throw new Error('Не удалось удалить страницу из базы данных');
+      }
+      
+      console.log(`✅ Страница ${pageId} успешно удалена из IndexedDB`);
+      
+      return { projectId, pageId };
+    } catch (error) {
+      console.error('❌ Ошибка при удалении страницы из БД:', error);
+      return rejectWithValue(error instanceof Error ? error.message : 'Ошибка удаления страницы');
+    }
+  }
+);
+
+// 🆕 THUNK ДЛЯ ПЕРЕИМЕНОВАНИЯ СТРАНИЦЫ В INDEXEDDB
+export const renamePageInDB = createAsyncThunk(
+  'project/renamePageInDB',
+  async ({ pageId, name }: { pageId: string; name: string }, { rejectWithValue }) => {
+    try {
+      const success = await ProjectIndexedDBStorage.updatePage(pageId, { name });
+      
+      if (!success) {
+        throw new Error('Не удалось переименовать страницу в базе данных');
+      }
+      
+      console.log(`✅ Страница ${pageId} переименована в "${name}" в IndexedDB`);
+      
+      return { pageId, name };
+    } catch (error) {
+      console.error('❌ Ошибка при переименовании страницы в БД:', error);
+      return rejectWithValue(error instanceof Error ? error.message : 'Ошибка переименования');
+    }
+  }
+);
+
+// 🆕 THUNK ДЛЯ СОХРАНЕНИЯ СТРАНИЦЫ В INDEXEDDB
+export const savePageToDB = createAsyncThunk(
+  'project/savePageToDB',
+  async (page: CanvasPage, { rejectWithValue }) => {
+    try {
+      const success = await ProjectIndexedDBStorage.savePage(page);
+      
+      if (!success) {
+        throw new Error('Не удалось сохранить страницу в базу данных');
+      }
+      
+      console.log(`✅ Страница ${page.id} сохранена в IndexedDB`);
+      
+      return page;
+    } catch (error) {
+      console.error('❌ Ошибка при сохранении страницы в БД:', error);
+      return rejectWithValue(error instanceof Error ? error.message : 'Ошибка сохранения');
+    }
+  }
+);
 
 const projectSlice = createSlice({
   name: 'project',
@@ -28,7 +148,6 @@ const projectSlice = createSlice({
       const pageId = generateId('page');
       const canvasId = generateId('canvas');
       
-      // Создаем полотно
       const newCanvas: Canvas = {
         id: canvasId,
         pageId: pageId,
@@ -42,7 +161,6 @@ const projectSlice = createSlice({
         },
       };
       
-      // Создаем страницу, привязанную к полотну
       const newPage: CanvasPage = {
         id: pageId,
         name: 'Страница 1',
@@ -65,52 +183,47 @@ const projectSlice = createSlice({
         },
       };
       
-      // Сохраняем все сущности
       state.canvases[canvasId] = newCanvas;
       state.pages[pageId] = newPage;
       state.projects[projectId] = newProject;
       state.currentProjectId = projectId;
       
-      // Убеждаемся что projectOrder существует
       if (!state.projectOrder) {
         state.projectOrder = [];
       }
       
-      // Добавляем проект в конец списка порядка
       state.projectOrder.push(projectId);
-      console.log('✅ Проект создан, projectOrder:', state.projectOrder);
+      
+      // Асинхронно сохраняем в IndexedDB
+      setTimeout(() => {
+        ProjectIndexedDBStorage.saveProject({
+          currentProjectId: projectId,
+          projects: { [projectId]: newProject },
+          pages: { [pageId]: newPage },
+          canvases: { [canvasId]: newCanvas },
+          projectOrder: state.projectOrder,
+        }).catch(console.error);
+      }, 0);
     },
     
-    // Переупорядочивание проектов (Drag & Drop)
+    // Переупорядочивание проектов
     reorderProjects: (state, action: PayloadAction<{ oldIndex: number; newIndex: number }>) => {
       const { oldIndex, newIndex } = action.payload;
       
-      console.log('🔄 Переупорядочивание:', { oldIndex, newIndex });
-      console.log('📊 Текущий projectOrder:', state.projectOrder);
-      
-      // Проверяем что projectOrder существует
       if (!state.projectOrder) {
-        console.warn('projectOrder не существует, создаем из projects');
         state.projectOrder = Object.keys(state.projects);
       }
       
-      // Проверяем индексы
       if (oldIndex < 0 || oldIndex >= state.projectOrder.length || 
           newIndex < 0 || newIndex >= state.projectOrder.length) {
-        console.warn('Invalid indices for reorder:', { oldIndex, newIndex });
         return;
       }
       
-      // Перемещаем ID проекта в массиве порядка
       const [movedProjectId] = state.projectOrder.splice(oldIndex, 1);
       state.projectOrder.splice(newIndex, 0, movedProjectId);
-      
-      console.log('✅ Проекты переупорядочены, новый projectOrder:', state.projectOrder);
     },
     
-    // Установка кастомного порядка проектов
     setProjectOrder: (state, action: PayloadAction<string[]>) => {
-      // Проверяем, что все ID существуют
       const validOrder = action.payload.filter(id => state.projects[id]);
       state.projectOrder = validOrder;
     },
@@ -118,12 +231,9 @@ const projectSlice = createSlice({
     // Удаление проекта
     deleteProject: (state, action: PayloadAction<string>) => {
       const projectId = action.payload;
-      console.log('🗑️ Удаление проекта:', projectId);
-      
       const project = state.projects[projectId];
       
       if (project) {
-        // Удаляем все страницы и полотна проекта
         project.pageIds.forEach(pageId => {
           const page = state.pages[pageId];
           if (page?.canvasId) {
@@ -132,28 +242,21 @@ const projectSlice = createSlice({
           delete state.pages[pageId];
         });
         
-        // Удаляем сам проект
         delete state.projects[projectId];
         
-        // Проверяем что projectOrder существует
         if (!state.projectOrder) {
           state.projectOrder = Object.keys(state.projects);
         } else {
-          // Удаляем проект из массива порядка
           const orderIndex = state.projectOrder.indexOf(projectId);
           if (orderIndex > -1) {
             state.projectOrder.splice(orderIndex, 1);
           }
         }
         
-        // Если удалили текущий проект, переключаемся на первый доступный
         if (state.currentProjectId === projectId) {
           const remainingIds = Object.keys(state.projects);
           state.currentProjectId = remainingIds[0] || null;
         }
-        
-        console.log('✅ Проект удален. Осталось:', Object.keys(state.projects).length);
-        console.log('📊 Новый projectOrder:', state.projectOrder);
       }
     },
     
@@ -233,6 +336,11 @@ const projectSlice = createSlice({
       project.pageIds.push(pageId);
       project.currentPageId = pageId;
       project.metadata.updatedAt = new Date();
+      
+      // Асинхронно сохраняем в IndexedDB
+      setTimeout(() => {
+        ProjectIndexedDBStorage.savePage(newPage).catch(console.error);
+      }, 0);
     },
     
     switchPage: (state, action: PayloadAction<{ projectId: string; pageId: string }>) => {
@@ -311,6 +419,27 @@ const projectSlice = createSlice({
       if (page) {
         page.name = name;
         page.metadata.updatedAt = new Date();
+        
+        // Асинхронно обновляем в IndexedDB
+        setTimeout(() => {
+          ProjectIndexedDBStorage.updatePage(pageId, { name }).catch(console.error);
+        }, 0);
+      }
+    },
+    
+    // 🆕 Переименование проекта
+    setProjectName: (state, action: PayloadAction<{ projectId: string; name: string }>) => {
+      const { projectId, name } = action.payload;
+      const project = state.projects[projectId];
+      
+      if (project) {
+        project.name = name;
+        project.metadata.updatedAt = new Date();
+        
+        // Асинхронно обновляем в IndexedDB
+        setTimeout(() => {
+          ProjectIndexedDBStorage.updateProject(projectId, { name }).catch(console.error);
+        }, 0);
       }
     },
     
@@ -410,11 +539,9 @@ const projectSlice = createSlice({
     },
     
     loadProjectState: (state, action: PayloadAction<ProjectState>) => {
-      // При загрузке состояния восстанавливаем порядок
       if (action.payload.projectOrder) {
         state.projectOrder = action.payload.projectOrder;
       } else {
-        // Если нет порядка, создаем его из проектов
         state.projectOrder = Object.keys(action.payload.projects);
       }
       
@@ -423,6 +550,67 @@ const projectSlice = createSlice({
       state.pages = action.payload.pages;
       state.canvases = action.payload.canvases;
     },
+  },
+  extraReducers: (builder) => {
+    builder
+      // Удаление страницы из БД
+      .addCase(deletePageFromDB.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deletePageFromDB.fulfilled, (state, action) => {
+        const { projectId, pageId } = action.payload;
+        const project = state.projects[projectId];
+        
+        if (project && project.pageIds.length > 1) {
+          const pageIndex = project.pageIds.indexOf(pageId);
+          if (pageIndex > -1) {
+            const page = state.pages[pageId];
+            if (page?.canvasId) {
+              delete state.canvases[page.canvasId];
+            }
+            
+            project.pageIds.splice(pageIndex, 1);
+            delete state.pages[pageId];
+            
+            if (project.currentPageId === pageId) {
+              project.currentPageId = project.pageIds[0];
+            }
+            
+            project.pageIds.forEach((id, index) => {
+              if (state.pages[id]) {
+                state.pages[id].metadata.order = index;
+              }
+            });
+            
+            project.metadata.updatedAt = new Date();
+          }
+        }
+        
+        state.loading = false;
+      })
+      .addCase(deletePageFromDB.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string || 'Ошибка удаления страницы';
+      })
+      
+      // Переименование страницы в БД
+      .addCase(renamePageInDB.fulfilled, (state, action) => {
+        const { pageId, name } = action.payload;
+        if (state.pages[pageId]) {
+          state.pages[pageId].name = name;
+          state.pages[pageId].metadata.updatedAt = new Date();
+        }
+      })
+      
+      // 🆕 Переименование проекта в БД
+      .addCase(renameProjectInDB.fulfilled, (state, action) => {
+        const { projectId, name } = action.payload;
+        if (state.projects[projectId]) {
+          state.projects[projectId].name = name;
+          state.projects[projectId].metadata.updatedAt = new Date();
+        }
+      });
   },
 });
 
@@ -435,6 +623,7 @@ export const {
   removeNodeFromCanvas,
   moveNodeBetweenCanvases,
   setPageName,
+  setProjectName, // 🆕 Экспортируем новый action
   removePage,
   reorderPages,
   addNodeToPage,
@@ -443,7 +632,6 @@ export const {
   updateProjectName,
   deleteProject,
   loadProjectState,
-  // Новые экспорты
   reorderProjects,
   setProjectOrder,
 } = projectSlice.actions;

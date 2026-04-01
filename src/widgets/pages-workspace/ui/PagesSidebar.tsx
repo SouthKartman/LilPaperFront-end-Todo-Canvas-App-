@@ -1,4 +1,3 @@
-// widgets/pages-workspace/ui/PagesSidebar/PagesSidebar.tsx
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { 
@@ -10,8 +9,11 @@ import {
   addPage, 
   switchPage, 
   setPageName, 
+  setProjectName, // 🆕 Импортируем action для переименования проекта
   removePage,
-  reorderPages 
+  reorderPages,
+  deletePageFromDB,
+  renameProjectInDB // 🆕 Импортируем thunk для переименования проекта
 } from '@features/project-management/model/slice';
 import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -24,6 +26,8 @@ export const PagesSidebar: React.FC = () => {
   const pages = useSelector(selectProjectPages);
   const currentPageId = useSelector(selectCurrentPageId);
   const [renamingPageId, setRenamingPageId] = useState<string | null>(null);
+  const [isRenamingProject, setIsRenamingProject] = useState<boolean>(false);
+  const [projectName, setProjectNameInput] = useState<string>(currentProject?.name || '');
   
   if (!currentProject) {
     return (
@@ -60,12 +64,53 @@ export const PagesSidebar: React.FC = () => {
     setRenamingPageId(null);
   };
   
-  const handleDeletePage = (pageId: string) => {
+  const handleDeletePage = async (pageId: string) => {
     if (pages.length > 1) {
-      dispatch(removePage({ 
+      await dispatch(deletePageFromDB({ 
         projectId: currentProject.id, 
         pageId 
+      })).unwrap();
+    }
+  };
+  
+  // 🆕 Обработчик начала переименования проекта
+  const handleStartRenameProject = () => {
+    setProjectNameInput(currentProject.name);
+    setIsRenamingProject(true);
+  };
+  
+  // 🆕 Обработчик сохранения имени проекта
+  const handleRenameProject = async () => {
+    if (projectName.trim() && projectName.trim() !== currentProject.name) {
+      const newName = projectName.trim();
+      
+      // Обновляем в Redux
+      dispatch(setProjectName({ 
+        projectId: currentProject.id, 
+        name: newName 
       }));
+      
+      // Обновляем в IndexedDB
+      await dispatch(renameProjectInDB({ 
+        projectId: currentProject.id, 
+        name: newName 
+      })).unwrap();
+    }
+    setIsRenamingProject(false);
+  };
+  
+  // 🆕 Обработчик отмены переименования
+  const handleCancelRenameProject = () => {
+    setIsRenamingProject(false);
+    setProjectNameInput(currentProject.name);
+  };
+  
+  // 🆕 Обработчик нажатия Enter
+  const handleProjectNameKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleRenameProject();
+    } else if (e.key === 'Escape') {
+      handleCancelRenameProject();
     }
   };
   
@@ -126,9 +171,36 @@ export const PagesSidebar: React.FC = () => {
         </DndContext>
       </div>
       
+      {/* 🆕 Обновленная секция проекта с возможностью переименования */}
       <div className={styles.projectInfo}>
-        <div className={styles.projectName}>
-          {currentProject.name}
+        <div className={styles.projectInfoHeader}>
+          <div className={styles.projectIcon}>📁</div>
+          {isRenamingProject ? (
+            <input
+              type="text"
+              className={styles.projectNameInput}
+              value={projectName}
+              onChange={(e) => setProjectNameInput(e.target.value)}
+              onBlur={handleRenameProject}
+              onKeyDown={handleProjectNameKeyDown}
+              autoFocus
+            />
+          ) : (
+            <div 
+              className={styles.projectName}
+              onDoubleClick={handleStartRenameProject}
+              title="Double-click to rename"
+            >
+              {currentProject.name}
+            </div>
+          )}
+          <button 
+            className={styles.renameProjectButton}
+            onClick={handleStartRenameProject}
+            title="Rename project"
+          >
+            ✏️
+          </button>
         </div>
         <div className={styles.pageCount}>
           {pages.length} page{pages.length !== 1 ? 's' : ''}

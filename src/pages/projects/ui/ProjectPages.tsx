@@ -1,5 +1,5 @@
 // src/pages/projects/ui/ProjectsPage.tsx
-import React, { useState, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { useProjects } from '@features/project-management';
@@ -22,6 +22,10 @@ import {
 import { db } from '@shared/api/storage/indexedDB/schema';
 import { loadProjectState } from '@features/project-management/model/slice';
 import styles from './ProjectsPage.module.css';
+import { StorageManager } from '@features/storage/ui/StorageManager';
+import { TodoStorage } from '@shared/api/storage/jsonStorage/todoStorage';
+import { useAppModal } from '@shared/ui/kit/Modal/AppModal';
+import { RootState } from '@shared/lib/state/store'
 
 type ViewMode = 'grid' | 'list';
 type FilterType = 'all' | 'recent';
@@ -47,6 +51,35 @@ export const ProjectsPage: React.FC = () => {
   const [progress, setProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState('');
   
+  //  // Получаем состояние один раз в хуке
+  // const nodes = useSelector((state: RootState) => state.todoNodes.nodes);
+  
+  // const [lastSave, setLastSave] = useState<Date | null>(null);
+  // const [isSaving, setIsSaving] = useState(false);
+
+  // Загружаем время последнего сохранения
+  // useEffect(() => {
+  //   const savedDate = TodoStorage.getLastSave();
+  //   setLastSave(savedDate);
+  // }, []);
+  
+
+  const { openModal } = useAppModal();
+  
+  const handleOpenStorageManager = () => {
+    openModal(
+      <StorageManager modalMode={true} />,
+      {
+        title: ' ',
+        width: '800px',
+        height: 'auto',
+        onClose: () => {
+          console.log('Storage manager закрыт');
+        }
+      }
+    );
+  };
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const sensors = useSensors(
@@ -231,31 +264,12 @@ export const ProjectsPage: React.FC = () => {
 
           {/* Import/Export */}
           <div className={styles.importExport}>
-            <button
-              className={styles.exportBtn}
-              onClick={handleExportAllProjects}
-              disabled={isExporting || allProjects.length === 0}
-              title="Export all projects with images (.canvas)"
-            >
-              <span className={styles.icon}>↓</span>
-              <span>{isExporting ? `${Math.round(progress)}%` : 'Export all'}</span>
-            </button>
-            <button
-              className={styles.importBtn}
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isImporting}
-              title="Import projects from .canvas file"
-            >
-              <span className={styles.icon}>↑</span>
-              <span>{isImporting ? `${Math.round(progress)}%` : 'Import'}</span>
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".canvas"
-              onChange={handleImport}
-              style={{ display: 'none' }}
-            />
+            <button 
+              onClick={handleOpenStorageManager}
+              className="storage-btn"
+              >
+              📁 Хранилище
+          </button>
           </div>
 
           {/* Create button */}

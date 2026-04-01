@@ -92,3 +92,77 @@
   cursor: pointer;
   font-size: 14px;
 }
+
+
+/* Добавь или обнови эти стили */
+
+.projectInfo {
+  margin-top: auto;
+  padding: 12px;
+  border-top: 1px solid #e5e7eb;
+  background-color: #f9fafb;
+}
+
+.projectInfoHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.projectIcon {
+  font-size: 16px;
+}
+
+.projectName {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  color: #111827;
+  cursor: pointer;
+  padding: 4px 0;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.projectName:hover {
+  background-color: #f3f4f6;
+}
+
+.projectNameInput {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border: 1px solid #3b82f6;
+  border-radius: 4px;
+  outline: none;
+  background-color: white;
+}
+
+.renameProjectButton {
+  opacity: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  color: #6b7280;
+}
+
+.projectInfo:hover .renameProjectButton {
+  opacity: 1;
+}
+
+.renameProjectButton:hover {
+  background-color: #e5e7eb;
+  color: #111827;
+}
+
+.pageCount {
+  font-size: 12px;
+  color: #6b7280;
+  padding-left: 24px;
+}

@@ -1,3 +1,4 @@
+// src/shared/api/storage/indexedDB/todoStorage.ts
 import { db, DBTodo } from './schema';
 import { Todo } from '@entities/todo/model/types';
 

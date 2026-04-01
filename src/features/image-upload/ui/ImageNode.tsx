@@ -1,3 +1,4 @@
+// src/features/image-upload/ui/ImageNode.ts
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { ImageNode as IImageNode } from '@entities/image/model/types';
 import { ImagePreview } from '@shared/ui/kit/ImagePreview/ImagePreview';

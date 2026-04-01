@@ -1,4 +1,3 @@
-// src/features/context-menu/ui/ContextMenu/ContextMenu.tsx
 import React, { useRef, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@shared/lib/state/store';
@@ -7,66 +6,86 @@ import { MenuItem } from './MenuItem';
 import { MenuDivider } from './MenuDivider';
 import './ContextMenu.css';
 
-// Импортируем actions для обработки
-import { todoNodesActions } from '@features/todo-nodes/model/slice';
+// Импортируем thunk для удаления из БД
+import { 
+  deleteTodoFromDB, 
+  deleteMultipleTodosFromDB,
+  duplicateTodo,
+  setTodoStatus,
+  setTodoPriority,
+  startEditingTodo,
+  createTodoAtPosition
+} from '@features/todo-nodes/model/slice';
 
 export const ContextMenu: React.FC = () => {
   const dispatch = useDispatch();
   const menuRef = useRef<HTMLDivElement>(null);
   const { isVisible, position, items, context } = useSelector((state: RootState) => state.contextMenu);
+  const selectedNodeIds = useSelector((state: RootState) => state.todoNodes.selectedNodeIds);
 
   // Обработчик клика по пункту меню
-  const handleMenuItemClick = (item: any) => {
+  const handleMenuItemClick = async (item: any) => {
     if (item.disabled) return;
     
-    // Обрабатываем действие на основе actionType
-    switch (item.actionType) {
-      case 'EDIT_NODE':
-        if (context?.nodeId) {
-          dispatch(todoNodesActions.startEditingTodo(context.nodeId));
-        }
-        break;
-        
-      case 'DUPLICATE_NODE':
-        if (context?.nodeId) {
-          dispatch(todoNodesActions.duplicateTodo(context.nodeId));
-        }
-        break;
-        
-      case 'DELETE_NODE':
-        if (context?.nodeId) {
-          dispatch(todoNodesActions.deleteTodo(context.nodeId));
-        }
-        break;
-        
-      case 'SET_STATUS':
-        if (context?.nodeId && item.payload?.status) {
-          dispatch(todoNodesActions.setTodoStatus({
-            id: context.nodeId,
-            status: item.payload.status
-          }));
-        }
-        break;
-        
-      case 'SET_PRIORITY':
-        if (context?.nodeId && item.payload?.priority) {
-          dispatch(todoNodesActions.setTodoPriority({
-            id: context.nodeId,
-            priority: item.payload.priority
-          }));
-        }
-        break;
-        
-      case 'CREATE_TODO':
-        if (item.payload?.position) {
-          dispatch(todoNodesActions.createTodoAtPosition({
-            position: item.payload.position
-          }));
-        }
-        break;
-        
-      default:
-        console.warn('Unknown action type:', item.actionType);
+    try {
+      switch (item.actionType) {
+        case 'EDIT_NODE':
+          if (context?.nodeId) {
+            dispatch(startEditingTodo(context.nodeId));
+          }
+          break;
+          
+        case 'DUPLICATE_NODE':
+          if (context?.nodeId) {
+            dispatch(duplicateTodo(context.nodeId));
+          }
+          break;
+          
+        case 'DELETE_NODE':
+          if (context?.nodeId) {
+            // Удаляем из IndexedDB без подтверждения
+            await dispatch(deleteTodoFromDB(context.nodeId)).unwrap();
+          }
+          break;
+          
+        case 'DELETE_SELECTED_NODES':
+          if (context?.nodeIds && context.nodeIds.length > 0) {
+            // Массовое удаление из IndexedDB без подтверждения
+            await dispatch(deleteMultipleTodosFromDB(context.nodeIds)).unwrap();
+          }
+          break;
+          
+        case 'SET_STATUS':
+          if (context?.nodeId && item.payload?.status) {
+            dispatch(setTodoStatus({
+              id: context.nodeId,
+              status: item.payload.status
+            }));
+          }
+          break;
+          
+        case 'SET_PRIORITY':
+          if (context?.nodeId && item.payload?.priority) {
+            dispatch(setTodoPriority({
+              id: context.nodeId,
+              priority: item.payload.priority
+            }));
+          }
+          break;
+          
+        case 'CREATE_TODO':
+          if (item.payload?.position) {
+            dispatch(createTodoAtPosition({
+              position: item.payload.position
+            }));
+          }
+          break;
+          
+        default:
+          console.warn('Unknown action type:', item.actionType);
+      }
+    } catch (error) {
+      console.error('Ошибка при выполнении действия:', error);
     }
     
     dispatch(hideMenu());
@@ -104,13 +123,21 @@ export const ContextMenu: React.FC = () => {
       }
     };
 
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        dispatch(hideMenu());
+      }
+    };
+
     if (isVisible) {
       document.addEventListener('click', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
+      
+      return () => {
+        document.removeEventListener('click', handleClickOutside);
+        document.removeEventListener('keydown', handleEscape);
+      };
     }
-    
-    return () => {
-      document.removeEventListener('click', handleClickOutside);
-    };
   }, [isVisible, dispatch]);
 
   if (!isVisible || !position) return null;
@@ -123,7 +150,12 @@ export const ContextMenu: React.FC = () => {
         position: 'fixed',
         left: position.x,
         top: position.y,
-        zIndex: 10,
+        zIndex: 1000,
+        minWidth: '200px',
+        background: '#ffffff',
+        borderRadius: '8px',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+        padding: '4px 0',
       }}
       onClick={(e) => e.stopPropagation()}
     >
