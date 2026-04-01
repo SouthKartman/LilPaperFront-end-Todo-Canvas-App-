@@ -15,7 +15,6 @@ export default defineConfig({
       filename: 'sw.ts',
       registerType: 'autoUpdate',
       injectRegister: 'auto',
-      includeAssets: ['Logo.png', 'favicon.ico'],
       manifest: {
         name: 'Lil Papper',
         short_name: 'LilPapper',
@@ -39,16 +38,16 @@ export default defineConfig({
         ],
       },
       injectManifest: {
-        // Указываем, какие файлы включить в манифест (self.__WB_MANIFEST)
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        // Это поле лучше оставить пустым или удалить, плагин сам разберется
-        swDest: undefined, 
+        // Указываем ТОЛЬКО имя файла. 
+        // Vite сам положит его в dist (из build.outDir)
+        swDest: 'sw.js', 
       },
       devOptions: {
         enabled: true,
         type: 'module',
       },
-    }),
+    })
 
   ],
   resolve: {
