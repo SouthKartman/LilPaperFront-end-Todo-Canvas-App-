@@ -40,6 +40,7 @@ export default defineConfig({
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         // Указываем ТОЛЬКО имя файла. 
+        swSrc: 'src/service-worker/sw.ts',
         // Vite сам положит его в dist (из build.outDir)
         swDest: 'sw.js', 
       },
