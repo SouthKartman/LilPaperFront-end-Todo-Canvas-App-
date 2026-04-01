@@ -26,6 +26,7 @@ import { StorageManager } from '@features/storage/ui/StorageManager';
 import { TodoStorage } from '@shared/api/storage/jsonStorage/todoStorage';
 import { useAppModal } from '@shared/ui/kit/Modal/AppModal';
 import { RootState } from '@shared/lib/state/store'
+import { Logo } from '@shared/ui/icons/Logo/Logo';
 
 type ViewMode = 'grid' | 'list';
 type FilterType = 'all' | 'recent';
@@ -237,7 +238,8 @@ export const ProjectsPage: React.FC = () => {
       {/* Header */}
       <div className={styles.header}>
         <div className={styles.headerLeft}>
-          <h1 className={styles.title}>Projects</h1>
+          <Logo width='300px' height = '140px'></Logo>
+          {/* <h1 className={styles.title}>Projects</h1> */}
           <div className={styles.projectCount}>
             {allProjects.length} {allProjects.length === 1 ? 'project' : 'projects'}
           </div>

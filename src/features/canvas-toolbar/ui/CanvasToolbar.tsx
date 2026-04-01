@@ -6,6 +6,7 @@ import { TodoStorage } from '@shared/api/storage/jsonStorage/todoStorage';
 import { useSelector } from 'react-redux';
 import { useAppModal } from '@shared/ui/kit/Modal/AppModal';
 import ZoomControls from '@features/canvas-viewport/ui/ZoomControls';
+import { Logo } from '@shared/ui/icons/Logo/Logo';
 
 export const CanvasToolbar: React.FC = () => {
   // Получаем состояние один раз в хуке
@@ -53,7 +54,7 @@ export const CanvasToolbar: React.FC = () => {
   return (
     <div className={styles.toolbar}>
       <div className={styles.tools}>
-        
+        <Logo></Logo>
       </div>
       <div style={{ marginLeft: 'auto', display: 'flex', gap: '10px', alignItems: 'center' }}>
         <span style={{ fontSize: '14px', color: '#666' }}>Масштаб:</span>
