@@ -1,0 +1,5 @@
+{
+  "buildCommand": "vite build --emptyOutDir",
+  "installCommand": "npm install --legacy-peer-deps --quiet",
+  "framework": "vite"
+}
