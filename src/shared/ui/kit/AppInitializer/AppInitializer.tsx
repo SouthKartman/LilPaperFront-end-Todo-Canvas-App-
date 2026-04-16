@@ -23,7 +23,7 @@ export const AppInitializer: React.FC<AppInitializerProps> = ({ children }) => {
       // Ждем 4 секунды перед началом анимации выхода
       setTimeout(() => {
         setShouldExit(true);
-      }, 4000);
+      }, 2500);
     }
   }, [isInitialized, shouldExit, exitDelay]);
 
