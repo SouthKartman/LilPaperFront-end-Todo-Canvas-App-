@@ -15,6 +15,7 @@ VitePWA({
   filename: 'sw.ts',
   registerType: 'autoUpdate',
   injectRegister: 'auto',
+  
     // Важно: кэшируем все необходимые файлы
   includeAssets: [
     'favicon.ico',
