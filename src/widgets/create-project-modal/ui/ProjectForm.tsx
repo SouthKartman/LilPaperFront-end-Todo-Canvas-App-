@@ -2,6 +2,8 @@
 import React, { useState } from 'react';
 import { ProjectCreateDTO } from '@entities/project/model/types';
 import { validateProjectName } from '@entities/project/lib/projectUtils';
+import styles from './ProjectForm.module.css';
+
 
 interface ProjectFormProps {
   onSubmit: (data: ProjectCreateDTO) => void;

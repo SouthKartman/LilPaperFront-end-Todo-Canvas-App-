@@ -10,7 +10,7 @@ interface LogoProps {
   showText?: boolean;
 }
 
-export const Logo: React.FC<LogoProps> = ({ showText = true }) => {
+export const Logo: React.FC<LogoProps> = () => {
   const navigate = useNavigate();
 
   const handleLogoClick = (e: React.MouseEvent) => {

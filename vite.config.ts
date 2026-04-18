@@ -74,23 +74,23 @@ VitePWA({
   },
 
 // В dev режиме отключаем некоторые фичи
-  devOptions: {
-    enabled:false,
-    type: 'module',
-    navigateFallback: undefined, // Отключаем в dev
-  },
+  // devOptions: {
+  //   enabled:false,
+  //   type: 'module',
+  //   navigateFallback: undefined, // Отключаем в dev
+  // },
 
-  workbox: {
-    // Отключаем предупреждения в dev
-    ...(process.env.NODE_ENV === 'development' ? {
-      navigateFallback: undefined,
-      cleanupOutdatedCaches: false,
-    } : {
-      cleanupOutdatedCaches: true,
-      clientsClaim: true,
-      skipWaiting: true,
-    })
-  }
+  // workbox: {
+  //   // Отключаем предупреждения в dev
+  //   ...(process.env.NODE_ENV === 'development' ? {
+  //     navigateFallback: undefined,
+  //     cleanupOutdatedCaches: false,
+  //   } : {
+  //     cleanupOutdatedCaches: true,
+  //     clientsClaim: true,
+  //     skipWaiting: true,
+  //   })
+  // }
 })
 
   ],

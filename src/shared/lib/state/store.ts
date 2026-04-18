@@ -19,46 +19,46 @@ import projectReducer from '@features/project-management/model/slice'
 import { canvasSyncMiddleware } from '@processes/canvas-sync/lib/canvasSyncMiddleware'
 
 // Заглушки для отсутствующих редьюсеров
-const canvasToolbarReducer = (state = {
-  activeTool: 'select',
-  tools: [],
-}, action: any) => {
-  switch (action.type) {
-    default:
-      return state
-  }
-}
+// const canvasToolbarReducer = (state = {
+//   activeTool: 'select',
+//   tools: [],
+// }, action: any) => {
+//   switch (action.type) {
+//     default:
+//       return state
+//   }
+// }
 
-const propertiesPanelReducer = (state = {
-  isOpen: true,
-  selectedNodeId: null,
-  properties: {},
-}, action: any) => {
-  switch (action.type) {
-    default:
-      return state
-  }
-}
+// const propertiesPanelReducer = (state = {
+//   isOpen: true,
+//   selectedNodeId: null,
+//   properties: {},
+// }, action: any) => {
+//   switch (action.type) {
+//     default:
+//       return state
+//   }
+// }
 
-const selectionReducer = (state = {
-  selectedNodeIds: [],
-  selectionRect: null,
-}, action: any) => {
-  switch (action.type) {
-    default:
-      return state
-  }
-}
+// const selectionReducer = (state = {
+//   selectedNodeIds: [],
+//   selectionRect: null,
+// }, action: any) => {
+//   switch (action.type) {
+//     default:
+//       return state
+//   }
+// }
 
-const canvasActionsReducer = (state = {
-  history: [],
-  currentAction: null,
-}, action: any) => {
-  switch (action.type) {
-    default:
-      return state
-  }
-}
+// const canvasActionsReducer = (state = {
+//   history: [],
+//   currentAction: null,
+// }, action: any) => {
+//   switch (action.type) {
+//     default:
+//       return state
+//   }
+// }
 
 // Создаем корневой редьюсер
 const rootReducer = combineReducers({
@@ -69,10 +69,10 @@ const rootReducer = combineReducers({
   viewport: viewportReducer,
   project: projectReducer, // 🆕 ДОБАВЛЕНО
   imageNodes: imageNodesReducer, // ✅ ДОБАВЛЕНО - редьюсер для изображений
-  canvasToolbar: canvasToolbarReducer,
-  propertiesPanel: propertiesPanelReducer,
-  selection: selectionReducer,
-  canvasActions: canvasActionsReducer,
+  // canvasToolbar: canvasToolbarReducer,
+  // propertiesPanel: propertiesPanelReducer,
+  // selection: selectionReducer,
+  // canvasActions: canvasActionsReducer,
 })
 
 // 🆕 Функция для загрузки начального состояния проекта с полотнами
@@ -381,3 +381,4 @@ export const initializeProject = () => {
     }
   };
 };
+

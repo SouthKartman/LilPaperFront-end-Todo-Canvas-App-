@@ -1,6 +1,6 @@
 // src/widgets/workspace-layout/ui/OfflineIndicator.tsx
 import { useEffect, useState } from 'react';
-import { useOfflineReady } from '@/features/storage/lib/useOfflineReady';
+import { useOfflineReady } from '@features/storage/lib/useOfflineReady';
 
 export const OfflineIndicator = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
