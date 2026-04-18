@@ -67,7 +67,7 @@ export default defineConfig({
       },
       
       devOptions: {
-        enabled: false,  // Отключаем PWA в dev режиме
+        enabled: true,  // Отключаем PWA в dev режиме
       },
     }),
   ],
