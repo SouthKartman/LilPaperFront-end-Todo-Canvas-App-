@@ -17,72 +17,139 @@ const IS_DEVELOPMENT = self.location.hostname === 'localhost' ||
                        self.location.hostname.includes('127.0.0.1');
 
 console.log(`[SW] Режим: ${IS_DEVELOPMENT ? 'DEVELOPMENT' : 'PRODUCTION'}`);
+console.log(`[SW] Версия: ${SW_CONFIG.version}`);
 
 // В dev режиме НЕ используем precacheAndRoute
 if (!IS_DEVELOPMENT) {
-  precacheAndRoute(self.__WB_MANIFEST);
+  try {
+    precacheAndRoute(self.__WB_MANIFEST);
+  } catch (error) {
+    console.error('[SW] Ошибка precache:', error);
+  }
 } else {
   console.log('[SW] 🔧 Dev режим - Workbox precaching отключен');
 }
 
-// Установка
+// ============ УСТАНОВКА ============
 self.addEventListener('install', (event) => {
-  console.log('[SW] 🚀 Установка Lil Papper');
+  console.log('[SW] 🚀 Установка Lil Papper v' + SW_CONFIG.version);
   
   event.waitUntil(
     (async () => {
       try {
         if (!IS_DEVELOPMENT) {
-          await swDb.open();
+          // Открываем IndexedDB
+          await swDb.open().catch(err => {
+            console.warn('[SW] ⚠️ Ошибка открытия IndexedDB:', err);
+          });
+          
           const staticCache = await caches.open(SW_CONFIG.cacheNames.static);
-          await staticCache.addAll(SW_CONFIG.staticAssets);
-          console.log('[SW] ✅ Статические файлы закэшированы');
+          
+          // ✅ Кэшируем обязательные файлы (безопасно)
+          console.log('[SW] 📦 Кэширование обязательных файлов...');
+          for (const url of SW_CONFIG.staticAssets) {
+            try {
+              const response = await fetch(url, { 
+                cache: 'reload',
+                credentials: 'same-origin'
+              });
+              if (response.ok) {
+                await staticCache.put(url, response);
+                console.log(`[SW]   ✅ ${url}`);
+              } else {
+                console.warn(`[SW]   ⚠️ ${url} (${response.status})`);
+              }
+            } catch (error) {
+              console.warn(`[SW]   ⚠️ ${url} - ${error}`);
+            }
+          }
+          
+          // ✅ Кэшируем опциональные файлы (если есть)
+          console.log('[SW] 📦 Кэширование опциональных файлов...');
+          for (const url of SW_CONFIG.optionalAssets) {
+            try {
+              const response = await fetch(url, { 
+                cache: 'reload',
+                credentials: 'same-origin'
+              });
+              if (response.ok) {
+                await staticCache.put(url, response);
+                console.log(`[SW]   ✅ ${url}`);
+              }
+            } catch {
+              // Игнорируем ошибки для опциональных файлов
+            }
+          }
+          
+          console.log('[SW] ✅ Кэширование завершено');
         } else {
           console.log('[SW] 🔧 Development режим - кэширование отключено');
         }
         
         await self.skipWaiting();
+        console.log('[SW] ✅ Установка завершена');
       } catch (error) {
         console.error('[SW] ❌ Ошибка установки:', error);
+        // Не прерываем установку
+        await self.skipWaiting();
       }
     })()
   );
 });
 
-// Активация
+// ============ АКТИВАЦИЯ ============
 self.addEventListener('activate', (event) => {
-  console.log('[SW] 🔄 Активация');
+  console.log('[SW] 🔄 Активация v' + SW_CONFIG.version);
   
   event.waitUntil(
     (async () => {
-      if (!IS_DEVELOPMENT) {
-        const cacheNames = await caches.keys();
-        const validCacheNames = Object.values(SW_CONFIG.cacheNames);
+      try {
+        if (!IS_DEVELOPMENT) {
+          // Очистка старых кэшей
+          const cacheNames = await caches.keys();
+          const validCacheNames = Object.values(SW_CONFIG.cacheNames);
+          
+          const deletedCaches = cacheNames.filter(name => !validCacheNames.includes(name));
+          
+          await Promise.all(
+            deletedCaches.map(name => {
+              console.log(`[SW] 🗑️ Удален старый кэш: ${name}`);
+              return caches.delete(name);
+            })
+          );
+          
+          // Синхронизация офлайн-действий
+          try {
+            await syncManager.syncOfflineActions();
+          } catch (syncError) {
+            console.warn('[SW] ⚠️ Ошибка синхронизации:', syncError);
+          }
+          
+          // Обслуживание БД
+          try {
+            await syncManager.performMaintenance();
+          } catch (maintError) {
+            console.warn('[SW] ⚠️ Ошибка обслуживания:', maintError);
+          }
+        }
         
-        await Promise.all(
-          cacheNames
-            .filter(name => !validCacheNames.includes(name))
-            .map(name => caches.delete(name))
-        );
-        
-        await syncManager.syncOfflineActions();
-        await syncManager.performMaintenance();
+        await self.clients.claim();
+        console.log('[SW] ✅ Активация завершена');
+      } catch (error) {
+        console.error('[SW] ❌ Ошибка активации:', error);
+        await self.clients.claim();
       }
-      
-      await self.clients.claim();
-      console.log('[SW] ✅ Активация завершена');
     })()
   );
 });
 
-// Перехват запросов
+// ============ FETCH ============
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   const url = new URL(request.url);
   
   // ВАЖНО: В dev режиме пропускаем ВСЕ запросы кроме navigation
   if (IS_DEVELOPMENT) {
-    // Пропускаем все Vite-specific запросы
     if (url.pathname.startsWith('/@') ||
         url.pathname.startsWith('/src/') ||
         url.pathname.startsWith('/node_modules/') ||
@@ -91,14 +158,12 @@ self.addEventListener('fetch', (event) => {
         url.pathname.includes('@react-refresh') ||
         url.pathname.includes('@fs/') ||
         url.pathname.includes('vite')) {
-      return; // Вообще не перехватываем
+      return;
     }
     
-    // Только для навигации в dev режиме
     if (request.mode === 'navigate') {
       event.respondWith(
         fetch(request).catch(async () => {
-          // Офлайн страница для dev
           const cache = await caches.open('dev-cache');
           const cached = await cache.match('/index.html');
           return cached || new Response('Dev offline - restart Vite', { status: 503 });
@@ -106,7 +171,7 @@ self.addEventListener('fetch', (event) => {
       );
     }
     
-    return; // Все остальные запросы пропускаем
+    return;
   }
   
   // ============ PRODUCTION РЕЖИМ ============
@@ -147,17 +212,21 @@ self.addEventListener('fetch', (event) => {
         
         // Для навигации - офлайн страница
         if (request.mode === 'navigate') {
-          const mainPage = await swDb.getPage('/');
-          if (mainPage) {
-            return new Response(mainPage.html, {
-              status: 200,
-              headers: { 'Content-Type': 'text/html' }
-            });
+          try {
+            const mainPage = await swDb.getPage('/');
+            if (mainPage) {
+              return new Response(mainPage.html, {
+                status: 200,
+                headers: { 'Content-Type': 'text/html' }
+              });
+            }
+          } catch (dbError) {
+            console.warn('[SW] Ошибка получения страницы из БД:', dbError);
           }
           
           const cache = await caches.open(SW_CONFIG.cacheNames.static);
-          return await cache.match('/index.html') || 
-                 new Response('Offline', { status: 503 });
+          const cached = await cache.match('/index.html');
+          return cached || new Response('Offline', { status: 503 });
         }
         
         throw error;
@@ -166,9 +235,7 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Остальные обработчики (sync, message, push) оставляем как есть
-// но с проверкой IS_DEVELOPMENT
-
+// ============ MESSAGE ============
 self.addEventListener('message', async (event) => {
   const { type, payload } = event.data;
   
@@ -182,74 +249,134 @@ self.addEventListener('message', async (event) => {
     if (event.ports[0]) {
       event.ports[0].postMessage({ 
         success: true, 
-        isDevelopment: true 
+        isDevelopment: true,
+        version: SW_CONFIG.version
       });
     }
     return;
   }
   
   // Production обработка сообщений
+  console.log('[SW] 📨 Сообщение:', type);
+  
   switch (type) {
     case 'SKIP_WAITING':
       self.skipWaiting();
       break;
       
     case 'QUEUE_OFFLINE_ACTION':
-      await swDb.queueAction(payload);
-      if ('sync' in self.registration) {
-        await self.registration.sync.register('sync-offline-actions');
-      }
-      if (event.ports[0]) {
-        event.ports[0].postMessage({ success: true });
+      try {
+        await swDb.queueAction(payload);
+        if ('sync' in self.registration) {
+          await self.registration.sync.register('sync-offline-actions');
+        }
+        if (event.ports[0]) {
+          event.ports[0].postMessage({ success: true });
+        }
+      } catch (error) {
+        console.error('[SW] Ошибка QUEUE_OFFLINE_ACTION:', error);
+        if (event.ports[0]) {
+          event.ports[0].postMessage({ success: false, error: String(error) });
+        }
       }
       break;
       
     case 'CACHE_PROJECT':
-      await syncManager.cacheProjectForOffline(payload.projectId);
-      if (event.ports[0]) {
-        event.ports[0].postMessage({ success: true });
+      try {
+        await syncManager.cacheProjectForOffline(payload.projectId);
+        if (event.ports[0]) {
+          event.ports[0].postMessage({ success: true });
+        }
+      } catch (error) {
+        console.error('[SW] Ошибка CACHE_PROJECT:', error);
+        if (event.ports[0]) {
+          event.ports[0].postMessage({ success: false, error: String(error) });
+        }
       }
       break;
       
     case 'GET_OFFLINE_STATUS':
       if (event.ports[0]) {
-        const pendingActions = await swDb.getPendingActions();
-        const cachedPages = await swDb.cachedPages.count();
-        
-        event.ports[0].postMessage({
-          pendingActions: pendingActions.length,
-          cachedPages,
-          isDevelopment: false
-        });
+        try {
+          const pendingActions = await swDb.getPendingActions();
+          const cachedPages = await swDb.cachedPages.count();
+          
+          event.ports[0].postMessage({
+            pendingActions: pendingActions.length,
+            cachedPages,
+            isDevelopment: false,
+            version: SW_CONFIG.version
+          });
+        } catch (error) {
+          event.ports[0].postMessage({
+            pendingActions: 0,
+            cachedPages: 0,
+            error: String(error),
+            version: SW_CONFIG.version
+          });
+        }
       }
       break;
+      
+    default:
+      console.log('[SW] Неизвестный тип сообщения:', type);
+      if (event.ports[0]) {
+        event.ports[0].postMessage({ 
+          success: false, 
+          error: 'Unknown message type' 
+        });
+      }
   }
 });
 
+// ============ SYNC ============
 self.addEventListener('sync', (event) => {
-  if (IS_DEVELOPMENT) return;
-  
-  if (event.tag === 'sync-offline-actions') {
-    event.waitUntil(syncManager.syncOfflineActions());
+  if (IS_DEVELOPMENT) {
+    console.log('[SW] 🔧 Dev режим - sync игнорируется:', event.tag);
+    return;
   }
-});
-
-self.addEventListener('push', (event) => {
-  if (IS_DEVELOPMENT) return;
   
-  if (event.data) {
-    const data = event.data.json();
+  console.log('[SW] 🔄 Sync событие:', event.tag);
+  
+  if (event.tag === 'sync-offline-actions' || event.tag === 'sync-data') {
     event.waitUntil(
-      self.registration.showNotification(data.title || 'Lil Papper', {
-        body: data.body || 'Обновления в проекте',
-        icon: '/Logo.png',
-        badge: '/Logo.png',
-        data: { url: data.url || '/' }
+      syncManager.syncOfflineActions().catch(error => {
+        console.error('[SW] ❌ Ошибка синхронизации:', error);
       })
     );
   }
 });
 
+// ============ PUSH ============
+self.addEventListener('push', (event) => {
+  if (IS_DEVELOPMENT) {
+    console.log('[SW] 🔧 Dev режим - push уведомление');
+    return;
+  }
+  
+  if (event.data) {
+    try {
+      const data = event.data.json();
+      const title = data.title || 'Lil Papper';
+      const options = {
+        body: data.body || 'Обновления в проекте',
+        icon: '/Logo.png',
+        badge: '/Logo.png',
+        data: { url: data.url || '/' }
+      };
+      
+      event.waitUntil(
+        self.registration.showNotification(title, options).catch(error => {
+          console.warn('[SW] ⚠️ Ошибка показа уведомления:', error);
+        })
+      );
+    } catch (error) {
+      console.error('[SW] ❌ Ошибка обработки push:', error);
+    }
+  }
+});
+
+// ============ NOTIFICATION CLICK ============
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const urlToOpen = event.notification.data?.url || '/';

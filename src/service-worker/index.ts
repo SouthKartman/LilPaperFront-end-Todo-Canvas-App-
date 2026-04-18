@@ -27,23 +27,28 @@ export class ServiceWorkerManager {
       // Регистрируем SW
       this.registration = await navigator.serviceWorker.register('/sw.js', {
         scope: '/',
+        type: 'classic',
       });
       
-      console.log('[SW] Зарегистрирован:', this.registration);
+      console.log(`[SW] ✅ Зарегистрирован v${SW_CONFIG.version}:`, this.registration);
+      
+      // Ждем активации
+      await navigator.serviceWorker.ready;
       
       // Проверяем обновления
-      this.registration.update();
+      this.registration.update().catch(err => {
+        console.warn('[SW] ⚠️ Ошибка проверки обновлений:', err);
+      });
       
       // Слушаем обновления
       this.registration.addEventListener('updatefound', () => {
         const newWorker = this.registration?.installing;
         if (newWorker) {
-          console.log('[SW] Найдено обновление');
+          console.log('[SW] 🔄 Найдено обновление');
           
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              console.log('[SW] Новая версия готова');
-              // Показываем уведомление о обновлении
+              console.log('[SW] 🎉 Новая версия готова!');
               this.showUpdateNotification();
             }
           });
@@ -55,20 +60,21 @@ export class ServiceWorkerManager {
         this.handleMessage(event.data);
       });
       
-      // Регистрируем фоновую синхронизацию (если есть)
-      if ('sync' in this.registration) {
+      // ✅ Регистрируем фоновую синхронизацию только если SW активен
+      if (this.registration.active && 'sync' in this.registration) {
         try {
           await this.registration.sync.register('sync-data');
-          console.log('[SW] Фоновая синхронизация зарегистрирована');
-        } catch (error) {
-          console.warn('[SW] Фоновая синхронизация не поддерживается:', error);
+          console.log('[SW] ✅ Фоновая синхронизация зарегистрирована');
+        } catch (syncError) {
+          // Это нормально для некоторых браузеров/окружений
+          console.log('[SW] ℹ️ Фоновая синхронизация не требуется');
         }
       }
       
       return true;
       
     } catch (error) {
-      console.error('[SW] Ошибка регистрации:', error);
+      console.error('[SW] ❌ Ошибка регистрации:', error);
       return false;
     }
   }
@@ -79,12 +85,24 @@ export class ServiceWorkerManager {
     try {
       const success = await this.registration.unregister();
       if (success) {
-        console.log('[SW] Удален');
+        console.log('[SW] 🗑️ Service Worker удален');
+        this.registration = null;
       }
       return success;
     } catch (error) {
-      console.error('[SW] Ошибка удаления:', error);
+      console.error('[SW] ❌ Ошибка удаления:', error);
       return false;
+    }
+  }
+  
+  async update(): Promise<void> {
+    if (this.registration) {
+      try {
+        await this.registration.update();
+        console.log('[SW] 🔄 Проверка обновлений...');
+      } catch (error) {
+        console.warn('[SW] ⚠️ Ошибка обновления:', error);
+      }
     }
   }
   
@@ -105,15 +123,19 @@ export class ServiceWorkerManager {
   }
   
   private showUpdateNotification(): void {
-    // Создаем уведомление о обновлении
     const updateEvent = new CustomEvent('sw-update-available', {
-      detail: { version: SW_CONFIG.version },
+      detail: { 
+        version: SW_CONFIG.version,
+        message: 'Доступна новая версия приложения. Обновите страницу.'
+      },
     });
     window.dispatchEvent(updateEvent);
   }
   
   private handleMessage(data: any): void {
-    console.log('[SW] Сообщение от сервис-воркера:', data);
+    if (!data) return;
+    
+    console.log('[SW] 📨 Сообщение от SW:', data.type);
     
     switch (data.type) {
       case 'SYNC_START':
@@ -124,8 +146,13 @@ export class ServiceWorkerManager {
         window.dispatchEvent(new CustomEvent('sync-complete', { detail: data }));
         break;
         
+      case 'SYNC_ERROR':
+        window.dispatchEvent(new CustomEvent('sync-error', { detail: data }));
+        break;
+        
       default:
-        console.log('[SW] Неизвестное сообщение:', data.type);
+        // Игнорируем неизвестные сообщения
+        break;
     }
   }
 }
@@ -134,3 +161,9 @@ export class ServiceWorkerManager {
 export const registerServiceWorker = () => ServiceWorkerManager.getInstance().register();
 export const unregisterServiceWorker = () => ServiceWorkerManager.getInstance().unregister();
 export const getSWStatus = () => ServiceWorkerManager.getInstance().getStatus();
+export const updateServiceWorker = () => ServiceWorkerManager.getInstance().update();
+
+// Автоматическая регистрация в production
+if (import.meta.env.PROD) {
+  registerServiceWorker();
+}
