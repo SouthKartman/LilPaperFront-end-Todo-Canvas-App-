@@ -1,3 +1,4 @@
+// src/features/storage/lib/useIndexedDBInit.ts
 import { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { db } from '@shared/api/storage/indexedDB/schema';

@@ -1,10 +1,11 @@
 // src/pages/projects/ui/ProjectsPage.tsx
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAppSelector } from '@shared/lib/state/store';
+import { useDispatch } from 'react-redux';
 import { useProjects } from '@features/project-management';
 import { ProjectCard } from '@widgets/projects-list/ui/ProjectCard';
 import { CreateProjectModal } from '@widgets/create-project-modal/ui/CreateProjectModal';
+import { ProjectsBatchExportService } from '@features/project-management/lib/projectsBatchExport';
 import { 
   DndContext, 
   closestCenter, 
@@ -18,21 +19,27 @@ import {
   verticalListSortingStrategy, 
   rectSortingStrategy 
 } from '@dnd-kit/sortable';
+import { db } from '@shared/api/storage/indexedDB/schema';
+import { loadProjectState } from '@features/project-management/model/slice';
 import styles from './ProjectsPage.module.css';
+import { StorageManager } from '@features/storage/ui/StorageManager';
+import { TodoStorage } from '@shared/api/storage/jsonStorage/todoStorage';
+import { useAppModal } from '@shared/ui/kit/Modal/AppModal';
+import { RootState } from '@shared/lib/state/store'
+import { Logo } from '@shared/ui/icons/Logo/Logo';
 
 type ViewMode = 'grid' | 'list';
 type FilterType = 'all' | 'recent';
 
 export const ProjectsPage: React.FC = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const { 
     allProjects, 
     recentProjects, 
     createNewProject, 
     deleteProject, 
     reorderProjectsList,
-    exportProjects,
-    importProjects
   } = useProjects();
   
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -40,24 +47,51 @@ export const ProjectsPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [isDragging, setIsDragging] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [progressMessage, setProgressMessage] = useState('');
   
+  //  // Получаем состояние один раз в хуке
+  // const nodes = useSelector((state: RootState) => state.todoNodes.nodes);
+  
+  // const [lastSave, setLastSave] = useState<Date | null>(null);
+  // const [isSaving, setIsSaving] = useState(false);
+
+  // Загружаем время последнего сохранения
+  // useEffect(() => {
+  //   const savedDate = TodoStorage.getLastSave();
+  //   setLastSave(savedDate);
+  // }, []);
+  
+
+  const { openModal } = useAppModal();
+  
+  const handleOpenStorageManager = () => {
+    openModal(
+      <StorageManager modalMode={true} />,
+      {
+        title: ' ',
+        width: '800px',
+        height: 'auto',
+        onClose: () => {
+          console.log('Storage manager закрыт');
+        }
+      }
+    );
+  };
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Настройка сенсоров для DnD
   const sensors = useSensors(
     useSensor(MouseSensor, {
-      activationConstraint: {
-        distance: 5,
-      },
+      activationConstraint: { distance: 5 },
     })
   );
 
-  // Фильтрация и сортировка проектов
   const displayedProjects = useMemo(() => {
-    // Сначала выбираем по фильтру (all или recent)
     let projects = filterType === 'recent' ? recentProjects : allProjects;
     
-    // Затем применяем поиск
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       projects = projects.filter(project =>
@@ -69,10 +103,8 @@ export const ProjectsPage: React.FC = () => {
     return projects;
   }, [allProjects, recentProjects, filterType, searchQuery]);
 
-  const handleDragStart = () => {
-    setIsDragging(true);
-  };
-
+  const handleDragStart = () => setIsDragging(true);
+  
   const handleDragEnd = (event: DragEndEvent) => {
     setIsDragging(false);
     const { active, over } = event;
@@ -97,27 +129,117 @@ export const ProjectsPage: React.FC = () => {
     deleteProject(projectId);
   };
 
-  const handleExport = () => {
-    exportProjects();
-  };
+  // Экспорт ВСЕХ проектов с изображениями
+  const handleExportAllProjects = useCallback(async () => {
+    if (allProjects.length === 0) {
+      alert('Нет проектов для экспорта');
+      return;
+    }
+    
+    setIsExporting(true);
+    setProgress(0);
+    setProgressMessage('');
+    
+    try {
+      const zipBlob = await ProjectsBatchExportService.exportAllProjects(
+        allProjects,
+        (percent, message) => {
+          setProgress(percent);
+          setProgressMessage(message);
+        }
+      );
+      
+      const fileName = `all_projects_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.canvas`;
+      
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(zipBlob);
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      alert(`✅ Экспортировано ${allProjects.length} проектов с изображениями`);
+    } catch (error) {
+      console.error('Ошибка экспорта:', error);
+      alert('❌ Ошибка при экспорте проектов');
+    } finally {
+      setIsExporting(false);
+      setProgress(0);
+      setProgressMessage('');
+    }
+  }, [allProjects]);
 
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Импорт проектов из ZIP с изображениями
+  const handleImportProjects = useCallback(async (file: File) => {
+    setIsImporting(true);
+    setProgress(0);
+    setProgressMessage('');
+    
+    try {
+      const result = await ProjectsBatchExportService.importProjects(
+        file,
+        (percent, message) => {
+          setProgress(percent);
+          setProgressMessage(message);
+        }
+      );
+      
+      if (result.success) {
+        // Обновляем Redux состояние
+        const allProjectsFromDB = await db.projects.toArray();
+        const projectsMap = allProjectsFromDB.reduce((acc, p) => {
+          acc[p.id] = p;
+          return acc;
+        }, {} as Record<string, any>);
+        
+        dispatch(loadProjectState({
+          currentProjectId: null,
+          projects: projectsMap,
+          pages: {},
+          canvases: {},
+          projectOrder: allProjectsFromDB.map(p => p.id),
+        }));
+        
+        alert(
+          `✅ Импорт завершен!\n\n` +
+          `📁 Проектов: ${result.importedProjects}\n` +
+          `📄 Страниц: ${result.importedPages}\n` +
+          `📝 Задач: ${result.importedTodos}\n` +
+          `🖼️ Изображений: ${result.importedImages}\n` +
+          `${result.errors.length > 0 ? `⚠️ Ошибок: ${result.errors.length}` : ''}`
+        );
+      } else {
+        alert(`❌ Ошибка импорта:\n${result.errors.join('\n')}`);
+      }
+    } catch (error) {
+      console.error('Ошибка импорта:', error);
+      alert('❌ Ошибка при импорте проектов');
+    } finally {
+      setIsImporting(false);
+      setProgress(0);
+      setProgressMessage('');
+    }
+  }, [dispatch]);
+
+  const handleImport = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      importProjects(file);
+      handleImportProjects(file);
     }
-    // Сброс input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  };
+  }, [handleImportProjects]);
 
   return (
     <div className={styles.page}>
       {/* Header */}
       <div className={styles.header}>
         <div className={styles.headerLeft}>
-          <h1 className={styles.title}>Projects</h1>
+          <Logo width='300px' height = '140px'></Logo>
+          {/* <h1 className={styles.title}>Projects</h1> */}
           <div className={styles.projectCount}>
             {allProjects.length} {allProjects.length === 1 ? 'project' : 'projects'}
           </div>
@@ -144,29 +266,12 @@ export const ProjectsPage: React.FC = () => {
 
           {/* Import/Export */}
           <div className={styles.importExport}>
-            <button
-              className={styles.exportBtn}
-              onClick={handleExport}
-              title="Export projects"
-            >
-              <span className={styles.icon}>↓</span>
-              <span>Export</span>
-            </button>
-            <button
-              className={styles.importBtn}
-              onClick={() => fileInputRef.current?.click()}
-              title="Import projects"
-            >
-              <span className={styles.icon}>↑</span>
-              <span>Import</span>
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".json"
-              onChange={handleImport}
-              style={{ display: 'none' }}
-            />
+            <button 
+              onClick={handleOpenStorageManager}
+              className="storage-btn"
+              >
+              📁 Хранилище
+          </button>
           </div>
 
           {/* Create button */}
@@ -179,6 +284,17 @@ export const ProjectsPage: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Progress bar */}
+      {(isExporting || isImporting) && progress > 0 && (
+        <div className={styles.progressContainer}>
+          <div className={styles.progressBar}>
+            <div className={styles.progressFill} style={{ width: `${progress}%` }} />
+          </div>
+          <div className={styles.progressMessage}>{progressMessage}</div>
+          <div className={styles.progressPercent}>{Math.round(progress)}%</div>
+        </div>
+      )}
 
       {/* Search and filters */}
       <div className={styles.controls}>
@@ -282,6 +398,39 @@ export const ProjectsPage: React.FC = () => {
         onClose={() => setIsCreateModalOpen(false)}
         onCreateProject={createNewProject}
       />
+
+      <style>{`
+        .progressContainer {
+          margin: 16px 0;
+          padding: 12px;
+          background: #f8f9fa;
+          border-radius: 8px;
+        }
+        .progressBar {
+          width: 100%;
+          height: 8px;
+          background: #e9ecef;
+          border-radius: 4px;
+          overflow: hidden;
+        }
+        .progressFill {
+          height: 100%;
+          background: linear-gradient(90deg, #667eea, #764ba2);
+          transition: width 0.3s ease;
+          border-radius: 4px;
+        }
+        .progressMessage {
+          font-size: 12px;
+          color: #666;
+          margin-top: 8px;
+        }
+        .progressPercent {
+          font-size: 12px;
+          font-weight: 500;
+          color: #667eea;
+          margin-top: 4px;
+        }
+      `}</style>
     </div>
   );
 };

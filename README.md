@@ -20,7 +20,7 @@
 
 <p align="center">
   <img src="./public/example.png" width="80%" height="80%" alt="Example" />
-</p>
+</p>йййй
 
 <h2>📋 О приложении</h2>
 
@@ -257,7 +257,6 @@ src/
         ├── routes.ts           # 🗺️ Маршруты
         └── env.ts              # 🌍 Переменные окружения
 ```
-
 
 
 

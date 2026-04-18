@@ -1,4 +1,4 @@
-// Типы для изображений - только data структуры, без UI
+// src/entities/image/model/types.ts
 export type ImageNodeType = 'image' | 'todo-image';
 
 export interface ImageNode {

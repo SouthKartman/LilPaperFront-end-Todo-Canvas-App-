@@ -1,3 +1,4 @@
+// features/image-upload/lib/useImageDrop.ts
 import { ProcessedImageData } from '@entities/image/model/types';
 import { STORAGE_CONFIG } from '@shared/api/storage/storage';
 import { FileService } from '@shared/lib/dom/fileService';
@@ -11,7 +12,7 @@ export async function processAndSaveImage(
   projectId: string,
   position: { x: number; y: number }
 ): Promise<ProcessedImageData> {
-  console.log('🔥 processAndSaveImage ВЫЗВАНА!', { file: file.name, projectId, position });
+  // console.log('🔥 processAndSaveImage ВЫЗВАНА!', { file: file.name, projectId, position });
   
   try {
     // 1. Оптимизируем изображение

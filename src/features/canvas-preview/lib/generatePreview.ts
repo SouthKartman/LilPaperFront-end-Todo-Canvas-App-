@@ -1,5 +1,4 @@
 // src/features/canvas-preview/lib/generatePreview.ts
-import { RootState } from '@shared/lib/state/store';
 import { store } from '@shared/lib/state/store';
 
 interface PreviewNode {

@@ -23,7 +23,8 @@
       "@entities/*": ["src/entities/*"],
       "@shared/*": ["src/shared/*"],
       "@widgets/*": ["src/widgets/*"],
-      "@pages/*": ["src/pages/*"]
+      "@pages/*": ["src/pages/*"],
+      "@assets/*": ["src/assets/*"]
     },
     "verbatimModuleSyntax": false
   },
