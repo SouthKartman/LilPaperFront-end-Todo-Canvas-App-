@@ -49,6 +49,9 @@ import { useEnhancedViewport } from '@features/canvas-viewport/lib/useTransformV
 // Импортируем сервис превью
 import { previewService } from '@features/canvas-preview/lib/previewService'
 
+// 🆕 Импортируем useSelection
+import { useSelection } from '@features/selection'
+
 export const CanvasWorkspace: React.FC = () => {
   // Получаем projectId из URL
   const { projectId } = useParams()
@@ -60,7 +63,7 @@ export const CanvasWorkspace: React.FC = () => {
   const lastUpdateRef = useRef<number>(0)
   const saveTimeoutRef = useRef<NodeJS.Timeout>()
   const [isSaving, setIsSaving] = useState(false)
-  const isGeneratingPreview = useRef(false) // 👈 Добавляем ref для предотвращения множественных генераций
+  const isGeneratingPreview = useRef(false)
   
   const todoNodes = useSelector(selectAllTodoNodes)
   const selectedNodes = useSelector(selectSelectedTodoNodes)
@@ -76,6 +79,15 @@ export const CanvasWorkspace: React.FC = () => {
   const canvasViewport = useSelector(selectCurrentCanvasViewport)
   const canvasGrid = useSelector(selectCurrentCanvasGrid)
   const canvasBackground = useSelector(selectCurrentCanvasBackground)
+
+  // 🆕 Инициализируем useSelection
+  const { 
+    selectedTodoIds,
+    selectedImageIds,
+    selectedCount,
+    hasSelection,
+    clearSelection,
+  } = useSelection()
 
   const {
     viewport,
@@ -100,75 +112,69 @@ export const CanvasWorkspace: React.FC = () => {
     clearError: clearImageError,
   } = useImageDrop()
   
-// Добавьте этот useEffect
-
-useEffect(() => {
-  if (canvasRef.current) {
-    // Принудительно устанавливаем размеры
-    canvasRef.current.style.minWidth = '800px';
-    canvasRef.current.style.minHeight = '400px';
-  }
-}, []);
+  useEffect(() => {
+    if (canvasRef.current) {
+      canvasRef.current.style.minWidth = '800px';
+      canvasRef.current.style.minHeight = '400px';
+    }
+  }, []);
 
   // Хук для загрузки изображений
   const { uploadImages, uploadingImages, justUploadedIds } = useImageUpload()
 
   // 👇 Функция сохранения проекта и генерации превью
   const saveProject = useCallback(async () => {
-  if (!projectId || !canvasRef.current) return
+    if (!projectId || !canvasRef.current) return
 
-  setIsSaving(true)
-  console.log('💾 Сохранение проекта:', projectId)
+    setIsSaving(true)
+    console.log('💾 Сохранение проекта:', projectId)
 
-  try {
-    // Сохраняем viewport
-    if (currentCanvas) {
-      dispatch(updateCanvas({
-        canvasId: currentCanvas.id,
-        updates: {
-          viewport: {
-            x: viewport.position.x,
-            y: viewport.position.y,
-            zoom: viewport.scale,
+    try {
+      if (currentCanvas) {
+        dispatch(updateCanvas({
+          canvasId: currentCanvas.id,
+          updates: {
+            viewport: {
+              x: viewport.position.x,
+              y: viewport.position.y,
+              zoom: viewport.scale,
+            },
           },
-        },
-      }))
-    }
-
-    // Генерируем превью только если прошло больше 10 секунд с последней генерации
-    const stats = previewService.getStats();
-    const lastGen = localStorage.getItem(`last_preview_${projectId}`);
-    const now = Date.now();
-    
-    if (!lastGen || now - parseInt(lastGen) > 10000) { // 10 секунд
-      console.log('📸 Генерация превью (прошло >10с)');
-      localStorage.setItem(`last_preview_${projectId}`, now.toString());
-      
-      const previewUrl = await previewService.generateProjectPreview(projectId);
-      if (previewUrl) {
-        console.log('✅ Превью сгенерировано');
+        }))
       }
-    } else {
-      console.log('⏳ Пропускаем генерацию превью (слишком часто)');
+
+      const stats = previewService.getStats();
+      const lastGen = localStorage.getItem(`last_preview_${projectId}`);
+      const now = Date.now();
+      
+      if (!lastGen || now - parseInt(lastGen) > 10000) {
+        console.log('📸 Генерация превью (прошло >10с)');
+        localStorage.setItem(`last_preview_${projectId}`, now.toString());
+        
+        const previewUrl = await previewService.generateProjectPreview(projectId);
+        if (previewUrl) {
+          console.log('✅ Превью сгенерировано');
+        }
+      } else {
+        console.log('⏳ Пропускаем генерацию превью (слишком часто)');
+      }
+
+      console.log('✅ Проект сохранен')
+    } catch (error) {
+      console.error('❌ Ошибка сохранения:', error)
+    } finally {
+      setIsSaving(false)
     }
+  }, [projectId, currentCanvas, viewport, dispatch])
 
-    console.log('✅ Проект сохранен')
-  } catch (error) {
-    console.error('❌ Ошибка сохранения:', error)
-  } finally {
-    setIsSaving(false)
-  }
-}, [projectId, currentCanvas, viewport, dispatch])
-
-// Увеличиваем debounce до 5 секунд
-const debouncedSave = useCallback(() => {
-  if (saveTimeoutRef.current) {
-    clearTimeout(saveTimeoutRef.current)
-  }
-  saveTimeoutRef.current = setTimeout(() => {
-    saveProject()
-  }, 5000) // 5 секунд вместо 3
-}, [saveProject])
+  const debouncedSave = useCallback(() => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+    }
+    saveTimeoutRef.current = setTimeout(() => {
+      saveProject()
+    }, 5000)
+  }, [saveProject])
 
   // БЛОКИРОВКА МАСШТАБИРОВАНИЯ БРАУЗЕРА
   useEffect(() => {
@@ -370,6 +376,23 @@ const debouncedSave = useCallback(() => {
     )
   }, [todoNodes, currentCanvas])
 
+  // 🆕 Проверяем, выделена ли задача (используем оба источника)
+  const isTodoSelected = useCallback((id: string) => {
+    return selectedTodoIds.includes(id) || selectedNodes.some(n => n.id === id)
+  }, [selectedTodoIds, selectedNodes])
+
+  // 🆕 Проверяем, выделено ли изображение
+  const isImageSelected = useCallback((id: string) => {
+    return selectedImageIds.includes(id) || selectedImageNodes.some(n => n.id === id)
+  }, [selectedImageIds, selectedImageNodes])
+
+  // 🆕 Очистка всего выделения
+  const handleClearAllSelection = useCallback(() => {
+    dispatch(todoNodesActions.clearSelection())
+    dispatch(clearImageSelection())
+    clearSelection() // Очищаем и в новом сторе
+  }, [dispatch, clearSelection])
+
   return (
     <div className={styles.workspace}>
       {/* Индикатор сохранения */}
@@ -377,6 +400,13 @@ const debouncedSave = useCallback(() => {
         <div className={styles.savingIndicator}>
           <span className={styles.spinner} />
           Saving preview...
+        </div>
+      )}
+
+      {/* 🆕 Счетчик выделенных нод */}
+      {hasSelection && (
+        <div className={styles.selectionInfo}>
+          Выделено: {selectedCount || selectedNodes.length + selectedImageNodes.length}
         </div>
       )}
 
@@ -392,8 +422,7 @@ const debouncedSave = useCallback(() => {
         onDrop={handleCanvasDrop}
         onClick={(e) => {
           if (e.button === 0 && !e.altKey && !isDragging) {
-            dispatch(todoNodesActions.clearSelection())
-            dispatch(clearImageSelection())
+            handleClearAllSelection()
           }
         }}
         onDoubleClick={handleCanvasDoubleClick}
@@ -439,15 +468,14 @@ const debouncedSave = useCallback(() => {
                 e.stopPropagation()
                 
                 if (e.ctrlKey || e.metaKey) {
-                  const isSelected = selectedNodes.some(n => n.id === nodeId)
+                  const isSelected = isTodoSelected(nodeId)
                   if (isSelected) {
                     dispatch(todoNodesActions.deselectNode(nodeId))
                   } else {
                     dispatch(todoNodesActions.selectNode(nodeId))
                   }
                 } else {
-                  dispatch(todoNodesActions.clearSelection())
-                  dispatch(clearImageSelection())
+                  handleClearAllSelection()
                   dispatch(todoNodesActions.selectNode(nodeId))
                 }
               }}
@@ -455,7 +483,7 @@ const debouncedSave = useCallback(() => {
                 e.stopPropagation()
                 dispatch(todoNodesActions.startEditingTodo(nodeId))
               }}
-              isSelected={selectedNodes.some(n => n.id === node.id)}
+              isSelected={isTodoSelected(node.id)}
             />
           ))}
 
@@ -493,7 +521,7 @@ const debouncedSave = useCallback(() => {
             <ImageNode
               key={node.id}
               node={node}
-              isSelected={selectedImageNodes.some(n => n.id === node.id)}
+              isSelected={isImageSelected(node.id)}
               viewport={viewport}
               skipLoading={justUploadedIds.has(node.id)}
               onContextMenu={(e, nodeId) => {
@@ -516,14 +544,13 @@ const debouncedSave = useCallback(() => {
                 e.stopPropagation()
                 
                 if (e.ctrlKey || e.metaKey) {
-                  if (selectedImageNodes.some(n => n.id === nodeId)) {
+                  if (isImageSelected(nodeId)) {
                     dispatch(deselectImageNode(nodeId))
                   } else {
                     dispatch(selectImageNode(nodeId))
                   }
                 } else {
-                  dispatch(todoNodesActions.clearSelection())
-                  dispatch(clearImageSelection())
+                  handleClearAllSelection()
                   dispatch(selectImageNode(nodeId))
                 }
               }}
@@ -563,7 +590,7 @@ const debouncedSave = useCallback(() => {
       <TodoFormModal />
       
       <div className={styles.hotkeyHint}>
-        Ctrl+колесо — масштаб • Колесо — панорамирование • Alt+ЛКМ — панорамирование • Перетащите изображения для загрузки
+        Ctrl+колесо — масштаб • Колесо — панорамирование • Alt+ЛКМ — панорамирование • Cmd/Ctrl+Alt+ЛКМ — множественное выделение
       </div>
     </div>
   )

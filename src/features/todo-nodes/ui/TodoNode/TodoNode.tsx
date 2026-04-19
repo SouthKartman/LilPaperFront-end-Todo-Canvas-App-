@@ -130,25 +130,34 @@ export const TodoNode: React.FC<TodoNodeProps> = ({
   }
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    console.log('🐭 MouseDown on node:', node.id)
+  console.log('🐭 MouseDown on node:', node.id, { 
+      ctrlKey: e.ctrlKey, 
+      metaKey: e.metaKey, 
+      altKey: e.altKey,
+      shiftKey: e.shiftKey 
+    })
     
     if (e.button !== 0) return
     
-    if ((e.target as HTMLElement).closest('.editable') || 
-        (e.target as HTMLElement).closest('input') ||
-        (e.target as HTMLElement).closest('textarea') ||
-        (e.target as HTMLElement).closest('button')) {
+    // Проверяем, что клик не по интерактивным элементам
+    const target = e.target as HTMLElement
+    if (target.closest('.editable') || 
+        target.closest('input') ||
+        target.closest('textarea') ||
+        target.closest('button')) {
       return
     }
     
-    e.preventDefault()
+    // ✅ НЕ вызываем preventDefault здесь, чтобы не блокировать выделение
     e.stopPropagation()
     
+    // Сначала вызываем onClick для выделения
     if (onClick) {
       onClick(e, node.id)
     }
     
-    if (!isEditingTitle && !isEditingDesc && nodeRef.current) {
+    // Запускаем перетаскивание ТОЛЬКО если нет Ctrl/Cmd (чтобы не мешать множественному выделению)
+    if (!e.ctrlKey && !e.metaKey && !isEditingTitle && !isEditingDesc && nodeRef.current) {
       const rect = nodeRef.current.getBoundingClientRect()
       console.log('📦 Starting drag with rect:', rect)
       handleDragStart(node.id, e, rect)

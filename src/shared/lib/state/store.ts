@@ -17,6 +17,7 @@ import projectReducer from '@features/project-management/model/slice'
 
 // 🆕 ИМПОРТИРУЕМ МИДЛВАРЕ ДЛЯ СИНХРОНИЗАЦИИ ПОЛОТЕН
 import { canvasSyncMiddleware } from '@processes/canvas-sync/lib/canvasSyncMiddleware'
+import { selectionReducer } from '@features/selection'
 
 // Заглушки для отсутствующих редьюсеров
 // const canvasToolbarReducer = (state = {
@@ -69,6 +70,7 @@ const rootReducer = combineReducers({
   viewport: viewportReducer,
   project: projectReducer, // 🆕 ДОБАВЛЕНО
   imageNodes: imageNodesReducer, // ✅ ДОБАВЛЕНО - редьюсер для изображений
+  selection: selectionReducer,
   // canvasToolbar: canvasToolbarReducer,
   // propertiesPanel: propertiesPanelReducer,
   // selection: selectionReducer,

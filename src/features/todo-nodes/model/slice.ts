@@ -1,3 +1,4 @@
+// src/features/todo-nodes/model/slice.ts
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { nanoid } from 'nanoid';
 import { 
@@ -19,7 +20,6 @@ export interface TodoNodesState {
   error: string | null;
 }
 
-// БЕЗОПАСНАЯ загрузка начального состояния
 const loadInitialState = (): TodoNodesState => {
   if (typeof window === 'undefined') {
     return {
@@ -56,23 +56,19 @@ const loadInitialState = (): TodoNodesState => {
 
 const initialState: TodoNodesState = loadInitialState();
 
-// 🆕 THUNK ДЛЯ УДАЛЕНИЯ ЗАДАЧИ ИЗ INDEXEDDB
 export const deleteTodoFromDB = createAsyncThunk(
   'todoNodes/deleteFromDB',
-  async (nodeId: string, { dispatch, getState, rejectWithValue }) => {
+  async (nodeId: string, { getState, rejectWithValue }) => {
     try {
-      // Получаем задачу из состояния БЕЗ использования прокси
       const state = getState() as any;
       const todo = state.todoNodes.nodes[nodeId];
       
       if (!todo) {
         console.warn(`Задача ${nodeId} не найдена в состоянии`);
-        // Если задачи нет в состоянии, все равно пытаемся удалить из БД
         await TodoIndexedDBStorage.deleteTodo(nodeId);
         return nodeId;
       }
       
-      // Удаляем из IndexedDB
       const success = await TodoIndexedDBStorage.deleteTodo(nodeId);
       
       if (!success) {
@@ -89,12 +85,10 @@ export const deleteTodoFromDB = createAsyncThunk(
   }
 );
 
-// 🆕 THUNK ДЛЯ МАССОВОГО УДАЛЕНИЯ
 export const deleteMultipleTodosFromDB = createAsyncThunk(
   'todoNodes/deleteMultipleFromDB',
-  async (nodeIds: string[], { dispatch, rejectWithValue }) => {
+  async (nodeIds: string[], { rejectWithValue }) => {
     try {
-      // Удаляем все задачи из БД
       const success = await TodoIndexedDBStorage.deleteTodos(nodeIds);
       
       if (!success) {
@@ -111,7 +105,6 @@ export const deleteMultipleTodosFromDB = createAsyncThunk(
   }
 );
 
-// 🆕 THUNK ДЛЯ СОХРАНЕНИЯ ЗАДАЧИ В INDEXEDDB
 export const saveTodoToDB = createAsyncThunk(
   'todoNodes/saveToDB',
   async (todo: Todo, { rejectWithValue }) => {
@@ -131,7 +124,6 @@ export const saveTodoToDB = createAsyncThunk(
   }
 );
 
-// 🆕 THUNK ДЛЯ ОБНОВЛЕНИЯ ЗАДАЧИ В INDEXEDDB
 export const updateTodoInDB = createAsyncThunk(
   'todoNodes/updateInDB',
   async ({ id, updates }: { id: string; updates: Partial<Todo> }, { rejectWithValue }) => {
@@ -151,7 +143,6 @@ export const updateTodoInDB = createAsyncThunk(
   }
 );
 
-// 🆕 THUNK ДЛЯ ЗАГРУЗКИ ВСЕХ ЗАДАЧ ИЗ INDEXEDDB
 export const loadTodosFromDB = createAsyncThunk(
   'todoNodes/loadFromDB',
   async (_, { rejectWithValue }) => {
@@ -166,7 +157,6 @@ export const loadTodosFromDB = createAsyncThunk(
   }
 );
 
-// ФУНКЦИЯ ДЛЯ СОХРАНЕНИЯ В localStorage (для обратной совместимости)
 const saveState = (state: TodoNodesState) => {
   try {
     const nodesToSave = JSON.parse(JSON.stringify(state.nodes));
@@ -207,7 +197,6 @@ export const todoNodesSlice = createSlice({
   name: 'todoNodes',
   initialState,
   reducers: {
-    // Создание новой задачи
     createTodo: (state, action: PayloadAction<CreateTodoDto & { pageId?: string }>) => {
       const id = nanoid();
       const now = createISODate();
@@ -246,13 +235,12 @@ export const todoNodesSlice = createSlice({
       
       state.nodes[id] = newTodo;
       
-      // Асинхронно сохраняем в IndexedDB
+      const newTodoCopy = { ...newTodo };
       setTimeout(() => {
-        TodoIndexedDBStorage.addTodo(newTodo).catch(console.error);
+        TodoIndexedDBStorage.addTodo(newTodoCopy).catch(console.error);
       }, 0);
     },
 
-    // Создание задачи на определенной позиции
     createTodoAtPosition: (
       state, 
       action: PayloadAction<{
@@ -301,13 +289,12 @@ export const todoNodesSlice = createSlice({
       state.selectedNodeIds = [id];
       state.editingNodeId = id;
       
-      // Асинхронно сохраняем в IndexedDB
+      const newTodoCopy = { ...newTodo };
       setTimeout(() => {
-        TodoIndexedDBStorage.addTodo(newTodo).catch(console.error);
+        TodoIndexedDBStorage.addTodo(newTodoCopy).catch(console.error);
       }, 0);
     },
 
-    // Создание задачи для конкретной страницы
     createTodoForPage: (
       state, 
       action: PayloadAction<{
@@ -341,13 +328,12 @@ export const todoNodesSlice = createSlice({
       state.selectedNodeIds = [id];
       state.editingNodeId = id;
       
-      // Асинхронно сохраняем в IndexedDB
+      const newTodoCopy = { ...newTodo };
       setTimeout(() => {
-        TodoIndexedDBStorage.addTodo(newTodo).catch(console.error);
+        TodoIndexedDBStorage.addTodo(newTodoCopy).catch(console.error);
       }, 0);
     },
 
-    // Перенос ноды на другую страницу
     moveTodoToPage: (
       state, 
       action: PayloadAction<{
@@ -360,16 +346,15 @@ export const todoNodesSlice = createSlice({
       
       if (node) {
         node.pageId = targetPageId;
-        node.updatedAt = createISODate();
+        const updatedAt = createISODate();
+        node.updatedAt = updatedAt;
         
-        // Асинхронно обновляем в IndexedDB
         setTimeout(() => {
-          TodoIndexedDBStorage.updateTodo(nodeId, { pageId: targetPageId, updatedAt: node.updatedAt }).catch(console.error);
+          TodoIndexedDBStorage.updateTodo(nodeId, { pageId: targetPageId, updatedAt }).catch(console.error);
         }, 0);
       }
     },
 
-    // Фильтрация нод по странице
     filterNodesByPage: (
       state, 
       action: PayloadAction<{
@@ -377,10 +362,8 @@ export const todoNodesSlice = createSlice({
       }>
     ) => {
       // Этот экшен может использоваться для UI логики
-      // Основная фильтрация происходит в селекторах
     },
 
-    // Дублирование задачи
     duplicateTodo: (state, action: PayloadAction<string>) => {
       const originalId = action.payload;
       const originalNode = state.nodes[originalId];
@@ -406,9 +389,9 @@ export const todoNodesSlice = createSlice({
         state.selectedNodeIds = [id];
         state.editingNodeId = null;
         
-        // Асинхронно сохраняем копию в IndexedDB
+        const newTodoCopy = { ...newTodo };
         setTimeout(() => {
-          TodoIndexedDBStorage.addTodo(newTodo).catch(console.error);
+          TodoIndexedDBStorage.addTodo(newTodoCopy).catch(console.error);
         }, 0);
       }
     },
@@ -426,16 +409,19 @@ export const todoNodesSlice = createSlice({
             : undefined;
         }
         
+        const updatedAt = createISODate();
+        
         Object.assign(node, {
           ...processedUpdates,
-          updatedAt: createISODate(),
+          updatedAt,
         });
         
-        // Асинхронно обновляем в IndexedDB
+        const updatesCopy = { ...processedUpdates };
+        
         setTimeout(() => {
           TodoIndexedDBStorage.updateTodo(id, {
-            ...processedUpdates,
-            updatedAt: node.updatedAt,
+            ...updatesCopy,
+            updatedAt,
           }).catch(console.error);
         }, 0);
       }
@@ -452,16 +438,19 @@ export const todoNodesSlice = createSlice({
       const node = state.nodes[id];
       
       if (node) {
+        const updatedAt = createISODate();
+        
         Object.assign(node, {
           ...updates,
-          updatedAt: createISODate(),
+          updatedAt,
         });
         
-        // Асинхронно обновляем в IndexedDB
+        const updatesCopy = { ...updates };
+        
         setTimeout(() => {
           TodoIndexedDBStorage.updateTodo(id, {
-            ...updates,
-            updatedAt: node.updatedAt,
+            ...updatesCopy,
+            updatedAt,
           }).catch(console.error);
         }, 0);
       }
@@ -469,14 +458,10 @@ export const todoNodesSlice = createSlice({
 
     deleteTodo: (state, action: PayloadAction<string>) => {
       const nodeId = action.payload;
-      
-      // Создаем копию, чтобы избежать проблем с прокси
-      if (state.nodes[nodeId]) {
-        delete state.nodes[nodeId];
-      }
-      
+      state.nodes = Object.fromEntries(
+        Object.entries(state.nodes).filter(([id]) => id !== nodeId)
+      );
       state.selectedNodeIds = state.selectedNodeIds.filter(id => id !== nodeId);
-      
       if (state.editingNodeId === nodeId) {
         state.editingNodeId = null;
       }
@@ -484,17 +469,10 @@ export const todoNodesSlice = createSlice({
 
     deleteSelectedTodos: (state) => {
       const selectedIds = [...state.selectedNodeIds];
-      
-      // Удаляем все выбранные ноды
-      selectedIds.forEach(nodeId => {
-        if (state.nodes[nodeId]) {
-          delete state.nodes[nodeId];
-        }
-      });
-      
-      // Очищаем selection
+      state.nodes = Object.fromEntries(
+        Object.entries(state.nodes).filter(([id]) => !selectedIds.includes(id))
+      );
       state.selectedNodeIds = [];
-      
       if (state.editingNodeId && selectedIds.includes(state.editingNodeId)) {
         state.editingNodeId = null;
       }
@@ -512,11 +490,13 @@ export const todoNodesSlice = createSlice({
       
       if (node) {
         node.position = position;
-        node.updatedAt = createISODate();
+        const updatedAt = createISODate();
+        node.updatedAt = updatedAt;
         
-        // Асинхронно обновляем позицию в IndexedDB
+        const positionCopy = { ...position };
+        
         setTimeout(() => {
-          TodoIndexedDBStorage.updateTodo(id, { position, updatedAt: node.updatedAt }).catch(console.error);
+          TodoIndexedDBStorage.updateTodo(id, { position: positionCopy, updatedAt }).catch(console.error);
         }, 0);
       }
     },
@@ -533,16 +513,17 @@ export const todoNodesSlice = createSlice({
       
       if (node) {
         node.size = size;
-        node.updatedAt = createISODate();
+        const updatedAt = createISODate();
+        node.updatedAt = updatedAt;
         
-        // Асинхронно обновляем размер в IndexedDB
+        const sizeCopy = { ...size };
+        
         setTimeout(() => {
-          TodoIndexedDBStorage.updateTodo(id, { size, updatedAt: node.updatedAt }).catch(console.error);
+          TodoIndexedDBStorage.updateTodo(id, { size: sizeCopy, updatedAt }).catch(console.error);
         }, 0);
       }
     },
 
-    // Удаление всех нод страницы
     deletePageNodes: (
       state, 
       action: PayloadAction<{
@@ -550,30 +531,24 @@ export const todoNodesSlice = createSlice({
       }>
     ) => {
       const { pageId } = action.payload;
-      const nodesToDelete: string[] = [];
+      const nodesToDelete = Object.keys(state.nodes).filter(
+        id => state.nodes[id].pageId === pageId
+      );
       
-      // Собираем ID всех нод этой страницы
-      Object.keys(state.nodes).forEach(nodeId => {
-        if (state.nodes[nodeId].pageId === pageId) {
-          nodesToDelete.push(nodeId);
-          delete state.nodes[nodeId];
-        }
-      });
+      state.nodes = Object.fromEntries(
+        Object.entries(state.nodes).filter(([id]) => !nodesToDelete.includes(id))
+      );
       
-      // Очищаем selection
-      state.selectedNodeIds = state.selectedNodeIds.filter(id => {
-        const node = state.nodes[id];
-        return node ? node.pageId !== pageId : true;
-      });
+      state.selectedNodeIds = state.selectedNodeIds.filter(id => !nodesToDelete.includes(id));
       
-      if (state.editingNodeId && state.nodes[state.editingNodeId]?.pageId === pageId) {
+      if (state.editingNodeId && nodesToDelete.includes(state.editingNodeId)) {
         state.editingNodeId = null;
       }
       
-      // Асинхронно удаляем все ноды страницы из IndexedDB
       if (nodesToDelete.length > 0) {
+        const nodesToDeleteCopy = [...nodesToDelete];
         setTimeout(() => {
-          TodoIndexedDBStorage.deleteTodos(nodesToDelete).catch(console.error);
+          TodoIndexedDBStorage.deleteTodos(nodesToDeleteCopy).catch(console.error);
         }, 0);
       }
     },
@@ -590,11 +565,11 @@ export const todoNodesSlice = createSlice({
       
       if (node) {
         node.status = status;
-        node.updatedAt = createISODate();
+        const updatedAt = createISODate();
+        node.updatedAt = updatedAt;
         
-        // Асинхронно обновляем статус в IndexedDB
         setTimeout(() => {
-          TodoIndexedDBStorage.updateTodo(id, { status, updatedAt: node.updatedAt }).catch(console.error);
+          TodoIndexedDBStorage.updateTodo(id, { status, updatedAt }).catch(console.error);
         }, 0);
       }
     },
@@ -611,11 +586,11 @@ export const todoNodesSlice = createSlice({
       
       if (node) {
         node.priority = priority;
-        node.updatedAt = createISODate();
+        const updatedAt = createISODate();
+        node.updatedAt = updatedAt;
         
-        // Асинхронно обновляем приоритет в IndexedDB
         setTimeout(() => {
-          TodoIndexedDBStorage.updateTodo(id, { priority, updatedAt: node.updatedAt }).catch(console.error);
+          TodoIndexedDBStorage.updateTodo(id, { priority, updatedAt }).catch(console.error);
         }, 0);
       }
     },
@@ -632,11 +607,13 @@ export const todoNodesSlice = createSlice({
       
       if (node && !node.tags.includes(tag)) {
         node.tags.push(tag);
-        node.updatedAt = createISODate();
+        const updatedAt = createISODate();
+        node.updatedAt = updatedAt;
         
-        // Асинхронно обновляем теги в IndexedDB
+        const tagsCopy = [...node.tags];
+        
         setTimeout(() => {
-          TodoIndexedDBStorage.updateTodo(id, { tags: node.tags, updatedAt: node.updatedAt }).catch(console.error);
+          TodoIndexedDBStorage.updateTodo(id, { tags: tagsCopy, updatedAt }).catch(console.error);
         }, 0);
       }
     },
@@ -653,18 +630,19 @@ export const todoNodesSlice = createSlice({
       
       if (node) {
         node.tags = node.tags.filter(t => t !== tag);
-        node.updatedAt = createISODate();
+        const updatedAt = createISODate();
+        node.updatedAt = updatedAt;
         
-        // Асинхронно обновляем теги в IndexedDB
+        const tagsCopy = [...node.tags];
+        
         setTimeout(() => {
-          TodoIndexedDBStorage.updateTodo(id, { tags: node.tags, updatedAt: node.updatedAt }).catch(console.error);
+          TodoIndexedDBStorage.updateTodo(id, { tags: tagsCopy, updatedAt }).catch(console.error);
         }, 0);
       }
     },
 
     selectNode: (state, action: PayloadAction<string>) => {
       const nodeId = action.payload;
-      
       if (!state.selectedNodeIds.includes(nodeId)) {
         state.selectedNodeIds.push(nodeId);
       }
@@ -695,49 +673,54 @@ export const todoNodesSlice = createSlice({
 
     bringToFront: (state, action: PayloadAction<string>) => {
       const node = state.nodes[action.payload];
-      
       if (node) {
         const maxZIndex = Object.values(state.nodes).reduce((max, n) => 
           Math.max(max, n.zIndex || 0), 0
         );
-        node.zIndex = maxZIndex + 1;
-        node.updatedAt = createISODate();
+        const zIndex = maxZIndex + 1;
+        const updatedAt = createISODate();
         
-        // Асинхронно обновляем zIndex в IndexedDB
+        node.zIndex = zIndex;
+        node.updatedAt = updatedAt;
+        
+        const nodeId = action.payload;
+        
         setTimeout(() => {
-          TodoIndexedDBStorage.updateTodo(action.payload, { zIndex: node.zIndex, updatedAt: node.updatedAt }).catch(console.error);
+          TodoIndexedDBStorage.updateTodo(nodeId, { zIndex, updatedAt }).catch(console.error);
         }, 0);
       }
     },
 
     sendToBack: (state, action: PayloadAction<string>) => {
       const node = state.nodes[action.payload];
-      
       if (node) {
         const minZIndex = Object.values(state.nodes).reduce((min, n) => 
           Math.min(min, n.zIndex || 0), 0
         );
-        node.zIndex = Math.max(0, minZIndex - 1);
-        node.updatedAt = createISODate();
+        const zIndex = Math.max(0, minZIndex - 1);
+        const updatedAt = createISODate();
         
-        // Асинхронно обновляем zIndex в IndexedDB
+        node.zIndex = zIndex;
+        node.updatedAt = updatedAt;
+        
+        const nodeId = action.payload;
+        
         setTimeout(() => {
-          TodoIndexedDBStorage.updateTodo(action.payload, { zIndex: node.zIndex, updatedAt: node.updatedAt }).catch(console.error);
+          TodoIndexedDBStorage.updateTodo(nodeId, { zIndex, updatedAt }).catch(console.error);
         }, 0);
       }
     },
 
     clearAllNodes: (state) => {
       const allNodeIds = Object.keys(state.nodes);
-      
       state.nodes = {};
       state.selectedNodeIds = [];
       state.editingNodeId = null;
       
-      // Асинхронно удаляем все задачи из IndexedDB
       if (allNodeIds.length > 0) {
+        const allNodeIdsCopy = [...allNodeIds];
         setTimeout(() => {
-          TodoIndexedDBStorage.deleteTodos(allNodeIds).catch(console.error);
+          TodoIndexedDBStorage.deleteTodos(allNodeIdsCopy).catch(console.error);
         }, 0);
       }
     },
@@ -760,15 +743,15 @@ export const todoNodesSlice = createSlice({
     },
 
     importNodes: (state, action: PayloadAction<Record<string, Todo>>) => {
-      state.nodes = action.payload;
+      state.nodes = { ...action.payload };
       state.selectedNodeIds = [];
       state.editingNodeId = null;
       
-      // Асинхронно сохраняем импортированные задачи в IndexedDB
-      const todosArray = Object.values(action.payload);
+      const payloadCopy = { ...action.payload };
+      const todosArray = Object.values(payloadCopy);
       if (todosArray.length > 0) {
         setTimeout(() => {
-          TodoIndexedDBStorage.saveTodos(action.payload).catch(console.error);
+          TodoIndexedDBStorage.saveTodos(payloadCopy).catch(console.error);
         }, 0);
       }
     },
@@ -786,17 +769,15 @@ export const todoNodesSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Удаление из БД
       .addCase(deleteTodoFromDB.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(deleteTodoFromDB.fulfilled, (state, action) => {
-        // Удаляем задачу из состояния
         const nodeId = action.payload;
-        if (state.nodes[nodeId]) {
-          delete state.nodes[nodeId];
-        }
+        state.nodes = Object.fromEntries(
+          Object.entries(state.nodes).filter(([id]) => id !== nodeId)
+        );
         state.selectedNodeIds = state.selectedNodeIds.filter(id => id !== nodeId);
         if (state.editingNodeId === nodeId) {
           state.editingNodeId = null;
@@ -808,19 +789,15 @@ export const todoNodesSlice = createSlice({
         state.error = action.payload as string || 'Ошибка удаления задачи';
       })
       
-      // Массовое удаление
       .addCase(deleteMultipleTodosFromDB.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(deleteMultipleTodosFromDB.fulfilled, (state, action) => {
-        // Удаляем все задачи из состояния
         const nodeIds = action.payload;
-        nodeIds.forEach(nodeId => {
-          if (state.nodes[nodeId]) {
-            delete state.nodes[nodeId];
-          }
-        });
+        state.nodes = Object.fromEntries(
+          Object.entries(state.nodes).filter(([id]) => !nodeIds.includes(id))
+        );
         state.selectedNodeIds = state.selectedNodeIds.filter(id => !nodeIds.includes(id));
         if (state.editingNodeId && nodeIds.includes(state.editingNodeId)) {
           state.editingNodeId = null;
@@ -832,13 +809,12 @@ export const todoNodesSlice = createSlice({
         state.error = action.payload as string || 'Ошибка массового удаления';
       })
       
-      // Загрузка из БД
       .addCase(loadTodosFromDB.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(loadTodosFromDB.fulfilled, (state, action) => {
-        state.nodes = action.payload;
+        state.nodes = { ...action.payload };
         state.loading = false;
       })
       .addCase(loadTodosFromDB.rejected, (state, action) => {
@@ -848,7 +824,6 @@ export const todoNodesSlice = createSlice({
   },
 });
 
-// Экспорт всех actions
 export const {
   createTodo,
   createTodoAtPosition,

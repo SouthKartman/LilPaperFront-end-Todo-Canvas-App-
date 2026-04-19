@@ -267,3 +267,20 @@
   background: #f3f4f6;
   border-color: #d1d5db;
 }
+
+
+.node.selected {
+  outline: none;
+}
+
+.selectionIndicator {
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border: 2px solid #3b82f6;
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 10;
+}

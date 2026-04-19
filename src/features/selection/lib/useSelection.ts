@@ -1,37 +1,95 @@
 // src/features/selection/lib/useSelection.ts
 import { useCallback } from 'react'
 import { useAppDispatch, useAppSelector } from '@shared/lib/state'
-import { selectNode, deselectNode, clearSelection } from '@features/todo-nodes/model/slice'
+import {
+  selectTodo,
+  deselectTodo,
+  clearTodoSelection,
+  selectImage,
+  deselectImage,
+  clearImageSelection,
+  clearAllSelection,
+  setTodoSelection,
+  setImageSelection,
+} from '../model/slice'
+import { RootState } from '@shared/lib/state/store'
 
 export const useSelection = () => {
   const dispatch = useAppDispatch()
-  const selectedNodeIds = useAppSelector((state: any) => 
-    state.todoNodes?.selectedNodeIds || []
+  
+  const selectedTodoIds = useAppSelector((state: RootState) => 
+    state.selection?.selectedTodoIds || []
+  )
+  
+  const selectedImageIds = useAppSelector((state: RootState) => 
+    state.selection?.selectedImageIds || []
   )
 
-  const handleSelectNode = useCallback((nodeId: string, addToSelection = false) => {
-    if (addToSelection && (event as MouseEvent).ctrlKey) {
-      if (selectedNodeIds.includes(nodeId)) {
-        dispatch(deselectNode(nodeId))
-      } else {
-        dispatch(selectNode(nodeId))
-      }
+  // Выделить задачу
+  const selectTodoNode = useCallback((id: string, multiSelect: boolean = false) => {
+    if (!multiSelect) {
+      dispatch(clearImageSelection())
+      dispatch(setTodoSelection([id]))
     } else {
-      if (!selectedNodeIds.includes(nodeId)) {
-        dispatch(clearSelection())
-        dispatch(selectNode(nodeId))
+      if (selectedTodoIds.includes(id)) {
+        dispatch(deselectTodo(id))
+      } else {
+        dispatch(selectTodo(id))
       }
     }
-  }, [dispatch, selectedNodeIds])
+  }, [dispatch, selectedTodoIds])
 
-  const handleClearSelection = useCallback(() => {
-    dispatch(clearSelection())
+  // Выделить изображение
+  const selectImageNode = useCallback((id: string, multiSelect: boolean = false) => {
+    if (!multiSelect) {
+      dispatch(clearTodoSelection())
+      dispatch(setImageSelection([id]))
+    } else {
+      if (selectedImageIds.includes(id)) {
+        dispatch(deselectImage(id))
+      } else {
+        dispatch(selectImage(id))
+      }
+    }
+  }, [dispatch, selectedImageIds])
+
+  // Очистить всё выделение
+  const clearSelection = useCallback(() => {
+    dispatch(clearAllSelection())
   }, [dispatch])
 
+  // Проверить, выделена ли задача
+  const isTodoSelected = useCallback((id: string) => {
+    return selectedTodoIds.includes(id)
+  }, [selectedTodoIds])
+
+  // Проверить, выделено ли изображение
+  const isImageSelected = useCallback((id: string) => {
+    return selectedImageIds.includes(id)
+  }, [selectedImageIds])
+
+  // Получить количество выделенных элементов
+  const selectedCount = selectedTodoIds.length + selectedImageIds.length
+
+  // Есть ли выделение
+  const hasSelection = selectedCount > 0
+
   return {
-    selectedNodeIds,
-    handleSelectNode,
-    handleClearSelection,
-    isNodeSelected: (nodeId: string) => selectedNodeIds.includes(nodeId),
+    // Данные
+    selectedTodoIds,
+    selectedImageIds,
+    selectedCount,
+    hasSelection,
+    
+    // Методы для задач
+    selectTodoNode,
+    isTodoSelected,
+    
+    // Методы для изображений
+    selectImageNode,
+    isImageSelected,
+    
+    // Общие методы
+    clearSelection,
   }
 }
