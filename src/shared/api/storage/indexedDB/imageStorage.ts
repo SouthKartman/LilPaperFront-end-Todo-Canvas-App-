@@ -1,3 +1,5 @@
+// src/shared/api/storage/indexedDB/imageStorage.ts
+
 import { db } from './schema';
 import { ImageNode } from '@entities/image/model/types';
 import { FileService } from '@shared/lib/dom/fileService';

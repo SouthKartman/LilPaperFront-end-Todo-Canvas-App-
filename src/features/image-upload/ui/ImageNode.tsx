@@ -441,7 +441,7 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
           <div className={`${styles.resizeHandle} ${styles.e}`} onMouseDown={(e) => handleResizeStart(e, 'e')} />
           <div className={`${styles.resizeHandle} ${styles.w}`} onMouseDown={(e) => handleResizeStart(e, 'w')} />
           
-          {/* Панель действий */}
+          Панель действий
           <div className={styles.actions}>
             <button 
               className={`${styles.actionButton} ${styles.bringToFront}`}
