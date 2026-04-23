@@ -323,6 +323,18 @@ useEffect(() => {
       
       localStorage.setItem('lil-papper-clipboard', json)
       
+
+      // Попробуй запросить разрешение явно
+      try {
+        const permission = await navigator.permissions.query({ name: 'clipboard-read' as any })
+        if (permission.state === 'denied') {
+          console.log('❌ Доступ к буферу запрещен')
+        }
+      } catch (e) {
+        console.log('Permissions API не поддерживается')
+      }
+
+
       try {
         await navigator.clipboard.writeText(json)
       } catch {}
@@ -340,6 +352,7 @@ useEffect(() => {
       let imagePasted = false
       
       try {
+
         const items = await navigator.clipboard.read()
         
         for (const item of items) {
