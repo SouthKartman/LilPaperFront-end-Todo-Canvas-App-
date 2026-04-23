@@ -266,11 +266,12 @@ export const CanvasWorkspace: React.FC = () => {
   // ============================================
   // Clipboard (Ctrl+C, Ctrl+V, Ctrl+Delete)
   // ============================================
-  // const canCopy = selectedNodes.length > 0 || selectedImageNodes.length > 0
 
-// Замени useEffect с clipboard на этот (исправленный):
-
-// Замени useEffect с clipboard на этот:
+  const handleClearAllSelection = useCallback(() => {
+    dispatch(todoNodesActions.clearSelection())
+    dispatch(clearImageSelection())
+    clearSelection()
+  }, [dispatch, clearSelection])
 
 useEffect(() => {
   const handleKeyDown = async (e: KeyboardEvent) => {
@@ -450,7 +451,7 @@ useEffect(() => {
     }
     
     // Ctrl+Delete
-    if ((e.ctrlKey || e.metaKey) && e.code === 'Delete') {
+    if (e.code === 'Delete') {
       e.preventDefault()
       if (selectedNodes.length > 0) dispatch(todoNodesActions.deleteSelectedTodos())
       if (selectedImageNodes.length > 0) dispatch(deleteImageNodes(selectedImageNodes.map(n => n.id)))
@@ -458,6 +459,30 @@ useEffect(() => {
       return
     }
     
+    // В useEffect с clipboard, добавить в handleKeyDown:
+
+    // Ctrl+A (code = 'KeyA')
+    if ((e.ctrlKey || e.metaKey) && e.code === 'KeyA' && !e.shiftKey) {
+      e.preventDefault()
+      e.stopPropagation()
+      
+      // Очищаем текущее выделение
+      handleClearAllSelection()
+      
+      // Выделяем ВСЕ задачи на текущем холсте
+      currentCanvasNodes.forEach(node => {
+        dispatch(todoNodesActions.selectNode(node.id))
+      })
+      
+      // Выделяем ВСЕ изображения на текущем холсте
+      imageNodes.forEach(node => {
+        dispatch(selectImageNode(node.id))
+      })
+      
+      console.log('📦 Выделено всё:', currentCanvasNodes.length + imageNodes.length, 'элементов')
+      return
+    }
+
     handleViewportKeyDown(e)
   }
 
@@ -466,18 +491,20 @@ useEffect(() => {
   return () => {
     window.removeEventListener('keydown', handleKeyDown, true)
   }
-}, [selectedNodes, selectedImageNodes, dispatch, currentPage, convertScreenToCanvas, handleViewportKeyDown])
+}, [selectedNodes, selectedImageNodes, dispatch, currentPage, convertScreenToCanvas, handleViewportKeyDown, handleClearAllSelection])
 
-useEffect(() => {
-  const testHandler = (e: KeyboardEvent) => {
-    // Выводим ВСЕ нажатия клавиш
-    console.log('🔑 Key:', e.key, 'ctrl:', e.ctrlKey, 'meta:', e.metaKey, 'shift:', e.shiftKey, 'alt:', e.altKey)
-  }
+// Проверка на hotkeys
+
+// useEffect(() => {
+//   const testHandler = (e: KeyboardEvent) => {
+//     // Выводим ВСЕ нажатия клавиш
+//     console.log('🔑 Key:', e.key, 'ctrl:', e.ctrlKey, 'meta:', e.metaKey, 'shift:', e.shiftKey, 'alt:', e.altKey)
+//   }
   
-  window.addEventListener('keydown', testHandler)
+//   window.addEventListener('keydown', testHandler)
   
-  return () => window.removeEventListener('keydown', testHandler)
-}, [])
+//   return () => window.removeEventListener('keydown', testHandler)
+// }, [])
 
 
 
@@ -527,11 +554,7 @@ useEffect(() => {
     return selectedImageIds.includes(id) || selectedImageNodes.some(n => n.id === id)
   }, [selectedImageIds, selectedImageNodes])
 
-  const handleClearAllSelection = useCallback(() => {
-    dispatch(todoNodesActions.clearSelection())
-    dispatch(clearImageSelection())
-    clearSelection()
-  }, [dispatch, clearSelection])
+
 
   return (
     <div className={styles.workspace}>

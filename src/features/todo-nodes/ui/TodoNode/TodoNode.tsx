@@ -395,16 +395,6 @@ export const TodoNode: React.FC<TodoNodeProps> = ({
         >
           ✓
         </button>
-        <button
-          className={styles.quickAction}
-          onClick={(e) => {
-            e.stopPropagation()
-            dispatch(duplicateTodo(node.id))
-          }}
-          title="Дублировать"
-        >
-          📄
-        </button>
       </div>
     </div>
   )

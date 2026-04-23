@@ -4,18 +4,7 @@ import { MenuItemData } from '../model/types';
 
 export const createNodeContextMenu = (): MenuItemData[] => {
   return [
-    {
-      id: nanoid(),
-      label: 'Редактировать',
-      icon: '✏️',
-      actionType: 'EDIT_NODE',
-    },
-    {
-      id: nanoid(),
-      label: 'Дублировать',
-      icon: '📋',
-      actionType: 'DUPLICATE_NODE',
-    },
+
     // { id: 'divider-1', id: 'divider' },
     {
       id: nanoid(),

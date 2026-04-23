@@ -29,17 +29,6 @@ export const ContextMenu: React.FC = () => {
     
     try {
       switch (item.actionType) {
-        case 'EDIT_NODE':
-          if (context?.nodeId) {
-            dispatch(startEditingTodo(context.nodeId));
-          }
-          break;
-          
-        case 'DUPLICATE_NODE':
-          if (context?.nodeId) {
-            dispatch(duplicateTodo(context.nodeId));
-          }
-          break;
           
         case 'DELETE_NODE':
           if (context?.nodeId) {
