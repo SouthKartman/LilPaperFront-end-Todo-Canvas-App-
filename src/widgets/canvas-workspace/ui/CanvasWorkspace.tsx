@@ -15,6 +15,7 @@ import { QuickTodoForm } from '@features/todo-form/ui/QuickTodoForm'
 import { TodoFormModal } from '@features/todo-form/ui/TodoFormModal'
 import styles from './CanvasWorkspace.module.css'
 import { FileService } from '@shared/lib/dom/fileService'
+import { useMarqueeSelection } from '@features/selection/lib/useMarqueeSelection'
 
 import { 
   selectCurrentCanvasImagesArray,
@@ -95,6 +96,16 @@ export const CanvasWorkspace: React.FC = () => {
     handleResetViewport,
     handleToggleGrid,
   } = useEnhancedViewport()
+
+  const {
+    marquee,
+    handleStartMarquee,
+    handleUpdateMarquee,
+    handleEndMarquee,
+    getMarqueeRect,
+    getNodesInRect,
+    isActive: isMarqueeActive,
+  } = useMarqueeSelection()
 
   const {
     isDraggingOver: isDraggingImage,
@@ -618,6 +629,22 @@ useEffect(() => {
               isSelected={isTodoSelected(node.id)}
             />
           ))}
+
+          {isMarqueeActive && getMarqueeRect() && (
+            <div
+              style={{
+                position: 'absolute',
+                left: getMarqueeRect()!.x,
+                top: getMarqueeRect()!.y,
+                width: getMarqueeRect()!.width,
+                height: getMarqueeRect()!.height,
+                border: '2px dashed #3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                pointerEvents: 'none',
+                zIndex: 9999,
+              }}
+            />
+          )}
 
           {uploadingImages.map((tempNode) => (
             <ImageNode key={tempNode.tempId}

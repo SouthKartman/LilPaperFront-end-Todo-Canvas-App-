@@ -5,6 +5,11 @@ import { SelectionState } from './types'
 const initialState: SelectionState = {
   selectedTodoIds: [],
   selectedImageIds: [],
+    marquee: {
+    isActive: false,
+    startPoint: null,
+    endPoint: null,
+  },
 }
 
 export const selectionSlice = createSlice({
@@ -30,6 +35,35 @@ export const selectionSlice = createSlice({
           state.selectedTodoIds.push(id)
         }
       })
+    },
+
+    // Прямоугольник выделения
+    
+    startMarquee: (state, action: PayloadAction<{ x: number; y: number }>) => {
+      state.marquee.isActive = true
+      state.marquee.startPoint = action.payload
+      state.marquee.endPoint = action.payload
+    },
+
+    updateMarquee: (state, action: PayloadAction<{ x: number; y: number }>) => {
+      if (state.marquee.isActive) {
+        state.marquee.endPoint = action.payload
+      }
+    },
+
+    endMarquee: (state) => {
+      state.marquee.isActive = false
+      state.marquee.startPoint = null
+      state.marquee.endPoint = null
+    },
+
+    // Выделить ноды внутри прямоугольника
+    selectNodesInRect: (state, action: PayloadAction<{
+      todoIds: string[]
+      imageIds: string[]
+    }>) => {
+      state.selectedTodoIds = action.payload.todoIds
+      state.selectedImageIds = action.payload.imageIds
     },
     
     // Очистить выделение задач
@@ -92,6 +126,11 @@ export const {
   clearAllSelection,
   setTodoSelection,
   setImageSelection,
+  
+  startMarquee,
+  updateMarquee,
+  endMarquee,
+  selectNodesInRect,
 } = selectionSlice.actions
 
 export default selectionSlice.reducer
