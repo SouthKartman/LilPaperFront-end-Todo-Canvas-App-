@@ -284,6 +284,24 @@ export const CanvasWorkspace: React.FC = () => {
     clearSelection()
   }, [dispatch, clearSelection])
 
+// В начале компонента добавь useEffect:
+useEffect(() => {
+  // Запрашиваем разрешение на буфер обмена при загрузке
+  const requestPermission = async () => {
+    try {
+      // Пробуем прочитать буфер (это вызовет запрос разрешения)
+      await navigator.clipboard.readText()
+      console.log('✅ Разрешение на буфер получено')
+    } catch (err) {
+      console.log('⚠️ Разрешение на буфер не получено, используем localStorage')
+    }
+  }
+  
+  if (window.isSecureContext) {
+    requestPermission()
+  }
+}, [])
+
 useEffect(() => {
   const handleKeyDown = async (e: KeyboardEvent) => {
     // Ctrl+C (code = 'KeyC')
