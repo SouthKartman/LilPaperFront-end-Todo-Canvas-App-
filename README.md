@@ -48,32 +48,38 @@ src/
 │   └── App.tsx               # 🚪 ГЛАВНЫЙ КОМПОНЕНТ
 │
 ├── 📂 entities/              # 🏢 БИЗНЕС-СУЩНОСТИ
-│   ├── 📂 todo/              # 📝 СУЩНОСТЬ "ЗАДАЧА"
-│   │   ├── 📂 model/
-│   │   │   ├── types.ts      # 📐 Типы задач
-│   │   │   └── api.ts        # 🌐 API для задач
+│   └── 📂 todo/              # 📝 СУЩНОСТЬ "ЗАДАЧА"
+│      ├── 📂 model/
+│      │   ├── types.ts      # 📐 Типы задач
+│      │   └── api.ts        # 🌐 API для задач
+│      ├── 📂 lib/
+│      │   └── todoUtils.ts  # ⚙️ Утилиты для задач
+│      └── 📂 ui/
+│          └── TodoCard/     # 🎴 Базовая карточка задачи
+│   
+├── 📂 service-worker/              # 🏢 PWA + SW
+│   ├── 📂 config/              # 📝 Конфиг
+│   │   │   └── sw.config.ts      
 │   │   ├── 📂 lib/
-│   │   │   └── todoUtils.ts  # ⚙️ Утилиты для задач
+│   │   │   └── todoUtils.ts 
 │   │   └── 📂 ui/
-│   │       └── TodoCard/     # 🎴 Базовая карточка задачи
-│   ├── 📂 project/              # 📝 СУЩНОСТЬ "ЗАДАЧА"
-│   │   ├── 📂 model/
-│   │   │   ├── types.ts      # 📐 Типы проектоы
-│   │   │   └── constants.ts        # 🌐 Описание проекта
-│   │   └── 📂 lib/
-│   │       └── projectUtils.ts  # ⚙️ Утилиты для задач
-│   ├── 📂 canvas/            # 🖼️ СУЩНОСТЬ "КАНВАС"
-│   │   ├── 📂 model/
-│   │   │   ├── types.ts      # 📐 Типы для canvas
-│   │   │   └── api.ts        # 🌐 API для canvas
-│   │   └── 📂 lib/
-│   │       └── canvasHelpers.ts # 🔧 Хелперы для canvas
-│   │
-│   └── 📂 image/             # 🖼️ СУЩНОСТЬ "ИЗОБРАЖЕНИЕ"
-│       ├── 📂 model/
-│       │   └── types.ts      # 📐 Типы для изображений
-│       └── 📂 lib/
-│           └── imageHelpers.ts # 🔧 Хелперы для изображений
+│   │       └── TodoCard/    
+│   ├── 📂 handlers/              
+│   │       ├── apihandlers.ts
+│   │       ├── imageHandler.ts    
+│   │       ├── pagehandlers.ts
+│   │       ├── statichandlers.ts
+│   │       └── fontHandler.ts     
+│   ├── 📂 storage/            
+│   │      ├── syncManager.ts  
+│   │      └── swSchema.ts     
+│   ├── 📂 strategies/        
+│   │   ├── cacheFirst.ts/
+│   │   ├── staleWhileRevalidate.ts/
+│   │   └── networkFirst.ts
+│   ├── index.ts
+│   ├── sw.ts
+│   └── types.ts
 │
 ├── 📂 features/              # 🎯 ПОЛЬЗОВАТЕЛЬСКИЕ СЦЕНАРИИ
 │   ├── 📂 todo-nodes/        # 🎯 НОДЫ-ЗАДАЧИ
@@ -168,6 +174,14 @@ src/
 │   │       ├── generatePreview.ts    # 🪝 Создание превью (фотографирование)
 │   │       └── previewService.ts # 🪝 Сохранение и последующее внедрение в карту проекта превью
 │   │
+│   ├── 📂 clipboard/          # ☑️ буфер обмена
+│   │   ├── 📂 lib/
+│   │   │   ├── clipboardUtils.ts  
+│   │   │   └── useClipboard.ts  
+│   │   ├── 📂 model/
+│   │   │   └── types.ts 
+│   │   └── index.ts 
+│   │
 │   ├── 📂 project-management/ # 📁 УПРАВЛЕНИЕ ПРОЕКТАМИ
 │   │   ├── 📂 model/
 │   │   │   ├── slice.ts      # 🗃️ Redux slice
@@ -176,8 +190,13 @@ src/
 │   │   │   └── useProject.ts  # Логика работы проектов
 │   │   └── index.ts  # Логика работы проектов
 │   └── 📂 selection/          # ☑️ ВЫДЕЛЕНИЕ
-│       └── 📂 lib/
-│           └── useSelection.ts # 🪝 Логика выделения
+│       ├── 📂 model/
+│       │   ├── slice.ts      # 🗃️ Redux slice
+│       │   └── types.ts
+│       ├── 📂 lib/
+│       │   ├── useMarqueeSelection.ts 
+│       │   └── useSelection.ts 
+│       └── index.ts
 │
 ├── 📂 pages/  # 🧩 ГОТОВЫЕ UI страницы
 │   └── 📂 projects/   # 📐 МАКЕТ
