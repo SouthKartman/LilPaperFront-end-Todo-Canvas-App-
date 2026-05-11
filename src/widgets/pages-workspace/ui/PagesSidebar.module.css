@@ -166,3 +166,23 @@
   color: #6b7280;
   padding-left: 24px;
 }
+
+@media (max-width: 768px) {
+  .pagesSidebar
+  {
+    width: 100%;
+  }
+  .header span,button
+  {
+    display: none;;
+  }
+  .addButton
+  {
+    width: 150px;
+    height: 50px;
+  }
+  .projectInfo
+  {
+    display: none;
+  }
+}

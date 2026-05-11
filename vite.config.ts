@@ -60,7 +60,6 @@ export default defineConfig({
         swDest: 'dist/sw.js',
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         
-        // ✅ ИСПРАВЛЕНО: убраны дубликаты
         additionalManifestEntries: [
           { url: '/', revision: null },  // Только одна запись для корня
         ],

@@ -38,3 +38,10 @@
   color: white;
   border-color: #0056b3;
 }
+
+@media (max-width: 768px) {
+  .toolbar
+  {
+    display: none;
+  }
+}

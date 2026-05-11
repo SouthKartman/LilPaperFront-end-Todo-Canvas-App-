@@ -213,22 +213,22 @@ export const CanvasWorkspace: React.FC = () => {
     debouncedSave()
   }, [isDragging, dragState, viewport, todoNodes, dispatch, debouncedSave])
 
-  useEffect(() => {
-    if (currentCanvas && 
-        (viewport.position.x !== canvasViewport.x || 
-         viewport.position.y !== canvasViewport.y || 
-         viewport.scale !== canvasViewport.zoom)) {
+  // useEffect(() => {
+  //   if (currentCanvas && 
+  //       (viewport.position.x !== canvasViewport.x || 
+  //        viewport.position.y !== canvasViewport.y || 
+  //        viewport.scale !== canvasViewport.zoom)) {
       
-      dispatch(updateCanvas({
-        canvasId: currentCanvas.id,
-        updates: {
-          viewport: { x: viewport.position.x, y: viewport.position.y, zoom: viewport.scale },
-        },
-      }))
+  //     dispatch(updateCanvas({
+  //       canvasId: currentCanvas.id,
+  //       updates: {
+  //         viewport: { x: viewport.position.x, y: viewport.position.y, zoom: viewport.scale },
+  //       },
+  //     }))
       
-      debouncedSave()
-    }
-  }, [viewport, currentCanvas, canvasViewport, dispatch, debouncedSave])
+  //     debouncedSave()
+  //   }
+  // }, [viewport, currentCanvas, canvasViewport, dispatch, debouncedSave])
 
   const convertScreenToCanvas = useCallback((screenX: number, screenY: number) => {
     if (!canvasRef.current) return { x: 0, y: 0 }
