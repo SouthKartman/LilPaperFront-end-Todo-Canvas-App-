@@ -1,0 +1,292 @@
+/* src/widgets/projects-menu/ui/ProjectsMenu.module.css */
+.menu {
+  height: 100vh;
+  background: #2c2c2c;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  transition: width 0.2s ease;
+  position: relative;
+  user-select: none;
+}
+
+.menu.expanded {
+  width: 240px;
+}
+
+.menu.collapsed {
+  width: 48px;
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  padding: 12px 8px;
+  border-bottom: 1px solid #3c3c3c;
+}
+
+.toggleBtn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: #b3b3b3;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.toggleBtn:hover {
+  background: #3c3c3c;
+  color: #ffffff;
+}
+
+.title {
+  margin-left: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #e0e0e0;
+}
+
+/* Search */
+.search {
+  padding: 12px 8px;
+  position: relative;
+  border-bottom: 1px solid #3c3c3c;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 16px;
+  top: 20px;
+  color: #b3b3b3;
+  font-size: 14px;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 8px 8px 8px 32px;
+  background: #3c3c3c;
+  border: 1px solid #4c4c4c;
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 13px;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.searchInput:focus {
+  border-color: #0d99ff;
+  background: #2c2c2c;
+}
+
+.searchInput::placeholder {
+  color: #808080;
+}
+
+/* Projects List */
+.projectsList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.projectsList::-webkit-scrollbar {
+  width: 6px;
+}
+
+.projectsList::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.projectsList::-webkit-scrollbar-thumb {
+  background: #4c4c4c;
+  border-radius: 3px;
+}
+
+.projectsList::-webkit-scrollbar-thumb:hover {
+  background: #5c5c5c;
+}
+
+/* Create Project Button */
+.createProjectBtn {
+  width: 100%;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background: #3c3c3c;
+  border: 1px dashed #4c4c4c;
+  border-radius: 6px;
+  color: #b3b3b3;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.createProjectBtn:hover {
+  background: #4c4c4c;
+  color: #ffffff;
+  border-color: #0d99ff;
+}
+
+.plusIcon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* Project Item */
+.projectItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  margin: 2px 0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.projectItem:hover {
+  background: #3c3c3c;
+}
+
+.projectItem.active {
+  background: #4c4c4c;
+}
+
+.projectIcon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.projectInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.projectName {
+  font-size: 13px;
+  font-weight: 400;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.projectDate {
+  font-size: 11px;
+  color: #b3b3b3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Project Actions */
+.projectActions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.projectItem:hover .projectActions {
+  opacity: 1;
+}
+
+.actionBtn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: #b3b3b3;
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.actionBtn:hover {
+  background: #5c5c5c;
+  color: #ffffff;
+}
+
+/* Edit Input */
+.editInput {
+  flex: 1;
+  padding: 4px 8px;
+  background: #2c2c2c;
+  border: 1px solid #0d99ff;
+  border-radius: 4px;
+  color: #ffffff;
+  font-size: 13px;
+  outline: none;
+}
+
+/* Collapsed Tooltip */
+.collapsedTooltip {
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #3c3c3c;
+  color: #ffffff;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 1000;
+  margin-left: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.projectItem:hover .collapsedTooltip {
+  opacity: 1;
+}
+
+/* Footer */
+.footer {
+  padding: 12px 8px;
+  border-top: 1px solid #3c3c3c;
+}
+
+.footerBtn {
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: #b3b3b3;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.footerBtn:hover {
+  background: #3c3c3c;
+  color: #ffffff;
+}

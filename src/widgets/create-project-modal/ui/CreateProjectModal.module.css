@@ -1,0 +1,250 @@
+/* src/widgets/create-project-modal/ui/CreateProjectModal.module.css */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.templateSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary, #333);
+  margin: 0;
+}
+
+.templateGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+.templateCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: var(--bg-secondary, #f5f5f5);
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.templateCard:hover {
+  border-color: var(--accent-primary, #007bff);
+  transform: translateY(-1px);
+}
+
+.templateCard.selected {
+  border-color: var(--accent-primary, #007bff);
+  background: var(--accent-light, #e6f2ff);
+}
+
+.templateIcon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.templateName {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary, #333);
+  text-align: center;
+}
+
+.templateDescription {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #666);
+  text-align: center;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.input {
+  padding: 0.75rem;
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 6px;
+  background: var(--bg-primary, white);
+  color: var(--text-primary, #333);
+  font-size: 1rem;
+  transition: border-color 0.2s ease;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent-primary, #007bff);
+  box-shadow: 0 0 0 2px var(--accent-light, #e6f2ff);
+}
+
+.input.error {
+  border-color: var(--error-color, #dc3545);
+}
+
+.errorMessage {
+  font-size: 0.75rem;
+  color: var(--error-color, #dc3545);
+}
+
+.textarea {
+  padding: 0.75rem;
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 6px;
+  background: var(--bg-primary, white);
+  color: var(--text-primary, #333);
+  font-size: 1rem;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: var(--accent-primary, #007bff);
+  box-shadow: 0 0 0 2px var(--accent-light, #e6f2ff);
+}
+
+.hint {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #666);
+  margin: 0.25rem 0 0 0;
+}
+
+.optional {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #999);
+  margin-left: 0.5rem;
+  font-weight: normal;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.cancelBtn {
+  padding: 0.75rem 1.5rem;
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-primary, #333);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cancelBtn:hover {
+  background: var(--bg-secondary, #f5f5f5);
+}
+
+.submitBtn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent-primary, #007bff);
+  color: white;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.submitBtn:hover {
+  background: var(--accent-secondary, #0056b3);
+}
+
+.submitBtn:disabled {
+  background: var(--disabled-color, #ccc);
+  cursor: not-allowed;
+}
+
+.divider {
+  height: 1px;
+  background: var(--border-color, #e0e0e0);
+  margin: 0.5rem 0;
+}/* src/widgets/create-project-modal/ui/CreateProjectModal.module.css */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary, #333);
+}
+
+.input {
+  padding: 0.75rem;
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 6px;
+  background: var(--bg-primary, white);
+  color: var(--text-primary, #333);
+  font-size: 1rem;
+  transition: border-color 0.2s ease;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent-primary, #007bff);
+  box-shadow: 0 0 0 2px var(--accent-light, #e6f2ff);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.cancelBtn {
+  padding: 0.75rem 1.5rem;
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-primary, #333);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cancelBtn:hover {
+  background: var(--bg-secondary, #f5f5f5);
+}
+
+.submitBtn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent-primary, #007bff);
+  color: white;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.submitBtn:hover {
+  background: var(--accent-secondary, #0056b3);
+}
+
+.submitBtn:disabled {
+  background: var(--disabled-color, #ccc);
+  cursor: not-allowed;
+}

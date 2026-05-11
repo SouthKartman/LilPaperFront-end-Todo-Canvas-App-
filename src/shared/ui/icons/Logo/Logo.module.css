@@ -1,0 +1,52 @@
+/* src/shared/ui/icons/Logo/Logo.module.css */
+.logoContainer {
+  display: flex;
+  align-items: center;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+  text-decoration: none;
+}
+
+.logo:hover {
+  opacity: 0.8;
+}
+
+.logoImage {
+  width: 171px;
+  height: 74px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logoImage svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.logoText {
+  font-size: 18px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+@media (max-width: 768px) {
+  .logoImage {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .logoText {
+    font-size: 16px;
+  }
+}

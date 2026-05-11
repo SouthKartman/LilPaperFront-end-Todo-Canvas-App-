@@ -1,0 +1,95 @@
+/* src/widgets/workspace-layout/ui/WorkspaceLayout.module.css */
+.layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.toolbar {
+  flex-shrink: 0;
+  z-index: 100;
+}
+
+.content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.main {
+  flex: 1;
+  position: relative;
+  overflow: auto;
+  background: #f8f9fa;
+}
+
+.sidebar {
+  width: 320px;
+  flex-shrink: 0;
+  background: white;
+  border-left: 1px solid #e5e7eb;
+  overflow-y: auto;
+  transition: width 0.2s ease;
+}
+
+.sidebarCollapsed {
+  width: 60px;
+}
+/* 🆕 СТИЛИ ДЛЯ ПАНЕЛИ СТРАНИЦ */
+.pagesSidebar {
+  flex: 0 0 250px;
+  background: #f8f9fa;
+  border-right: 1px solid #e9ecef;
+  overflow-y: auto;
+  transition: flex-basis 0.2s;
+}
+@media (max-width: 768px) {
+  .pagesSidebar {
+    position: absolute;
+    /* left: -200px; */
+    z-index: 100;
+    /* height: 100%; */
+    width: 96%;
+    border-radius: 15px;
+    bottom: 10px;
+    transition: left 0.3s;
+    margin: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+  }
+  
+  .pagesSidebar.open {
+    left: 0;
+  }
+  
+  .sidebar {
+    position: absolute;
+    right: -250px;
+    z-index: 100;
+    height: 100%;
+    transition: right 0.3s;
+    display: none;
+  }
+  
+  .sidebar.open {
+    right: 0;
+  }
+}
+
+/* УТИЛИТЫ */
+.resizer {
+  flex: 0 0 4px;
+  background: #e9ecef;
+  cursor: col-resize;
+  transition: background 0.2s;
+}
+
+.resizer:hover {
+  background: #4361ee;
+}

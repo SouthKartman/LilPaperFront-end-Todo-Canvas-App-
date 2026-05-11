@@ -1,0 +1,556 @@
+/* src/features/image-upload/ui/ImageNode/ImageNode.module.css */
+
+/* Базовые стили */
+.imageNode {
+  position: absolute;
+  cursor: move;
+  user-select: none;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: box-shadow 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.imageNode:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.imageNode.dragging {
+  opacity: 0.7;
+  cursor: grabbing;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.imageNode.selected {
+  border-color: #3b82f6;
+}
+
+.imageNode.resizing {
+  cursor: default;
+}
+
+/* Индикатор выделения */
+.selectionIndicator {
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border: 2px solid #3b82f6;
+  border-radius: 8px;
+  pointer-events: none;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* Ресайз хендлы */
+.resizeHandle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: white;
+  border: 2px solid #3b82f6;
+  border-radius: 2px;
+  z-index: 10;
+}
+
+.resizeHandle.nw {
+  top: -5px;
+  left: -5px;
+  cursor: nw-resize;
+}
+
+.resizeHandle.ne {
+  top: -5px;
+  right: -5px;
+  cursor: ne-resize;
+}
+
+.resizeHandle.sw {
+  bottom: -5px;
+  left: -5px;
+  cursor: sw-resize;
+}
+
+.resizeHandle.se {
+  bottom: -5px;
+  right: -5px;
+  cursor: se-resize;
+}
+
+.resizeHandle.n {
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: n-resize;
+}
+
+.resizeHandle.s {
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: s-resize;
+}
+
+.resizeHandle.e {
+  right: -5px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: e-resize;
+}
+
+.resizeHandle.w {
+  left: -5px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: w-resize;
+}
+
+/* Панель действий */
+.actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 20;
+}
+
+.imageNode:hover .actions,
+.imageNode.selected .actions {
+  opacity: 1;
+}
+
+.actionButton {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  background: white;
+  color: #1f2937;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.actionButton:hover {
+  background: #f3f4f6;
+  transform: scale(1.1);
+}
+
+.actionButton.delete:hover {
+  background: #ef4444;
+  color: white;
+}
+
+/* Информация о файле */
+.fileInfo {
+  padding: 0 8px;
+  font-size: 12px;
+  color: #1f2937;
+  max-width: 200px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.fileName {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ===== СТИЛИ ДЛЯ ПРЕЛОАДЕРА ===== */
+.imageNode.preload {
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px dashed #3b82f6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  animation: preloadPulse 1.5s ease-in-out infinite;
+  cursor: wait;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.preloadContent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 8px;
+}
+
+.preloadSpinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e5e7eb;
+  border-top: 3px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 12px;
+}
+
+.preloadText {
+  font-size: 14px;
+  font-weight: 600;
+  color: #3b82f6;
+  margin-bottom: 8px;
+}
+
+.preloadFileName {
+  font-size: 11px;
+  color: #6b7280;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 8px;
+  margin-top: 4px;
+}
+
+.progressBar {
+  width: 80%;
+  height: 4px;
+  background: #e5e7eb;
+  border-radius: 2px;
+  overflow: hidden;
+  margin: 8px 0;
+}
+
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  transition: width 0.3s ease;
+  border-radius: 2px;
+}
+
+@keyframes preloadPulse {
+  0%, 100% { opacity: 1; border-color: #3b82f6; }
+  50% { opacity: 0.8; border-color: #60a5fa; }
+}
+
+/* ===== СТИЛИ ДЛЯ ЗАГРУЗКИ ИЗ БД ===== */
+.imageNode.loading {
+  background: #f3f4f6;
+  border: 2px dashed #9ca3af;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  color: #6b7280;
+}
+
+.loadingSpinner {
+  font-size: 24px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 8px;
+}
+
+.loadingText {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* Плейсхолдер для изображения */
+.imagePlaceholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f3f4f6;
+  z-index: 1;
+}
+
+.placeholderSpinner {
+  width: 30px;
+  height: 30px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Само изображение */
+.image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  z-index: 2;
+}
+
+.imageVisible {
+  opacity: 1;
+}
+
+.imageHidden {
+  opacity: 0;
+}
+
+/* ===== СТИЛИ ДЛЯ ОШИБКИ ===== */
+.imageNode.error {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+.errorPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #f3f4f6;
+  color: #ef4444;
+  font-size: 14px;
+  gap: 8px;
+}
+
+.errorPlaceholder span {
+  font-size: 32px;
+}
+
+.errorPlaceholder small {
+  color: #6b7280;
+  max-width: 90%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Кнопка повтора */
+.retryButton {
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 12px;
+  font-size: 11px;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: background 0.2s ease;
+  z-index: 30;
+}
+
+.retryButton:hover {
+  background: #dc2626;
+}
+
+/* Оверлей загрузки */
+.uploadingOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 30;
+  backdrop-filter: blur(2px);
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e5e7eb;
+  border-top: 3px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Оптимизация для производительности */
+.imageNode {
+  will-change: transform, left, top;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.imageNode.dragging {
+  transition: none;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.2));
+}
+
+.imageNode:not(.dragging) {
+  transition: left 0.1s ease, top 0.1s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+/* Анимации для UI элементов */
+.fileInfo {
+  animation: slideUp 0.2s ease;
+}
+
+.actions {
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Улучшенные хендлы ресайза */
+.resizeHandle {
+  transition: transform 0.1s ease, background-color 0.1s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.resizeHandle:hover {
+  transform: scale(1.2);
+  background-color: #3b82f6;
+  border-color: white;
+}
+
+/* В ImageNode.module.css */
+
+.imageNode.preload {
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px dashed #3b82f6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  animation: preloadPulse 1.5s ease-in-out infinite;
+  cursor: wait;
+  pointer-events: none;
+  z-index: 1000;
+  display: flex; /* Добавляем flex */
+  align-items: center; /* Центрирование по вертикали */
+  justify-content: center; /* Центрирование по горизонтали */
+}
+
+.preloadContent {
+  width: 100%;
+  max-width: 200px; /* Ограничиваем ширину */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 8px;
+  margin: 0 auto; /* Центрируем */
+}
+
+.imageNode.preload .preloadSpinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e5e7eb;
+  border-top: 3px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 12px;
+  margin-left: auto; /* Центрируем спиннер */
+  margin-right: auto;
+}
+
+.imageNode.preload .preloadText {
+  font-size: 14px;
+  font-weight: 600;
+  color: #3b82f6;
+  margin-bottom: 8px;
+  text-align: center;
+  width: 100%;
+}
+
+.imageNode.preload .preloadFileName {
+  font-size: 11px;
+  color: #6b7280;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 8px;
+  margin-top: 4px;
+  text-align: center;
+  width: 100%;
+}
+
+.imageNode.preload .progressBar {
+  width: 100%;
+  height: 4px;
+  background: #e5e7eb;
+  border-radius: 2px;
+  overflow: hidden;
+  margin: 8px 0;
+}
+
+.imageNode.preload .progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  transition: width 0.3s ease;
+  border-radius: 2px;
+}
+
+/* Стили для skipLoading - плавный переход от прелоадера к изображению */
+.imageNode.skipLoading {
+  background: #f3f4f6;
+  border: 2px solid #e5e7eb;
+  cursor: wait;
+  animation: fadeIn 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.imageNode.skipLoading .imagePlaceholder {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f3f4f6;
+}
+
+.imageNode.skipLoading .placeholderSpinner {
+  width: 30px;
+  height: 30px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto;
+}

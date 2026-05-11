@@ -1,0 +1,6 @@
+/* src/features/context-menu/ui/MenuDivider.css */
+.menu-divider {
+  height: 1px;
+  background-color: var(--border-color, #e5e7eb);
+  margin: 4px 0;
+}

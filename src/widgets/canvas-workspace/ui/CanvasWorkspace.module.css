@@ -1,0 +1,215 @@
+/* src/widgets/canvas-workspace/ui/CanvasWorkspace.module.css */
+.workspace {
+  width: 100%;
+  height: 100%;
+  background: #f8f9fa;
+  position: relative;
+  overflow: hidden;
+  cursor: default;
+}
+
+.canvas {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  touch-action: none; /* Отключаем браузерный скролл */
+}
+
+.grid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    linear-gradient(90deg, #e0e0e0 1px, transparent 1px),
+    linear-gradient(#e0e0e0 1px, transparent 1px);
+  pointer-events: none;
+  transition: opacity 0.2s ease, background-size 0.2s ease;
+}
+
+.content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  will-change: transform; /* Оптимизация для браузера */
+  transform-origin: 0 0;
+}
+
+/* Существующие стили оставляем без изменений */
+.dragPreview {
+  position: absolute;
+  background: rgba(59, 130, 246, 0.1);
+  border: 2px dashed #3b82f6;
+  border-radius: 8px;
+  padding: 12px;
+  pointer-events: none;
+  z-index: 1001;
+  backdrop-filter: blur(4px);
+  font-size: 12px;
+  color: #3b82f6;
+  font-weight: 500;
+  transition: transform 0.1s ease-out;
+}
+
+.selectionHint {
+  margin-left: 12px;
+  font-size: 12px;
+  opacity: 0.7;
+  color: #6b7280;
+}
+
+.hotkeyHint {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  color: #6b7280;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(229, 231, 235, 0.5);
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Оптимизация для анимаций */
+.content > * {
+  transform: translateZ(0); /* Аппаратное ускорение */
+  backface-visibility: hidden;
+}
+
+/* Плавные transition для transform */
+.content {
+  transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Отключаем transition при панорамировании */
+.canvas.panning .content {
+  transition: none;
+}
+
+
+
+
+/* Добавьте в конец файла */
+
+.autoPanIndicator {
+  position: fixed;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: rgba(59, 130, 246, 0.1);
+  border: 2px solid #3b82f6;
+  pointer-events: none;
+  z-index: 10000;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  backdrop-filter: blur(4px);
+}
+
+.autoPanArrow {
+  width: 50%;
+  height: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: #3b82f6;
+  transition: opacity 0.2s;
+}
+
+.autoPanArrow[data-direction="up"] { transform: rotate(0deg); }
+.autoPanArrow[data-direction="down"] { transform: rotate(180deg); }
+.autoPanArrow[data-direction="left"] { transform: rotate(-90deg); }
+.autoPanArrow[data-direction="right"] { transform: rotate(90deg); }
+
+
+
+.dragPreview {
+  position: fixed;
+  background: rgba(59, 130, 246, 0.1);
+  border: 2px dashed #3b82f6;
+  border-radius: 8px;
+  padding: 12px;
+  pointer-events: none;
+  z-index: 9999;
+  backdrop-filter: blur(4px);
+  font-size: 12px;
+  color: #3b82f6;
+  font-weight: 500;
+  transform: none !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 200px;
+  min-height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Добавьте в CanvasWorkspace.module.css */
+
+.savingIndicator {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  animation: slideIn 0.2s ease;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* src/widgets/canvas-workspace/ui/CanvasWorkspace.module.css */
+
+.selectionInfo {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  padding: 8px 16px;
+  background: rgba(33, 150, 243, 0.9);
+  color: white;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  backdrop-filter: blur(4px);
+}

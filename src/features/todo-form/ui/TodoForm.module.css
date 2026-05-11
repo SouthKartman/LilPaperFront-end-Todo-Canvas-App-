@@ -1,0 +1,110 @@
+/* src/features/todo-form/ui/TodoForm.module.css */
+/* Добавьте или обновите эти стили: */
+
+.quickFormOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: transparent; /* Прозрачный фон */
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 20px;
+  pointer-events: auto; /* Важно: должен реагировать на клики */
+}
+
+.quickFormContainer {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  padding: 12px;
+  min-width: 300px;
+  max-width: 400px;
+  animation: slideIn 0.2s ease-out;
+  pointer-events: auto; /* Важно */
+}
+
+.quickForm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quickInput {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #3b82f6;
+  border-radius: 6px;
+  font-size: 16px;
+  outline: none;
+  background: white;
+}
+
+.quickInput:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.quickFormActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.quickSelect {
+  padding: 6px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 14px;
+  background: white;
+  flex: 1;
+}
+
+.quickSubmitButton {
+  padding: 6px 16px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.quickSubmitButton:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.quickSubmitButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.quickCancelButton {
+  padding: 6px 8px;
+  background: #f3f4f6;
+  color: #374151;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.quickCancelButton:hover {
+  background: #e5e7eb;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

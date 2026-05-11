@@ -1,0 +1,357 @@
+/* src/features/storage/ui/StorageManager/StorageManager.css */
+
+.storage-manager {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 20px;
+  margin: 20px 0;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  position: absolute;
+  bottom: 50px;
+  right: 20px;
+  width: 700px;
+  max-width: 90vw;
+  z-index: 1000;
+  max-height: 80vh;
+  overflow-y: auto;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Модальный режим */
+.storage-manager-modal {
+  position: relative;
+  bottom: auto;
+  right: auto;
+  margin: 0;
+  width: 100%;
+  max-width: 100%;
+  box-shadow: none;
+  border: none;
+  background: transparent;
+  padding: 0;
+}
+
+.storage-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.storage-header h3 {
+  margin: 0;
+  color: #333;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.storage-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.storage-close-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #999;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+}
+
+.storage-close-btn:hover {
+  background: #f0f0f0;
+  color: #666;
+}
+
+.storage-btn-refresh {
+  background: none;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.storage-btn-refresh:hover:not(:disabled) {
+  background: #f8f9fa;
+  border-color: #adb5bd;
+}
+
+.storage-comparison {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.storage-section {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 12px;
+  border: 1px solid #e9ecef;
+}
+
+.storage-section.active {
+  border-color: #adb5bd;
+  background: #ffffff;
+}
+
+.storage-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.storage-section-header h4 {
+  margin: 0;
+  font-size: 14px;
+  color: #495057;
+  font-weight: 600;
+}
+
+.storage-badge {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #e9ecef;
+  color: #495057;
+  font-weight: 500;
+}
+
+.storage-badge-new {
+  background: #dee2e6;
+  color: #212529;
+}
+
+.redux-stats {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+  border: 1px solid #e9ecef;
+}
+
+.redux-stats h4 {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  color: #495057;
+  font-weight: 600;
+}
+
+.storage-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.stat-item:last-child {
+  border-bottom: none;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.stat-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #212529;
+  background: #f8f9fa;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.storage-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.storage-btn {
+  padding: 8px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 13px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 100px;
+  justify-content: center;
+  background: #ffffff;
+  color: #212529;
+}
+
+.storage-btn:hover:not(:disabled) {
+  background: #f8f9fa;
+  border-color: #adb5bd;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.storage-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f8f9fa;
+}
+
+/* Все кнопки в белом стиле */
+.storage-btn-save,
+.storage-btn-export,
+.storage-btn-migrate,
+.storage-btn-clear-idb,
+.storage-btn-import,
+.storage-btn-clear {
+  background: #ffffff;
+  color: #212529;
+  border: 1px solid #e0e0e0;
+}
+
+.storage-btn-save:hover:not(:disabled),
+.storage-btn-export:hover:not(:disabled),
+.storage-btn-migrate:hover:not(:disabled),
+.storage-btn-clear-idb:hover:not(:disabled),
+.storage-btn-import:hover:not(:disabled),
+.storage-btn-clear:hover:not(:disabled) {
+  background: #f8f9fa;
+  border-color: #adb5bd;
+}
+
+.storage-info {
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+  font-size: 12px;
+  color: #495057;
+}
+
+.progress-container {
+  margin-bottom: 16px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #667eea;
+  transition: width 0.3s ease;
+  border-radius: 4px;
+}
+
+.progress-message {
+  font-size: 12px;
+  color: #666;
+  margin-top: 8px;
+  word-break: break-word;
+}
+
+.progress-percent {
+  font-size: 12px;
+  font-weight: 500;
+  color: #667eea;
+  margin-top: 4px;
+}
+
+/* Кастомный скроллбар */
+.storage-manager::-webkit-scrollbar {
+  width: 8px;
+}
+
+.storage-manager::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.storage-manager::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.storage-manager::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .storage-manager {
+    width: 95%;
+    right: 2.5%;
+    bottom: 10px;
+    max-height: 70vh;
+  }
+  
+  .storage-comparison {
+    grid-template-columns: 1fr;
+  }
+  
+  .storage-actions {
+    flex-direction: column;
+  }
+  
+  .storage-btn {
+    width: 100%;
+  }
+  
+  .storage-manager-modal .storage-comparison {
+    grid-template-columns: 1fr;
+  }
+  
+  .storage-manager-modal .storage-actions {
+    flex-direction: column;
+  }
+}
+
+/* Анимация появления */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.storage-manager {
+  animation: fadeIn 0.2s ease;
+}
