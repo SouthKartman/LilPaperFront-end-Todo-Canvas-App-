@@ -11,6 +11,7 @@ import todoFormReducer from '@features/todo-form/model/slice'
 import viewportReducer from '@features/canvas-viewport/model/slice'
 import { autoSaveMiddleware } from '@features/storage/model/autoSaveMiddleware';
 import imageNodesReducer from '@features/image-upload/model/slice'; // ✅ ИМПОРТ ДОБАВЛЕН
+import pluginNodesReducer from '@features/plugin-nodes/model/slice';
 
 // 🆕 ИМПОРТИРУЕМ РЕДЬЮСЕР ПРОЕКТА
 import projectReducer from '@features/project-management/model/slice'
@@ -18,6 +19,7 @@ import projectReducer from '@features/project-management/model/slice'
 // 🆕 ИМПОРТИРУЕМ МИДЛВАРЕ ДЛЯ СИНХРОНИЗАЦИИ ПОЛОТЕН
 import { canvasSyncMiddleware } from '@processes/canvas-sync/lib/canvasSyncMiddleware'
 import { selectionReducer } from '@features/selection'
+
 
 // Заглушки для отсутствующих редьюсеров
 // const canvasToolbarReducer = (state = {
@@ -71,6 +73,7 @@ const rootReducer = combineReducers({
   project: projectReducer, // 🆕 ДОБАВЛЕНО
   imageNodes: imageNodesReducer, // ✅ ДОБАВЛЕНО - редьюсер для изображений
   selection: selectionReducer,
+  pluginNodes: pluginNodesReducer,
   // canvasToolbar: canvasToolbarReducer,
   // propertiesPanel: propertiesPanelReducer,
   // selection: selectionReducer,
@@ -213,7 +216,7 @@ export const store = configureStore({
   preloadedState: {
     project: loadInitialProjectState(), // 🆕 ПРЕЗАГРУЖАЕМ СОСТОЯНИЕ ПРОЕКТА С ПОЛОТНАМИ
   },
-  
+
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
@@ -228,6 +231,10 @@ export const store = configureStore({
           'project/setPageName', // 🆕 ДОБАВЛЕНО
           'imageNodes/addImageNode', // ✅ ДОБАВЛЕНО - игнорируем base64
           'imageNodes/addImageNodes', // ✅ ДОБАВЛЕНО
+          'persist/PERSIST', 
+          'persist/REHYDRATE',
+          'pluginNodes/addPluginNode', 
+          'pluginNodes/updatePluginNode'
         ],
         ignoredPaths: [
           'viewport.lastZoomPoint',
@@ -243,6 +250,8 @@ export const store = configureStore({
           'project.canvases.*.metadata.updatedAt', // 🆕 ДОБАВЛЕНО
           'imageNodes.nodes', // ✅ ДОБАВЛЕНО - игнорируем все изображения
           'imageNodes.nodes.*.src', // ✅ ДОБАВЛЕНО - игнорируем base64 строки
+          'contextMenu.items',
+          'pluginNodes.nodes.*.component',
         ],
       },
     })
@@ -383,4 +392,3 @@ export const initializeProject = () => {
     }
   };
 };
-

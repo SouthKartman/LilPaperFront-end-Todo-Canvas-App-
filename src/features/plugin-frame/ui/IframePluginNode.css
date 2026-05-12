@@ -1,0 +1,575 @@
+/* Iframe Plugin Node Styles - White Theme */
+
+.iframe-plugin-node {
+  position: relative;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.2s ease;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  user-select: none;
+}
+
+.iframe-plugin-node.selected {
+  box-shadow: 0 0 0 2px #3b82f6, 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* White Header */
+.iframe-plugin-header-white {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  gap: 8px;
+  cursor: grab;
+}
+/* IframePluginNode.css - добавьте */
+
+.iframe-error-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.iframe-error-actions .btn-primary {
+  padding: 8px 20px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.iframe-error-actions .btn-primary:hover {
+  background: #2563eb;
+}
+
+.iframe-error-actions .btn-secondary {
+  padding: 8px 20px;
+  background: #e5e7eb;
+  color: #374151;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.iframe-error-actions .btn-secondary:hover {
+  background: #d1d5db;
+}
+
+.iframe-plugin-node:active .iframe-plugin-header-white {
+  cursor: grabbing;
+}
+
+.iframe-plugin-title-white {
+  font-size: 13px;
+  font-weight: 500;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.iframe-plugin-icon {
+  font-size: 14px;
+}
+
+.iframe-plugin-controls-white {
+  display: flex;
+  gap: 4px;
+}
+
+.iframe-btn-white {
+  background: #f3f4f6;
+  border: none;
+  color: #4b5563;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.iframe-btn-white:hover:not(:disabled) {
+  background: #e5e7eb;
+  transform: scale(1.02);
+}
+
+.iframe-btn-white:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.iframe-btn-danger-white {
+  color: #dc2626;
+}
+
+.iframe-btn-danger-white:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* URL Editor */
+.iframe-url-editor {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.iframe-url-editor input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.iframe-url-editor input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.iframe-url-editor button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.iframe-url-editor button[type="submit"] {
+  background: #3b82f6;
+  color: white;
+}
+
+.iframe-url-editor button[type="submit"]:hover {
+  background: #2563eb;
+}
+
+.iframe-url-editor button[type="button"] {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.iframe-url-editor button[type="button"]:hover {
+  background: #d1d5db;
+}
+
+/* Content */
+.iframe-plugin-content {
+  position: relative;
+  flex: 1;
+  min-height: 200px;
+  background: #f9fafb;
+  overflow: hidden;
+}
+
+/* Loader */
+.iframe-loader {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  gap: 12px;
+  z-index: 1;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.iframe-loader span {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+/* Error */
+.iframe-error {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #fef2f2;
+  gap: 12px;
+  z-index: 1;
+  padding: 20px;
+  text-align: center;
+}
+
+.error-icon {
+  font-size: 48px;
+}
+
+.error-message {
+  color: #dc2626;
+  font-size: 14px;
+  text-align: center;
+  max-width: 80%;
+  margin: 0 auto;
+}
+
+.iframe-error button {
+  padding: 8px 20px;
+  background: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.iframe-error button:hover {
+  background: #b91c1c;
+}
+
+/* Resize Handles */
+.iframe-resize-handle {
+  position: absolute;
+  z-index: 10;
+}
+
+.iframe-resize-se {
+  bottom: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  cursor: nw-resize;
+  background: linear-gradient(135deg, transparent 50%, #9ca3af 50%);
+  border-radius: 0 0 12px 0;
+}
+
+.iframe-resize-se:hover {
+  background: linear-gradient(135deg, transparent 50%, #3b82f6 50%);
+}
+
+.iframe-resize-sw {
+  bottom: 0;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  cursor: ne-resize;
+  background: linear-gradient(225deg, transparent 50%, #9ca3af 50%);
+  border-radius: 0 0 0 12px;
+}
+
+.iframe-resize-sw:hover {
+  background: linear-gradient(225deg, transparent 50%, #3b82f6 50%);
+}
+
+.iframe-resize-ne {
+  top: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  cursor: sw-resize;
+  background: linear-gradient(45deg, transparent 50%, #9ca3af 50%);
+  border-radius: 0 12px 0 0;
+}
+
+.iframe-resize-ne:hover {
+  background: linear-gradient(45deg, transparent 50%, #3b82f6 50%);
+}
+
+.iframe-resize-nw {
+  top: 0;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  cursor: se-resize;
+  background: linear-gradient(315deg, transparent 50%, #9ca3af 50%);
+  border-radius: 12px 0 0 0;
+}
+
+.iframe-resize-nw:hover {
+  background: linear-gradient(315deg, transparent 50%, #3b82f6 50%);
+}
+
+.iframe-resize-e {
+  top: 50%;
+  right: -4px;
+  width: 8px;
+  height: 40px;
+  transform: translateY(-50%);
+  cursor: ew-resize;
+  background: #e5e7eb;
+  border-radius: 4px;
+}
+
+.iframe-resize-e:hover {
+  background: #3b82f6;
+}
+
+.iframe-resize-w {
+  top: 50%;
+  left: -4px;
+  width: 8px;
+  height: 40px;
+  transform: translateY(-50%);
+  cursor: ew-resize;
+  background: #e5e7eb;
+  border-radius: 4px;
+}
+
+.iframe-resize-w:hover {
+  background: #3b82f6;
+}
+
+.iframe-resize-n {
+  top: -4px;
+  left: 50%;
+  width: 40px;
+  height: 8px;
+  transform: translateX(-50%);
+  cursor: ns-resize;
+  background: #e5e7eb;
+  border-radius: 4px;
+}
+
+.iframe-resize-n:hover {
+  background: #3b82f6;
+}
+
+.iframe-resize-s {
+  bottom: -4px;
+  left: 50%;
+  width: 40px;
+  height: 8px;
+  transform: translateX(-50%);
+  cursor: ns-resize;
+  background: #e5e7eb;
+  border-radius: 4px;
+}
+
+.iframe-resize-s:hover {
+  background: #3b82f6;
+}
+
+/* Inline URL Editor for new node */
+.iframe-plugin-node-editing {
+  background: #ffffff;
+}
+
+.iframe-url-editor-inline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 30px 20px;
+  background: #ffffff;
+  flex: 1;
+  min-height: 200px;
+}
+
+.iframe-url-editor-icon {
+  font-size: 48px;
+}
+
+.iframe-url-input {
+  width: 90%;
+  padding: 12px 16px;
+  font-size: 14px;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  outline: none;
+}
+
+.iframe-url-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.iframe-url-editor-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.iframe-btn-submit {
+  padding: 10px 24px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.iframe-btn-submit:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.iframe-btn-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.iframe-btn-cancel {
+  padding: 10px 24px;
+  background: #f3f4f6;
+  color: #374151;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.iframe-btn-cancel:hover {
+  background: #e5e7eb;
+}
+
+
+/* Drag preview во время перетаскивания */
+.iframe-plugin-node.dragging {
+  opacity: 0.95;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  cursor: grabbing;
+}
+
+.iframe-drag-preview {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  gap: 12px;
+  z-index: 10;
+}
+
+.iframe-drag-icon {
+  font-size: 48px;
+}
+
+.iframe-drag-url {
+  font-size: 12px;
+  color: #6b7280;
+  text-align: center;
+  max-width: 80%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Улучшение производительности */
+.iframe-plugin-content {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.iframe-plugin-content iframe {
+  pointer-events: auto;
+}
+
+.iframe-plugin-node.dragging .iframe-plugin-content iframe {
+  pointer-events: none;
+}
+
+/* IframePluginNode.css - добавьте эти стили */
+
+.iframe-drag-preview {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+  gap: 12px;
+  z-index: 10;
+  border-radius: 12px;
+}
+
+.iframe-drag-icon {
+  font-size: 48px;
+  opacity: 0.7;
+}
+
+.iframe-drag-url {
+  font-size: 12px;
+  color: #6b7280;
+  text-align: center;
+  max-width: 80%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Ускорение рендеринга */
+.iframe-plugin-content {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: transform;
+}
+
+.iframe-plugin-node.dragging {
+  opacity: 0.95;
+  cursor: grabbing;
+  transition: none;
+}
+
+.iframe-plugin-node {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: transform;
+}
+
+.iframe-plugin-node.dragging {
+  transition: none;
+  will-change: left, top;
+}
+
+.iframe-plugin-content {
+  transform: translateZ(0);
+  contain: layout style paint;
+}

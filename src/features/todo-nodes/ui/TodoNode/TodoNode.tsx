@@ -1,3 +1,5 @@
+//src/features/todo-nodes/ui/TodoNode/TodoNode.tsx
+
 import React, { useRef, useEffect, useState } from 'react'
 import { createISODate, Todo } from '@entities/todo/model/types'
 import { useCanvasDnd } from '@features/canvas-dnd/lib/useCanvasDnd'

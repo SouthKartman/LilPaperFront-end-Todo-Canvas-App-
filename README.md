@@ -20,7 +20,7 @@
 
 <p align="center">
   <img src="./public/example.png" width="80%" height="80%" alt="Example" />
-</p>йййй
+</p>
 
 <h2>📋 О приложении</h2>
 

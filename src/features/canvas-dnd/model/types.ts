@@ -1,3 +1,5 @@
+//src/features/canvas-dnd/model/types.ts
+
 export interface DragState {
   isDragging: boolean
   draggedNodeId: string | null

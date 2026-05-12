@@ -1,0 +1,137 @@
+.resizable-container {
+  position: relative;
+}
+
+.resize-handle {
+  position: absolute;
+  background: transparent;
+  z-index: 10;
+}
+
+/* Corner handles */
+.resize-se {
+  bottom: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  cursor: nw-resize;
+  background: linear-gradient(135deg, transparent 50%, #9ca3af 50%);
+  border-radius: 0 0 4px 0;
+}
+
+.resize-se:hover {
+  background: linear-gradient(135deg, transparent 50%, #3b82f6 50%);
+}
+
+.resize-ne {
+  top: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  cursor: sw-resize;
+  background: linear-gradient(45deg, transparent 50%, #9ca3af 50%);
+  border-radius: 0 4px 0 0;
+}
+
+.resize-ne:hover {
+  background: linear-gradient(45deg, transparent 50%, #3b82f6 50%);
+}
+
+.resize-sw {
+  bottom: 0;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  cursor: ne-resize;
+  background: linear-gradient(225deg, transparent 50%, #9ca3af 50%);
+  border-radius: 0 0 0 4px;
+}
+
+.resize-sw:hover {
+  background: linear-gradient(225deg, transparent 50%, #3b82f6 50%);
+}
+
+.resize-nw {
+  top: 0;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  cursor: se-resize;
+  background: linear-gradient(315deg, transparent 50%, #9ca3af 50%);
+  border-radius: 4px 0 0 0;
+}
+
+.resize-nw:hover {
+  background: linear-gradient(315deg, transparent 50%, #3b82f6 50%);
+}
+
+/* Edge handles */
+.resize-e {
+  top: 50%;
+  right: -3px;
+  width: 6px;
+  height: 40px;
+  transform: translateY(-50%);
+  cursor: ew-resize;
+  background: #e5e7eb;
+  border-radius: 3px;
+}
+
+.resize-e:hover {
+  background: #3b82f6;
+}
+
+.resize-w {
+  top: 50%;
+  left: -3px;
+  width: 6px;
+  height: 40px;
+  transform: translateY(-50%);
+  cursor: ew-resize;
+  background: #e5e7eb;
+  border-radius: 3px;
+}
+
+.resize-w:hover {
+  background: #3b82f6;
+}
+
+.resize-n {
+  top: -3px;
+  left: 50%;
+  width: 40px;
+  height: 6px;
+  transform: translateX(-50%);
+  cursor: ns-resize;
+  background: #e5e7eb;
+  border-radius: 3px;
+}
+
+.resize-n:hover {
+  background: #3b82f6;
+}
+
+.resize-s {
+  bottom: -3px;
+  left: 50%;
+  width: 40px;
+  height: 6px;
+  transform: translateX(-50%);
+  cursor: ns-resize;
+  background: #e5e7eb;
+  border-radius: 3px;
+}
+
+.resize-s:hover {
+  background: #3b82f6;
+}
+
+/* Dark theme */
+@media (prefers-color-scheme: dark) {
+  .resize-e,
+  .resize-w,
+  .resize-n,
+  .resize-s {
+    background: #4b5563;
+  }
+}
