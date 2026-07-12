@@ -4,153 +4,90 @@ import { useCallback, useRef, useEffect } from 'react'
 import { useAppDispatch, useAppSelector } from '@shared/lib/state'
 import { startDrag, updateDrag, endDrag } from '../model/slice'
 
-export const useCanvasDnd = () => {
+export const useCanvasDnd = (viewport?: { position: { x: number; y: number }; scale: number }) => {
   const dispatch = useAppDispatch()
   const dragState = useAppSelector((state: any) => state.canvasDnd?.drag)
-  const rafIdRef = useRef<number | null>(null)
-  const lastMoveTimeRef = useRef<number>(0)
-  const lastPositionRef = useRef({ x: 0, y: 0 })
   const isDraggingRef = useRef(false)
+  const startNodePosRef = useRef({ x: 0, y: 0 })
+  
+  const scaleRef = useRef(viewport?.scale || 1)
+  const vpRef = useRef(viewport?.position || { x: 0, y: 0 })
 
-  // Принудительное завершение drag
+  useEffect(() => {
+    scaleRef.current = viewport?.scale || 1
+    vpRef.current = viewport?.position || { x: 0, y: 0 }
+  }, [viewport?.scale, viewport?.position.x, viewport?.position.y])
+
   useEffect(() => {
     const handleGlobalMouseUp = () => {
       if (isDraggingRef.current) {
-        if (rafIdRef.current) {
-          cancelAnimationFrame(rafIdRef.current)
-          rafIdRef.current = null
-        }
         dispatch(endDrag())
         document.body.style.cursor = ''
         document.body.style.userSelect = ''
         isDraggingRef.current = false
       }
     }
-    
     window.addEventListener('mouseup', handleGlobalMouseUp)
-    return () => {
-      window.removeEventListener('mouseup', handleGlobalMouseUp)
-      if (rafIdRef.current) {
-        cancelAnimationFrame(rafIdRef.current)
-      }
-    }
+    return () => window.removeEventListener('mouseup', handleGlobalMouseUp)
   }, [dispatch])
 
   const handleDragStart = useCallback((
     nodeId: string,
     event: React.MouseEvent | React.TouchEvent,
-    elementRect: DOMRect
+    nodePosition: { x: number; y: number }
   ) => {
-    // Предотвращаем двойной старт
     if (isDraggingRef.current) return
     
-    let clientX, clientY
-    
-    if ('touches' in event) {
-      clientX = event.touches[0].clientX
-      clientY = event.touches[0].clientY
-    } else {
-      clientX = event.clientX
-      clientY = event.clientY
-    }
+    const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX
+    const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY
 
-    const offsetX = clientX - elementRect.left
-    const offsetY = clientY - elementRect.top
+    startNodePosRef.current = { x: nodePosition.x, y: nodePosition.y }
+    isDraggingRef.current = true
 
     dispatch(startDrag({
       nodeId,
       startX: clientX,
       startY: clientY,
-      offsetX,
-      offsetY,
+      offsetX: 0,
+      offsetY: 0,
     }))
-    
-    isDraggingRef.current = true
-    lastPositionRef.current = { x: clientX, y: clientY }
 
     const handleMouseMove = (e: MouseEvent | TouchEvent) => {
       e.preventDefault()
+      const moveX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX
+      const moveY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY
       
-      const now = performance.now()
-      // Throttle 16ms для 60fps
-      if (now - lastMoveTimeRef.current < 16) return
-      lastMoveTimeRef.current = now
+      // Дельта в экранных пикселях
+      const deltaX = moveX - clientX
+      const deltaY = moveY - clientY
       
-      if (rafIdRef.current) {
-        cancelAnimationFrame(rafIdRef.current)
-      }
+      // Переводим в canvas-координаты и прибавляем к начальной позиции
+      const newX = startNodePosRef.current.x + deltaX / scaleRef.current
+      const newY = startNodePosRef.current.y + deltaY / scaleRef.current
       
-      rafIdRef.current = requestAnimationFrame(() => {
-        let moveX, moveY
-        
-        if ('touches' in e) {
-          moveX = e.touches[0].clientX
-          moveY = e.touches[0].clientY
-        } else {
-          moveX = (e as MouseEvent).clientX
-          moveY = (e as MouseEvent).clientY
-        }
-        
-        // Пропускаем если позиция не изменилась
-        if (moveX === lastPositionRef.current.x && moveY === lastPositionRef.current.y) {
-          rafIdRef.current = null
-          return
-        }
-        
-        lastPositionRef.current = { x: moveX, y: moveY }
-        dispatch(updateDrag({ x: moveX, y: moveY }))
-        rafIdRef.current = null
-      })
+      dispatch(updateDrag({ x: newX, y: newY }))
     }
 
-    const handleMouseUp = () => {
-      if (rafIdRef.current) {
-        cancelAnimationFrame(rafIdRef.current)
-        rafIdRef.current = null
-      }
-      
+    const cleanup = () => {
       dispatch(endDrag())
       isDraggingRef.current = false
-      
       document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('touchmove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-      document.removeEventListener('touchend', handleMouseUp)
-      
+      document.removeEventListener('mouseup', cleanup)
       document.body.style.cursor = ''
       document.body.style.userSelect = ''
-      
-      lastMoveTimeRef.current = 0
-      lastPositionRef.current = { x: 0, y: 0 }
     }
 
     document.body.style.userSelect = 'none'
     document.body.style.cursor = 'grabbing'
-    
-    document.addEventListener('mousemove', handleMouseMove, { passive: false })
-    document.addEventListener('touchmove', handleMouseMove, { passive: false })
-    document.addEventListener('mouseup', handleMouseUp)
-    document.addEventListener('touchend', handleMouseUp)
-
-    return () => {
-      if (rafIdRef.current) {
-        cancelAnimationFrame(rafIdRef.current)
-      }
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('touchmove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-      document.removeEventListener('touchend', handleMouseUp)
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
-      isDraggingRef.current = false
-    }
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', cleanup)
   }, [dispatch])
 
   return {
     dragState,
     handleDragStart,
     isDragging: dragState?.isDragging || false,
-    draggedNodeId: dragState?.draggedNodeId,
+    draggedNodeId: dragState?.draggedNodeId ?? null,
     dragPosition: dragState?.currentPosition || { x: 0, y: 0 },
   }
 }

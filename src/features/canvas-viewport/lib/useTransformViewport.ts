@@ -13,7 +13,7 @@ import {
 } from '../model/slice';
 import { selectViewport } from '../model/selectors';
 
-export const useEnhancedViewport = (p0: { initialViewport: { x: number; y: number; zoom: number; }; initialGrid: { size: number; color: string; isVisible: boolean; }; }) => {
+export const useEnhancedViewport = () => {
   const dispatch = useAppDispatch();
   const viewport = useAppSelector(selectViewport);
   const isPanning = useRef(false);
@@ -155,15 +155,15 @@ export const useEnhancedViewport = (p0: { initialViewport: { x: number; y: numbe
     handleToggleGrid,
     
     // Утилиты
-    getTransformStyle: {
-      transform: `translate(${viewport.position.x}px, ${viewport.position.y}px) scale(${viewport.scale})`,
-      transformOrigin: '0 0',
-    },
+    // getTransformStyle: {
+    //   transform: `translate(${viewport.position.x}px, ${viewport.position.y}px) scale(${viewport.scale})`,
+    //   transformOrigin: '0 0',
+    // },
     
-    getGridStyle: {
-      backgroundSize: `${viewport.gridSize * viewport.scale}px ${viewport.gridSize * viewport.scale}px`,
-      backgroundPosition: `${viewport.position.x}px ${viewport.position.y}px`,
-      opacity: viewport.scale < 0.3 ? 0.2 : 0.4,
-    },
+    // getGridStyle: {
+    //   backgroundSize: `${viewport.gridSize * viewport.scale}px ${viewport.gridSize * viewport.scale}px`,
+    //   backgroundPosition: `${viewport.position.x}px ${viewport.position.y}px`,
+    //   opacity: viewport.scale < 0.3 ? 0.2 : 0.4,
+    // },
   };
 };

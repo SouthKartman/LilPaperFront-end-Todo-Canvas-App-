@@ -16,8 +16,8 @@ export interface ViewportState {
 const initialState: ViewportState = {
   scale: 1,
   position: { x: 0, y: 0 },
-  minScale: 0.1,
-  maxScale: 10,
+  minScale: 0.05,
+  maxScale: 6,
   showGrid: true,
   gridSize: 20,
   snapToGrid: false,

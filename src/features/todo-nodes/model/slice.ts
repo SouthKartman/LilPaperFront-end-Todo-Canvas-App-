@@ -595,51 +595,8 @@ export const todoNodesSlice = createSlice({
       }
     },
 
-    addTodoTag: (
-      state, 
-      action: PayloadAction<{
-        id: string; 
-        tag: string
-      }>
-    ) => {
-      const { id, tag } = action.payload;
-      const node = state.nodes[id];
-      
-      if (node && !node.tags.includes(tag)) {
-        node.tags.push(tag);
-        const updatedAt = createISODate();
-        node.updatedAt = updatedAt;
-        
-        const tagsCopy = [...node.tags];
-        
-        setTimeout(() => {
-          TodoIndexedDBStorage.updateTodo(id, { tags: tagsCopy, updatedAt }).catch(console.error);
-        }, 0);
-      }
-    },
 
-    removeTodoTag: (
-      state, 
-      action: PayloadAction<{
-        id: string; 
-        tag: string
-      }>
-    ) => {
-      const { id, tag } = action.payload;
-      const node = state.nodes[id];
-      
-      if (node) {
-        node.tags = node.tags.filter(t => t !== tag);
-        const updatedAt = createISODate();
-        node.updatedAt = updatedAt;
-        
-        const tagsCopy = [...node.tags];
-        
-        setTimeout(() => {
-          TodoIndexedDBStorage.updateTodo(id, { tags: tagsCopy, updatedAt }).catch(console.error);
-        }, 0);
-      }
-    },
+
 
     selectNode: (state, action: PayloadAction<string>) => {
       const nodeId = action.payload;

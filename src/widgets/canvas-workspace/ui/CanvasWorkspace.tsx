@@ -68,7 +68,7 @@ export const CanvasWorkspace: React.FC = () => {
   const { projectId } = useParams()
   
   const { nodes } = useTodoNodes()
-  const { dragState, isDragging, handleDragStart } = useCanvasDnd() // 👈 ПОЛУЧАЕМ handleDragStart ЗДЕСЬ
+  const { dragState, isDragging, handleDragStart } = useCanvasDnd() 
   const dispatch = useDispatch()
   const canvasRef = useRef<HTMLDivElement>(null)
   const lastUpdateRef = useRef<number>(0)

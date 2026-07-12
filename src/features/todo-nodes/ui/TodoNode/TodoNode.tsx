@@ -161,7 +161,7 @@ export const TodoNode: React.FC<TodoNodeProps> = ({
     // Запускаем перетаскивание ТОЛЬКО если нет Ctrl/Cmd (чтобы не мешать множественному выделению)
     if (!e.ctrlKey && !e.metaKey && !isEditingTitle && !isEditingDesc && nodeRef.current) {
       const rect = nodeRef.current.getBoundingClientRect()
-      console.log('📦 Starting drag with rect:', rect)
+      // console.log('📦 Starting drag with rect:', rect)
       handleDragStart(node.id, e, rect)
     }
   }

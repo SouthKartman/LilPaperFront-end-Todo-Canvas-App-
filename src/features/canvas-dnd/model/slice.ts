@@ -29,7 +29,7 @@ export const canvasDndSlice = createSlice({
       }>
     ) => {
       const { nodeId, startX, startY, offsetX, offsetY } = action.payload
-      console.log('📦 Redux startDrag:', { nodeId, startX, startY })
+      // console.log('📦 Redux startDrag:', { nodeId, startX, startY })
       state.drag = {
         isDragging: true,
         draggedNodeId: nodeId,
