@@ -1,89 +1,74 @@
-import { useCallback } from 'react'
+import { useCallback, useSyncExternalStore } from 'react'
 import { useAppDispatch, useAppSelector } from '@shared/lib/state'
-import { startDrag, updateDrag, endDrag } from '../model/slice'
+import { startDrag } from '../model/slice'
+import {
+  setDragSession,
+  getDragSession,
+  subscribeDragSession,
+} from './dragSession'
+
+// Оптимизация рендера: компоненты-ноды подписаны ТОЛЬКО на булевый флаг
+// «перетаскивается ли именно эта нода» (через useSyncExternalStore с примитивом).
+// Координаты курсора в React-стейт больше не попадают — движение ноды выполняет
+// drag-контроллер напрямую через DOM transform. На каждый mousemove ни один
+// компонент не перерисовывается.
+export const useIsNodeBeingDragged = (nodeId: string): boolean =>
+  useSyncExternalStore(
+    subscribeDragSession,
+    () => getDragSession()?.nodeId === nodeId,
+    () => false
+  )
 
 export const useCanvasDnd = () => {
   const dispatch = useAppDispatch()
-  const dragState = useAppSelector((state: any) => state.canvasDnd?.drag)
+  // Только isDragging/draggedNodeId — без currentPosition (он больше не течёт в стор)
+  const isDragging = useAppSelector((state: any) => state.canvasDnd?.drag?.isDragging ?? false)
+  const draggedNodeId = useAppSelector((state: any) => state.canvasDnd?.drag?.draggedNodeId ?? null)
 
-  const handleDragStart = useCallback((
-    nodeId: string,
-    event: React.MouseEvent | React.TouchEvent,
-    elementRect: DOMRect
-  ) => {
-    let clientX, clientY
-    
-    if ('touches' in event) {
-      clientX = event.touches[0].clientX
-      clientY = event.touches[0].clientY
-    } else {
-      clientX = event.clientX
-      clientY = event.clientY
-    }
+  const handleDragStart = useCallback(
+    (
+      nodeId: string,
+      event: React.MouseEvent | React.TouchEvent,
+      elementRect: DOMRect
+    ) => {
+      let clientX: number, clientY: number
 
-    const offsetX = clientX - elementRect.left
-    const offsetY = clientY - elementRect.top
-
-    console.log('🎯 Drag start:', { nodeId, clientX, clientY, offsetX, offsetY })
-
-    dispatch(startDrag({
-      nodeId,
-      startX: clientX,
-      startY: clientY,
-      offsetX,
-      offsetY,
-    }))
-
-    const handleMouseMove = (e: MouseEvent | TouchEvent) => {
-      e.preventDefault()
-      
-      let moveX, moveY
-      
-      if ('touches' in e) {
-        moveX = e.touches[0].clientX
-        moveY = e.touches[0].clientY
+      if ('touches' in event) {
+        clientX = event.touches[0].clientX
+        clientY = event.touches[0].clientY
       } else {
-        moveX = (e as MouseEvent).clientX
-        moveY = (e as MouseEvent).clientY
+        clientX = event.clientX
+        clientY = event.clientY
       }
 
-      dispatch(updateDrag({ x: moveX, y: moveY }))
-    }
+      const offsetX = clientX - elementRect.left
+      const offsetY = clientY - elementRect.top
 
-    const handleMouseUp = () => {
-      console.log('🎯 Drag end')
-      dispatch(endDrag())
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('touchmove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-      document.removeEventListener('touchend', handleMouseUp)
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
-    }
+      dispatch(
+        startDrag({
+          nodeId,
+          startX: clientX,
+          startY: clientY,
+          offsetX,
+          offsetY,
+        })
+      )
 
-    document.body.style.userSelect = 'none'
-    document.body.style.cursor = 'grabbing'
-    
-    document.addEventListener('mousemove', handleMouseMove)
-    document.addEventListener('touchmove', handleMouseMove, { passive: false })
-    document.addEventListener('mouseup', handleMouseUp)
-    document.addEventListener('touchend', handleMouseUp)
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('touchmove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-      document.removeEventListener('touchend', handleMouseUp)
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
-    }
-  }, [dispatch])
+      // Сигнал для drag-контроллера CanvasWorkspace: началась живая сессия.
+      // Дальше всё делает контроллер (rAF + DOM transform), этот хук — только инициатор.
+      setDragSession({
+        nodeId,
+        nodeType: 'todo', // тип уточнит контроллер по стору изображений
+        offsetX,
+        offsetY,
+      })
+    },
+    [dispatch]
+  )
 
   return {
-    dragState,
     handleDragStart,
-    isDragging: dragState?.isDragging || false,
-    draggedNodeId: dragState?.draggedNodeId,
-    dragPosition: dragState?.currentPosition || { x: 0, y: 0 },
+    isDragging,
+    draggedNodeId,
   }
 }
