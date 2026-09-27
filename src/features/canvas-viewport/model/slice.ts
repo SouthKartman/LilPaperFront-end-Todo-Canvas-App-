@@ -30,21 +30,13 @@ export const viewportSlice = createSlice({
   initialState,
   reducers: {
     setScale: (state, action: PayloadAction<number>) => {
-      const newScale = Math.max(
+      // Просто устанавливаем масштаб. Якорение к точке выполняется в zoomToPoint,
+      // иначе lastZoomPoint применяется повторно и холст «прыгает».
+      state.scale = Math.max(
         state.minScale,
         Math.min(state.maxScale, action.payload)
       );
-      
-      // Если есть последняя точка зума, применяем трансформацию к ней
-      if (state.lastZoomPoint) {
-        const scaleRatio = newScale / state.scale;
-        state.position = {
-          x: state.lastZoomPoint.x - (state.lastZoomPoint.x - state.position.x) * scaleRatio,
-          y: state.lastZoomPoint.y - (state.lastZoomPoint.y - state.position.y) * scaleRatio,
-        };
-      }
-      
-      state.scale = newScale;
+      state.lastZoomPoint = null;
     },
     
     zoomIn: (state, action: PayloadAction<{ point?: { x: number; y: number } }>) => {

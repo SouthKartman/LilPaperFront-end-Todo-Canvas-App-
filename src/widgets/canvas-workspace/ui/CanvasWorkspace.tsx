@@ -86,7 +86,6 @@ export const CanvasWorkspace: React.FC = () => {
 
   const {
     viewport,
-    handleWheel,
     handlePanStart,
     handlePanMove,
     handlePanEnd,
@@ -388,8 +387,10 @@ useEffect(() => {
             
             const pos = canvasRef.current 
               ? (() => {
+                  // Центр видимой области: экранные координаты центра контейнера
+                  // (convertScreenToCanvas сам вычитает rect.left/top — передаём clientX/Y)
                   const r = canvasRef.current!.getBoundingClientRect()
-                  return convertScreenToCanvas(r.left + r.width/2, r.top + r.height/2)
+                  return convertScreenToCanvas(r.left + r.width / 2, r.top + r.height / 2)
                 })()
               : { x: 200, y: 200 }
             
@@ -614,10 +615,10 @@ useEffect(() => {
 
       <div 
         ref={canvasRef}
+        id="canvas-viewport-container"
         className={`${styles.canvas} ${viewport.isPanning ? styles.panning : ''}`}
         style={{ background: canvasBackground }}
         data-project-id={projectId}
-        onWheel={handleWheel}
         onMouseDown={handlePanStart}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
