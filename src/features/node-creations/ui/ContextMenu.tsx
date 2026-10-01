@@ -28,7 +28,7 @@ export const getPluginMenuItems = (
   if (!grouped) {
     return allPlugins.map(plugin => ({
       id: `plugin-${plugin.id}`,
-      label: `${plugin.icon || '🧩'} ${plugin.name}`,
+      label: `${plugin.icon} ${plugin.name}`,
       onClick: () => onCreate(plugin.id),
       actionType: 'CREATE_PLUGIN_NODE',
       pluginId: plugin.id,

@@ -5,8 +5,13 @@ import { StorageManager } from '@features/storage/ui/StorageManager';
 import { TodoStorage } from '@shared/api/storage/jsonStorage/todoStorage';
 import { useSelector } from 'react-redux';
 import { useAppModal } from '@shared/ui/kit/Modal/AppModal';
-import ZoomControls from '@features/canvas-viewport/ui/ZoomControls';
+
+// Legacy
+// import ZoomControls from '@features/canvas-viewport/ui/ZoomControls';
+
 import { Logo } from '@shared/ui/icons/Logo/Logo';
+
+// header
 
 export const CanvasToolbar: React.FC = () => {
   // Получаем состояние один раз в хуке
@@ -44,9 +49,6 @@ export const CanvasToolbar: React.FC = () => {
         title: ' ',
         width: '800px',
         height: 'auto',
-        onClose: () => {
-          console.log('Storage manager закрыт');
-        }
       }
     );
   };
@@ -57,8 +59,11 @@ export const CanvasToolbar: React.FC = () => {
         <Logo></Logo>
       </div>
       <div style={{ marginLeft: 'auto', display: 'flex', gap: '10px', alignItems: 'center' }}>
-        <span style={{ fontSize: '14px', color: '#666' }}>Масштаб:</span>
-        <ZoomControls />
+        
+        {/* // Legacy */}
+        {/* <span style={{ fontSize: '14px', color: '#666' }}>Масштаб:</span> */}
+        {/* <ZoomControls /> */}
+        
         <button 
           onClick={handleSave}
           className="storage-btn storage-btn-save"

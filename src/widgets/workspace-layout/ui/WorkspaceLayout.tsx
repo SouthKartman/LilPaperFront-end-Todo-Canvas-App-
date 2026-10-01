@@ -65,6 +65,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
             {sidebar}
           </aside>
         )}
+
       </div>
     </div>
   )

@@ -219,19 +219,19 @@ export class TodoAppDatabase extends Dexie {
   }
 
   // Импорт данных из бэкапа
-  async importAllData(data: any): Promise<void> {
-    return this.transaction('rw', 
-      this.todos, this.images, this.projects, this.pages, this.canvases, this.fileMetadata,
-      async () => {
-        if (data.todos?.length) await this.todos.bulkPut(data.todos);
-        if (data.images?.length) await this.images.bulkPut(data.images);
-        if (data.projects?.length) await this.projects.bulkPut(data.projects);
-        if (data.pages?.length) await this.pages.bulkPut(data.pages);
-        if (data.canvases?.length) await this.canvases.bulkPut(data.canvases);
-        if (data.fileMetadata?.length) await this.fileMetadata.bulkPut(data.fileMetadata);
-      }
-    );
-  }
+  // async importAllData(data: any): Promise<void> {
+  //   return this.transaction('rw', 
+  //     this.todos, this.images, this.projects, this.pages, this.canvases, this.fileMetadata,
+  //     async () => {
+  //       if (data.todos?.length) await this.todos.bulkPut(data.todos);
+  //       if (data.images?.length) await this.images.bulkPut(data.images);
+  //       if (data.projects?.length) await this.projects.bulkPut(data.projects);
+  //       if (data.pages?.length) await this.pages.bulkPut(data.pages);
+  //       if (data.canvases?.length) await this.canvases.bulkPut(data.canvases);
+  //       if (data.fileMetadata?.length) await this.fileMetadata.bulkPut(data.fileMetadata);
+  //     }
+  //   );
+  // }
 
   // Очистка всех данных
   async clearAllData(): Promise<void> {
@@ -246,8 +246,6 @@ export class TodoAppDatabase extends Dexie {
       this.fileMetadata.clear(),
     ]);
   }
-
-  // 🆕 НОВЫЕ МЕТОДЫ ДЛЯ РАБОТЫ С ФАЙЛАМИ
   
   /**
    * Сохранить файл в IndexedDB

@@ -60,7 +60,7 @@
   color: #6b7280;
 }
 
-.hotkeyHint {
+/* .hotkeyHint {
   position: absolute;
   bottom: 16px;
   left: 50%;
@@ -75,7 +75,7 @@
   border: 1px solid rgba(229, 231, 235, 0.5);
   pointer-events: none;
   z-index: 10;
-}
+} */
 
 /* Оптимизация для анимаций */
 .content > * {

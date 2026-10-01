@@ -13,6 +13,12 @@
   z-index: 100;
 }
 
+.tools
+{
+  z-index: 2;
+  width: 100vw;
+}
+
 .content {
   display: flex;
   flex: 1;

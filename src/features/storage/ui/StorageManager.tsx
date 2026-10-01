@@ -14,6 +14,7 @@ import { db } from '@shared/api/storage/indexedDB/schema';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import './StorageManager.css';
+import { useDatabase } from '@features/databaseManager/model/useDataBase';
 
 interface StorageStats {
   localStorage: {
@@ -40,6 +41,8 @@ interface StorageManagerProps {
   onImportComplete?: () => void;
   onProjectCreated?: (projectId: string) => void;
 }
+
+
 
 export const StorageManager: React.FC<StorageManagerProps> = ({ 
   modalMode = false,
@@ -148,11 +151,13 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
       }
       
     } catch (error) {
-      console.error('❌ Ошибка загрузки статистики:', error);
+      console.error('Ошибка загрузки статистики:', error);
     } finally {
       setIsRefreshing(false);
     }
   }, []);
+
+  
 
   useEffect(() => {
     loadStats();
@@ -269,8 +274,8 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
       alert(`✅ Проект "${currentProject.name}" успешно экспортирован!`);
       
     } catch (error) {
-      console.error('❌ Ошибка экспорта:', error);
-      alert('❌ Ошибка при экспорте проекта');
+      console.error('Ошибка экспорта:', error);
+      alert('Ошибка при экспорте проекта');
       setProgress(0);
       setProgressMessage('');
     } finally {
@@ -893,6 +898,8 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
   };
 
   const containerClass = modalMode ? 'storage-manager storage-manager-modal' : 'storage-manager';
+
+  useDatabase();
 
   return (
     <div className={containerClass}>

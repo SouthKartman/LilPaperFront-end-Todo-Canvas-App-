@@ -150,7 +150,6 @@ export const TodoNode: React.FC<TodoNodeProps> = ({
       return
     }
     
-    // ✅ НЕ вызываем preventDefault здесь, чтобы не блокировать выделение
     e.stopPropagation()
     
     // Сначала вызываем onClick для выделения

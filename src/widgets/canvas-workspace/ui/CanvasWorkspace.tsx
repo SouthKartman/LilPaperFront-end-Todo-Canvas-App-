@@ -1,58 +1,65 @@
 // src/widgets/canvas-workspace/ui/CanvasWorkspace.tsx
-import React, { useEffect, useCallback, useRef, useState } from 'react'
-import { useDispatch, useSelector } from 'react-redux'
-import { useParams } from 'react-router-dom'
-import { useTodoNodes } from '@features/todo-nodes/lib/useTodoNode'
-import { TodoNode } from '@features/todo-nodes/ui/TodoNode/TodoNode'
-import { useCanvasDnd } from '@features/canvas-dnd/lib/useCanvasDnd'
-import { ContextMenu } from '@features/node-creations/ui/ContextMenu'
-import { showMenu } from '@features/node-creations/model/slice'
-import { createNodeContextMenu, createCanvasContextMenu } from '@features/node-creations/lib/contextMenuHelpers'
-import { todoNodesActions } from '@features/todo-nodes/model/slice'
-import { selectAllTodoNodes, selectSelectedTodoNodes } from '@features/todo-nodes/model/selectors'
-import { useTodoForm } from '@features/todo-form/lib/useTodoForm'
-import { QuickTodoForm } from '@features/todo-form/ui/QuickTodoForm'
-import { TodoFormModal } from '@features/todo-form/ui/TodoFormModal'
-import styles from './CanvasWorkspace.module.css'
-import { FileService } from '@shared/lib/dom/fileService'
-import { useMarqueeSelection } from '@features/selection/lib/useMarqueeSelection'
-import { BottomToolbar } from '@features/canvas-toolbar/ui/BottomToolbar';
+import React, { useEffect, useCallback, useRef, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { useParams } from "react-router-dom";
+import { useTodoNodes } from "@features/todo-nodes/lib/useTodoNode";
+import { TodoNode } from "@features/todo-nodes/ui/TodoNode/TodoNode";
+import { useCanvasDnd } from "@features/canvas-dnd/lib/useCanvasDnd";
+import { ContextMenu } from "@features/node-creations/ui/ContextMenu";
+import { showMenu } from "@features/node-creations/model/slice";
+import {
+  createNodeContextMenu,
+  createCanvasContextMenu,
+} from "@features/node-creations/lib/contextMenuHelpers";
+import { todoNodesActions } from "@features/todo-nodes/model/slice";
+import {
+  selectAllTodoNodes,
+  selectSelectedTodoNodes,
+} from "@features/todo-nodes/model/selectors";
+import { useTodoForm } from "@features/todo-form/lib/useTodoForm";
+import { QuickTodoForm } from "@features/todo-form/ui/QuickTodoForm";
+import { TodoFormModal } from "@features/todo-form/ui/TodoFormModal";
+import styles from "./CanvasWorkspace.module.css";
+import { FileService } from "@shared/lib/dom/fileService";
+import { useMarqueeSelection } from "@features/selection/lib/useMarqueeSelection";
+import { BottomToolbar } from "@features/canvas-toolbar/ui/BottomToolbar";
+import { ZoomToolbar } from "@features/canvas-toolbar/ui/ZoomToolbar";
 
-import { 
+import {
   selectCurrentCanvasImagesArray,
-  selectSelectedImageNodes 
-} from '@features/image-upload/model/selectors'
-import { 
+  selectSelectedImageNodes,
+} from "@features/image-upload/model/selectors";
+import {
   clearImageSelection,
   selectImageNode,
   deselectImageNode,
   deleteImageNodes,
   addImageNode,
-} from '@features/image-upload/model/slice'
-import { ImageNode } from '@features/image-upload/ui/ImageNode'
-import { useImageDrop } from '@features/image-upload/lib/useImageDrop'
-import { useImageUpload } from '@features/image-upload/lib/useImageUpload'
-import { ImageDropOverlay } from '@features/image-upload/ui/ImageDropOverlay'
+} from "@features/image-upload/model/slice";
+import { ImageNode } from "@features/image-upload/ui/ImageNode";
+import { useImageDrop } from "@features/image-upload/lib/useImageDrop";
+import { useImageUpload } from "@features/image-upload/lib/useImageUpload";
+import { ImageDropOverlay } from "@features/image-upload/ui/ImageDropOverlay";
 
 import {
   selectCurrentCanvas,
   selectCurrentCanvasViewport,
   selectCurrentCanvasGrid,
   selectCurrentCanvasBackground,
-  selectCurrentPage
-} from '@features/project-management/model/selectors'
+  selectCurrentPage,
+} from "@features/project-management/model/selectors";
 
-import { updateCanvas } from '@features/project-management/model/slice'
+import { updateCanvas } from "@features/project-management/model/slice";
 
-import { useEnhancedViewport } from '@features/canvas-viewport/lib/useTransformViewport'
+import { useEnhancedViewport } from "@features/canvas-viewport/lib/useTransformViewport";
 
-import { previewService } from '@features/canvas-preview/lib/previewService'
+import { previewService } from "@features/canvas-preview/lib/previewService";
 
-import { useSelection } from '@features/selection'
+import { useSelection } from "@features/selection";
 
 // 👇 ИМПОРТЫ ДЛЯ PLUGIN NODES
-import { PluginNodeRenderer } from '@entities/plugin-node/ui/PluginNodeRenderer'
-import { 
+import { PluginNodeRenderer } from "@entities/plugin-node/ui/PluginNodeRenderer";
+import {
   selectAllPluginNodes,
   selectSelectedPluginNodeIds,
   updatePluginNode,
@@ -61,45 +68,45 @@ import {
   selectPluginNode,
   deselectPluginNode,
   clearPluginSelection,
-  updatePluginNodePosition, 
-} from '@features/plugin-nodes/model/slice'
+  updatePluginNodePosition,
+} from "@features/plugin-nodes/model/slice";
 
 export const CanvasWorkspace: React.FC = () => {
-  const { projectId } = useParams()
-  
-  const { nodes } = useTodoNodes()
-  const { dragState, isDragging, handleDragStart } = useCanvasDnd() 
-  const dispatch = useDispatch()
-  const canvasRef = useRef<HTMLDivElement>(null)
-  const lastUpdateRef = useRef<number>(0)
-  const saveTimeoutRef = useRef<NodeJS.Timeout>()
-  const [isSaving, setIsSaving] = useState(false)
-  
-  const todoNodes = useSelector(selectAllTodoNodes)
-  const selectedNodes = useSelector(selectSelectedTodoNodes)
-  
-  const imageNodes = useSelector(selectCurrentCanvasImagesArray)
-  const selectedImageNodes = useSelector(selectSelectedImageNodes)
-  
+  const { projectId } = useParams();
+
+  const { nodes } = useTodoNodes();
+  const { dragState, isDragging, handleDragStart } = useCanvasDnd();
+  const dispatch = useDispatch();
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const lastUpdateRef = useRef<number>(0);
+  const saveTimeoutRef = useRef<NodeJS.Timeout>();
+  const [isSaving, setIsSaving] = useState(false);
+
+  const todoNodes = useSelector(selectAllTodoNodes);
+  const selectedNodes = useSelector(selectSelectedTodoNodes);
+
+  const imageNodes = useSelector(selectCurrentCanvasImagesArray);
+  const selectedImageNodes = useSelector(selectSelectedImageNodes);
+
   // 👇 PLUGIN NODES SELECTORS
-  const pluginNodes = useSelector(selectAllPluginNodes)
-  const selectedPluginNodeIds = useSelector(selectSelectedPluginNodeIds)
+  const pluginNodes = useSelector(selectAllPluginNodes);
+  const selectedPluginNodeIds = useSelector(selectSelectedPluginNodeIds);
 
-  const { openQuickForm, openForm } = useTodoForm()
+  const { openQuickForm, openForm } = useTodoForm();
 
-  const currentPage = useSelector(selectCurrentPage)
-  const currentCanvas = useSelector(selectCurrentCanvas)
-  const canvasViewport = useSelector(selectCurrentCanvasViewport)
-  const canvasGrid = useSelector(selectCurrentCanvasGrid)
-  const canvasBackground = useSelector(selectCurrentCanvasBackground)
+  const currentPage = useSelector(selectCurrentPage);
+  const currentCanvas = useSelector(selectCurrentCanvas);
+  const canvasViewport = useSelector(selectCurrentCanvasViewport);
+  const canvasGrid = useSelector(selectCurrentCanvasGrid);
+  const canvasBackground = useSelector(selectCurrentCanvasBackground);
 
-  const { 
+  const {
     selectedTodoIds,
     selectedImageIds,
     selectedCount,
     hasSelection,
     clearSelection,
-  } = useSelection()
+  } = useSelection();
 
   const {
     viewport,
@@ -112,7 +119,7 @@ export const CanvasWorkspace: React.FC = () => {
     handleZoomOut,
     handleResetViewport,
     handleToggleGrid,
-  } = useEnhancedViewport()
+  } = useEnhancedViewport();
 
   const {
     marquee,
@@ -122,7 +129,7 @@ export const CanvasWorkspace: React.FC = () => {
     getMarqueeRect,
     getNodesInRect,
     isActive: isMarqueeActive,
-  } = useMarqueeSelection()
+  } = useMarqueeSelection();
 
   const {
     isDraggingOver: isDraggingImage,
@@ -131,9 +138,9 @@ export const CanvasWorkspace: React.FC = () => {
     handleDragLeave,
     handleDrop,
     clearError: clearImageError,
-  } = useImageDrop()
-  
-  const { uploadImages, uploadingImages, justUploadedIds } = useImageUpload()
+  } = useImageDrop();
+
+  const { uploadImages, uploadingImages, justUploadedIds } = useImageUpload();
 
   // ============================================
   // ВСЕ useMemo и useCallback - ДО useEffect
@@ -141,137 +148,196 @@ export const CanvasWorkspace: React.FC = () => {
 
   // 👇 ВЫЧИСЛЯЕМЫЕ ЗНАЧЕНИЯ (useMemo)
   const currentCanvasNodes = React.useMemo(() => {
-    if (!currentCanvas) return []
-    return todoNodes.filter((node: any) => currentCanvas.nodes?.includes(node.id))
-  }, [todoNodes, currentCanvas])
+    if (!currentCanvas) return [];
+    return todoNodes.filter((node: any) =>
+      currentCanvas.nodes?.includes(node.id),
+    );
+  }, [todoNodes, currentCanvas]);
 
   const currentCanvasPluginNodes = React.useMemo(() => {
-    if (!currentCanvas) return []
-    return pluginNodes.filter((node: any) => node.pageId === currentPage?.id)
-  }, [pluginNodes, currentCanvas, currentPage])
+    if (!currentCanvas) return [];
+    return pluginNodes.filter((node: any) => node.pageId === currentPage?.id);
+  }, [pluginNodes, currentCanvas, currentPage]);
 
   // 👇 ФУНКЦИИ (useCallback)
-  const convertScreenToCanvas = useCallback((screenX: number, screenY: number) => {
-    if (!canvasRef.current) return { x: 0, y: 0 }
-    
-    const rect = canvasRef.current.getBoundingClientRect()
-    const relativeX = screenX - rect.left
-    const relativeY = screenY - rect.top
-    
-    const canvasX = (relativeX - viewport.position.x) / viewport.scale
-    const canvasY = (relativeY - viewport.position.y) / viewport.scale
-    
-    return { x: canvasX, y: canvasY }
-  }, [viewport])
+  const convertScreenToCanvas = useCallback(
+    (screenX: number, screenY: number) => {
+      if (!canvasRef.current) return { x: 0, y: 0 };
+
+      const rect = canvasRef.current.getBoundingClientRect();
+      const relativeX = screenX - rect.left;
+      const relativeY = screenY - rect.top;
+
+      const canvasX = (relativeX - viewport.position.x) / viewport.scale;
+      const canvasY = (relativeY - viewport.position.y) / viewport.scale;
+
+      return { x: canvasX, y: canvasY };
+    },
+    [viewport],
+  );
 
   const getCenterPosition = useCallback(() => {
-    if (!canvasRef.current) return { x: window.innerWidth / 2, y: window.innerHeight / 2 };
-    
+    if (!canvasRef.current)
+      return { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+
     const rect = canvasRef.current.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
-    
-    const canvasX = (centerX - rect.left - viewport.position.x) / viewport.scale;
+
+    const canvasX =
+      (centerX - rect.left - viewport.position.x) / viewport.scale;
     const canvasY = (centerY - rect.top - viewport.position.y) / viewport.scale;
-    
+
     return { x: canvasX, y: canvasY };
   }, [viewport]);
 
   const saveProject = useCallback(async () => {
-    if (!projectId || !canvasRef.current) return
+    if (!projectId || !canvasRef.current) return;
 
-    setIsSaving(true)
+    setIsSaving(true);
 
     try {
       if (currentCanvas) {
-        dispatch(updateCanvas({
-          canvasId: currentCanvas.id,
-          updates: {
-            viewport: {
-              x: viewport.position.x,
-              y: viewport.position.y,
-              zoom: viewport.scale,
+        dispatch(
+          updateCanvas({
+            canvasId: currentCanvas.id,
+            updates: {
+              viewport: {
+                x: viewport.position.x,
+                y: viewport.position.y,
+                zoom: viewport.scale,
+              },
             },
-          },
-        }))
+          }),
+        );
       }
 
       const lastGen = localStorage.getItem(`last_preview_${projectId}`);
       const now = Date.now();
-      
+
       if (!lastGen || now - parseInt(lastGen) > 10000) {
         localStorage.setItem(`last_preview_${projectId}`, now.toString());
         await previewService.generateProjectPreview(projectId);
       }
     } catch (error) {
-      console.error('❌ Ошибка сохранения:', error)
+      console.error("❌ Ошибка сохранения:", error);
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }, [projectId, currentCanvas, viewport, dispatch])
+  }, [projectId, currentCanvas, viewport, dispatch]);
 
   const debouncedSave = useCallback(() => {
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
-    saveTimeoutRef.current = setTimeout(() => saveProject(), 5000)
-  }, [saveProject])
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => saveProject(), 5000);
+  }, [saveProject]);
 
-  const handleCreateNode = useCallback((position: { x: number; y: number }, title: string = 'Новая задача') => {
-    dispatch(todoNodesActions.createTodoAtPosition({ position, title, priority: 'medium' }))
-    debouncedSave()
-  }, [dispatch, debouncedSave])
+  const handleCreateNode = useCallback(
+    (position: { x: number; y: number }, title: string = "Новая задача") => {
+      dispatch(
+        todoNodesActions.createTodoAtPosition({
+          position,
+          title,
+          priority: "medium",
+        }),
+      );
+      debouncedSave();
+    },
+    [dispatch, debouncedSave],
+  );
 
   const handleClearAllSelection = useCallback(() => {
-    dispatch(todoNodesActions.clearSelection())
-    dispatch(clearImageSelection())
+    dispatch(todoNodesActions.clearSelection());
+    dispatch(clearImageSelection());
     if (clearPluginSelection) {
-      dispatch(clearPluginSelection())
+      dispatch(clearPluginSelection());
     }
-    clearSelection()
-  }, [dispatch, clearSelection])
+    clearSelection();
+  }, [dispatch, clearSelection]);
 
-  const isTodoSelected = useCallback((id: string) => {
-    return selectedTodoIds.includes(id) || selectedNodes.some(n => n.id === id)
-  }, [selectedTodoIds, selectedNodes])
+  const isTodoSelected = useCallback(
+    (id: string) => {
+      return (
+        selectedTodoIds.includes(id) || selectedNodes.some((n) => n.id === id)
+      );
+    },
+    [selectedTodoIds, selectedNodes],
+  );
 
-  const isImageSelected = useCallback((id: string) => {
-    return selectedImageIds.includes(id) || selectedImageNodes.some(n => n.id === id)
-  }, [selectedImageIds, selectedImageNodes])
+  const isImageSelected = useCallback(
+    (id: string) => {
+      return (
+        selectedImageIds.includes(id) ||
+        selectedImageNodes.some((n) => n.id === id)
+      );
+    },
+    [selectedImageIds, selectedImageNodes],
+  );
 
-  const isPluginSelected = useCallback((id: string) => {
-    return selectedPluginNodeIds.includes(id)
-  }, [selectedPluginNodeIds])
+  const isPluginSelected = useCallback(
+    (id: string) => {
+      return selectedPluginNodeIds.includes(id);
+    },
+    [selectedPluginNodeIds],
+  );
 
-  const handleCanvasDrop = useCallback(async (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault(); e.stopPropagation()
-    if (!currentCanvas) return
-    
-    const canvasPosition = convertScreenToCanvas(e.clientX, e.clientY)
-    const files = Array.from(e.dataTransfer.files)
-    const imageFiles = files.filter(file => file.type.startsWith('image/'))
-    if (imageFiles.length === 0) return
-    
-    await uploadImages(imageFiles, canvasPosition)
-    handleDrop(e, canvasPosition)
-    debouncedSave()
-  }, [convertScreenToCanvas, handleDrop, currentCanvas, uploadImages, debouncedSave])
+  const handleCanvasDrop = useCallback(
+    async (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!currentCanvas) return;
 
-  const handleCanvasContextMenu = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    e.preventDefault(); e.stopPropagation()
-    const canvasPosition = convertScreenToCanvas(e.clientX, e.clientY)
-    const menuItems = createCanvasContextMenu(canvasPosition)
-    dispatch(showMenu({ x: e.clientX, y: e.clientY, items: menuItems, context: { position: canvasPosition } }))
-  }, [convertScreenToCanvas, dispatch])
+      const canvasPosition = convertScreenToCanvas(e.clientX, e.clientY);
+      const files = Array.from(e.dataTransfer.files);
+      const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+      if (imageFiles.length === 0) return;
 
-  const handleCanvasDoubleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const canvasPosition = convertScreenToCanvas(e.clientX, e.clientY)
-    handleCreateNode(canvasPosition, 'Новая задача')
-  }, [convertScreenToCanvas, handleCreateNode])
+      await uploadImages(imageFiles, canvasPosition);
+      handleDrop(e, canvasPosition);
+      debouncedSave();
+    },
+    [
+      convertScreenToCanvas,
+      handleDrop,
+      currentCanvas,
+      uploadImages,
+      debouncedSave,
+    ],
+  );
+
+  const handleCanvasContextMenu = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const canvasPosition = convertScreenToCanvas(e.clientX, e.clientY);
+      const menuItems = createCanvasContextMenu(canvasPosition);
+      dispatch(
+        showMenu({
+          x: e.clientX,
+          y: e.clientY,
+          items: menuItems,
+          context: { position: canvasPosition },
+        }),
+      );
+    },
+    [convertScreenToCanvas, dispatch],
+  );
+
+  const handleCanvasDoubleClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      const canvasPosition = convertScreenToCanvas(e.clientX, e.clientY);
+      handleCreateNode(canvasPosition, "Новая задача");
+    },
+    [convertScreenToCanvas, handleCreateNode],
+  );
 
   // Обработчик для перетаскивания плагин-нод
-  const handlePluginDragStart = useCallback((e: React.MouseEvent, nodeId: string, rect: DOMRect) => {
-    console.log('🎯 Plugin node drag start:', nodeId);
-    handleDragStart(nodeId, e, rect);
-  }, [handleDragStart]);
+  const handlePluginDragStart = useCallback(
+    (e: React.MouseEvent, nodeId: string, rect: DOMRect) => {
+      console.log("🎯 Plugin node drag start:", nodeId);
+      handleDragStart(nodeId, e, rect);
+    },
+    [handleDragStart],
+  );
 
   // ============================================
   // useEffect - ПОСЛЕ всех объявлений
@@ -279,125 +345,164 @@ export const CanvasWorkspace: React.FC = () => {
 
   useEffect(() => {
     if (canvasRef.current) {
-      canvasRef.current.style.minWidth = '800px';
-      canvasRef.current.style.minHeight = '400px';
+      canvasRef.current.style.minWidth = "800px";
+      canvasRef.current.style.minHeight = "400px";
     }
   }, []);
 
   useEffect(() => {
     const preventBrowserZoom = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '-' || e.key === '=' || e.key === '0')) {
-        e.preventDefault()
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        (e.key === "+" || e.key === "-" || e.key === "=" || e.key === "0")
+      ) {
+        e.preventDefault();
       }
-    }
+    };
 
     const preventWheelZoom = (e: WheelEvent) => {
-      if (e.ctrlKey || e.metaKey) e.preventDefault()
-    }
+      if (e.ctrlKey || e.metaKey) e.preventDefault();
+    };
 
-    document.addEventListener('keydown', preventBrowserZoom, { passive: false })
-    document.addEventListener('wheel', preventWheelZoom, { passive: false })
+    document.addEventListener("keydown", preventBrowserZoom, {
+      passive: false,
+    });
+    document.addEventListener("wheel", preventWheelZoom, { passive: false });
 
     return () => {
-      document.removeEventListener('keydown', preventBrowserZoom)
-      document.removeEventListener('wheel', preventWheelZoom)
-    }
-  }, [])
+      document.removeEventListener("keydown", preventBrowserZoom);
+      document.removeEventListener("wheel", preventWheelZoom);
+    };
+  }, []);
 
   useEffect(() => {
-    if (!isDragging || !dragState?.draggedNodeId || !dragState?.currentPosition || !canvasRef.current) return;
-    
+    if (
+      !isDragging ||
+      !dragState?.draggedNodeId ||
+      !dragState?.currentPosition ||
+      !canvasRef.current
+    )
+      return;
+
     // Используем requestAnimationFrame для позиции
     let rafId: number | null = null;
-    
+
     const updatePosition = () => {
       const rect = canvasRef.current?.getBoundingClientRect();
       if (!rect) return;
-      
+
       const mouseX = dragState.currentPosition.x - dragState.offset.x;
       const mouseY = dragState.currentPosition.y - dragState.offset.y;
       const relativeX = mouseX - rect.left;
       const relativeY = mouseY - rect.top;
-      
+
       const canvasX = (relativeX - viewport.position.x) / viewport.scale;
       const canvasY = (relativeY - viewport.position.y) / viewport.scale;
-      
-      const todoNode = todoNodes.find(n => n.id === dragState.draggedNodeId);
+
+      const todoNode = todoNodes.find((n) => n.id === dragState.draggedNodeId);
       if (todoNode) {
-        dispatch(todoNodesActions.moveTodo({
-          id: dragState.draggedNodeId,
-          position: { x: canvasX - (todoNode.size?.width || 200) / 2, y: canvasY - (todoNode.size?.height || 150) / 2 }
-        }));
+        dispatch(
+          todoNodesActions.moveTodo({
+            id: dragState.draggedNodeId,
+            position: {
+              x: canvasX - (todoNode.size?.width || 200) / 2,
+              y: canvasY - (todoNode.size?.height || 150) / 2,
+            },
+          }),
+        );
       } else {
-        const pluginNode = pluginNodes.find(n => n.id === dragState.draggedNodeId);
+        const pluginNode = pluginNodes.find(
+          (n) => n.id === dragState.draggedNodeId,
+        );
         if (pluginNode) {
-          dispatch(updatePluginNodePosition({ 
-            id: dragState.draggedNodeId, 
-            position: { x: canvasX - pluginNode.width / 2, y: canvasY - pluginNode.height / 2 }
-          }));
+          dispatch(
+            updatePluginNodePosition({
+              id: dragState.draggedNodeId,
+              position: {
+                x: canvasX - pluginNode.width / 2,
+                y: canvasY - pluginNode.height / 2,
+              },
+            }),
+          );
         }
       }
       rafId = null;
     };
-    
+
     rafId = requestAnimationFrame(updatePosition);
-    
+
     return () => {
       if (rafId) cancelAnimationFrame(rafId);
     };
-  }, [isDragging, dragState?.currentPosition, dragState?.offset, dragState?.draggedNodeId, viewport, todoNodes, pluginNodes, dispatch]);
+  }, [
+    isDragging,
+    dragState?.currentPosition,
+    dragState?.offset,
+    dragState?.draggedNodeId,
+    viewport,
+    todoNodes,
+    pluginNodes,
+    dispatch,
+  ]);
 
   // Clipboard permission
   useEffect(() => {
     const requestPermission = async () => {
       try {
-        await navigator.clipboard.readText()
-        console.log('✅ Разрешение на буфер получено')
+        await navigator.clipboard.readText();
+        console.log("✅ Разрешение на буфер получено");
       } catch (err) {
-        console.log('⚠️ Разрешение на буфер не получено, используем localStorage')
+        console.log(
+          "⚠️ Разрешение на буфер не получено, используем localStorage",
+        );
       }
-    }
-    
+    };
+
     if (window.isSecureContext) {
-      requestPermission()
+      requestPermission();
     }
-  }, [])
+  }, []);
 
   // Keyboard shortcuts (оставляем без изменений, он длинный)
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
       // Ctrl+C
-      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyC' && !e.shiftKey) {
-        if (selectedNodes.length === 0 && selectedImageNodes.length === 0 && selectedPluginNodeIds.length === 0) return
-        
-        e.preventDefault()
-        e.stopPropagation()
-        
-        const todosData = selectedNodes.map(n => ({
+      if ((e.ctrlKey || e.metaKey) && e.code === "KeyC" && !e.shiftKey) {
+        if (
+          selectedNodes.length === 0 &&
+          selectedImageNodes.length === 0 &&
+          selectedPluginNodeIds.length === 0
+        )
+          return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        const todosData = selectedNodes.map((n) => ({
           title: n.title,
-          description: n.description || '',
+          description: n.description || "",
           status: n.status,
           priority: n.priority,
           tags: [...n.tags],
           dueDate: n.dueDate,
           position: { x: n.position.x, y: n.position.y },
           size: { width: n.size?.width || 280, height: n.size?.height || 150 },
-        }))
-        
-        const imagesData = selectedImageNodes.map(n => ({
+        }));
+
+        const imagesData = selectedImageNodes.map((n) => ({
           filePath: n.filePath,
           originalName: n.originalName,
           fileSize: n.fileSize,
           mimeType: n.mimeType,
           position: { x: n.position.x, y: n.position.y },
           size: { width: n.size?.width || 300, height: n.size?.height || 200 },
-          alt: n.alt || '',
-          caption: n.caption || '',
-        }))
-        
+          alt: n.alt || "",
+          caption: n.caption || "",
+        }));
+
         const pluginNodesData = pluginNodes
-          .filter(n => selectedPluginNodeIds.includes(n.id))
-          .map(n => ({
+          .filter((n) => selectedPluginNodeIds.includes(n.id))
+          .map((n) => ({
             pluginId: n.pluginId,
             type: n.type,
             title: n.title,
@@ -405,252 +510,322 @@ export const CanvasWorkspace: React.FC = () => {
             height: n.height,
             position: { x: n.position.x, y: n.position.y },
             pluginProps: n.pluginProps,
-          }))
-        
+          }));
+
         const json = JSON.stringify({
-          type: 'lil-papper', v: 2,
+          type: "lil-papper",
+          v: 2,
           todos: todosData,
           images: imagesData,
           plugins: pluginNodesData,
-        })
-        
-        localStorage.setItem('lil-papper-clipboard', json)
-        
+        });
+
+        localStorage.setItem("lil-papper-clipboard", json);
+
         try {
-          await navigator.clipboard.writeText(json)
+          await navigator.clipboard.writeText(json);
         } catch {}
-        
-        console.log('✅ Скопировано:', todosData.length, 'задач,', imagesData.length, 'изображений,', pluginNodesData.length, 'плагинов')
-        return
+
+        console.log(
+          "✅ Скопировано:",
+          todosData.length,
+          "задач,",
+          imagesData.length,
+          "изображений,",
+          pluginNodesData.length,
+          "плагинов",
+        );
+        return;
       }
-      
+
       // Ctrl+V
-      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyV' && !e.shiftKey) {
-        e.preventDefault()
-        e.stopPropagation()
-        
-        let imagePasted = false
-        
+      if ((e.ctrlKey || e.metaKey) && e.code === "KeyV" && !e.shiftKey) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        let imagePasted = false;
+
         try {
-          const items = await navigator.clipboard.read()
-          
+          const items = await navigator.clipboard.read();
+
           for (const item of items) {
-            const imageType = item.types.find(t => t.startsWith('image/'))
-            
+            const imageType = item.types.find((t) => t.startsWith("image/"));
+
             if (imageType) {
-              console.log('🖼️ Вставка изображения из системного буфера:', imageType)
-              const blob = await item.getType(imageType)
-              
-              const fileName = `pasted_${Date.now()}.png`
-              const file = new File([blob], fileName, { type: imageType })
-              const projectId = currentPage?.id?.split('_')[0] || 'default'
-              
-              const savedInfo = await FileService.saveImage(file, projectId)
-              
-              const pos = canvasRef.current 
+              console.log(
+                "🖼️ Вставка изображения из системного буфера:",
+                imageType,
+              );
+              const blob = await item.getType(imageType);
+
+              const fileName = `pasted_${Date.now()}.png`;
+              const file = new File([blob], fileName, { type: imageType });
+              const projectId = currentPage?.id?.split("_")[0] || "default";
+
+              const savedInfo = await FileService.saveImage(file, projectId);
+
+              const pos = canvasRef.current
                 ? (() => {
-                    const r = canvasRef.current!.getBoundingClientRect()
-                    return convertScreenToCanvas(r.left + r.width/2, r.top + r.height/2)
+                    const r = canvasRef.current!.getBoundingClientRect();
+                    return convertScreenToCanvas(
+                      r.left + r.width / 2,
+                      r.top + r.height / 2,
+                    );
                   })()
-                : { x: 200, y: 200 }
-              
-              const now = new Date().toISOString()
-              
-              dispatch(addImageNode({
-                id: `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                type: 'image',
-                position: { x: pos.x, y: pos.y },
-                size: { width: savedInfo.width, height: savedInfo.height },
-                zIndex: 1,
-                filePath: savedInfo.filePath,
-                originalName: savedInfo.originalName,
-                fileSize: savedInfo.fileSize,
-                mimeType: savedInfo.mimeType,
-                createdAt: now,
-                updatedAt: now,
-                pageId: currentPage?.id || 'default',
-                alt: '',
-                caption: '',
-              }))
-              
-              console.log('✅ Изображение сохранено и вставлено:', savedInfo.filePath)
-              imagePasted = true
-              break
+                : { x: 200, y: 200 };
+
+              const now = new Date().toISOString();
+
+              dispatch(
+                addImageNode({
+                  id: `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                  type: "image",
+                  position: { x: pos.x, y: pos.y },
+                  size: { width: savedInfo.width, height: savedInfo.height },
+                  zIndex: 1,
+                  filePath: savedInfo.filePath,
+                  originalName: savedInfo.originalName,
+                  fileSize: savedInfo.fileSize,
+                  mimeType: savedInfo.mimeType,
+                  createdAt: now,
+                  updatedAt: now,
+                  pageId: currentPage?.id || "default",
+                  alt: "",
+                  caption: "",
+                }),
+              );
+
+              console.log(
+                "✅ Изображение сохранено и вставлено:",
+                savedInfo.filePath,
+              );
+              imagePasted = true;
+              break;
             }
           }
         } catch (err) {
-          console.log('⚠️ Системный буфер недоступен, пробуем localStorage')
+          console.log("⚠️ Системный буфер недоступен, пробуем localStorage");
         }
-        
-        if (imagePasted) return
-        
-        const json = localStorage.getItem('lil-papper-clipboard')
-        
+
+        if (imagePasted) return;
+
+        const json = localStorage.getItem("lil-papper-clipboard");
+
         if (json) {
           try {
-            const data = JSON.parse(json)
-            if (data.type === 'lil-papper' && (data.todos?.length || data.images?.length || data.plugins?.length)) {
-              const pos = canvasRef.current 
+            const data = JSON.parse(json);
+            if (
+              data.type === "lil-papper" &&
+              (data.todos?.length ||
+                data.images?.length ||
+                data.plugins?.length)
+            ) {
+              const pos = canvasRef.current
                 ? (() => {
-                    const r = canvasRef.current!.getBoundingClientRect()
-                    return convertScreenToCanvas(r.left + r.width/2, r.top + r.height/2)
+                    const r = canvasRef.current!.getBoundingClientRect();
+                    return convertScreenToCanvas(
+                      r.left + r.width / 2,
+                      r.top + r.height / 2,
+                    );
                   })()
-                : { x: 200, y: 200 }
-              
-              let minX = Infinity, minY = Infinity
-              const allItems = [...(data.todos || []), ...(data.images || []), ...(data.plugins || [])]
+                : { x: 200, y: 200 };
+
+              let minX = Infinity,
+                minY = Infinity;
+              const allItems = [
+                ...(data.todos || []),
+                ...(data.images || []),
+                ...(data.plugins || []),
+              ];
               allItems.forEach((item: any) => {
-                if (item.position.x < minX) minX = item.position.x
-                if (item.position.y < minY) minY = item.position.y
-              })
-              
-              let count = 0
-              
-              for (const todo of (data.todos || [])) {
-                const ox = todo.position.x - minX
-                const oy = todo.position.y - minY
-                dispatch(todoNodesActions.createTodo({
-                  title: todo.title, description: todo.description,
-                  status: todo.status, priority: todo.priority,
-                  tags: todo.tags,
-                  dueDate: todo.dueDate ? new Date(todo.dueDate) : undefined,
-                  position: { x: pos.x + ox + 30, y: pos.y + oy + 30 },
-                  pageId: currentPage?.id,
-                }))
-                count++
+                if (item.position.x < minX) minX = item.position.x;
+                if (item.position.y < minY) minY = item.position.y;
+              });
+
+              let count = 0;
+
+              for (const todo of data.todos || []) {
+                const ox = todo.position.x - minX;
+                const oy = todo.position.y - minY;
+                dispatch(
+                  todoNodesActions.createTodo({
+                    title: todo.title,
+                    description: todo.description,
+                    status: todo.status,
+                    priority: todo.priority,
+                    tags: todo.tags,
+                    dueDate: todo.dueDate ? new Date(todo.dueDate) : undefined,
+                    position: { x: pos.x + ox + 30, y: pos.y + oy + 30 },
+                    pageId: currentPage?.id,
+                  }),
+                );
+                count++;
               }
-              
-              const now = new Date().toISOString()
-              for (const img of (data.images || [])) {
-                const ox = img.position.x - minX
-                const oy = img.position.y - minY
-                dispatch(addImageNode({
-                  id: `paste_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                  type: 'image',
-                  position: { x: pos.x + ox + 30, y: pos.y + oy + 30 },
-                  size: { ...img.size }, zIndex: 1,
-                  filePath: img.filePath, originalName: img.originalName,
-                  fileSize: img.fileSize, mimeType: img.mimeType,
-                  createdAt: now, updatedAt: now,
-                  pageId: currentPage?.id || 'default',
-                  alt: img.alt || '', caption: img.caption || '',
-                }))
-                count++
+
+              const now = new Date().toISOString();
+              for (const img of data.images || []) {
+                const ox = img.position.x - minX;
+                const oy = img.position.y - minY;
+                dispatch(
+                  addImageNode({
+                    id: `paste_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                    type: "image",
+                    position: { x: pos.x + ox + 30, y: pos.y + oy + 30 },
+                    size: { ...img.size },
+                    zIndex: 1,
+                    filePath: img.filePath,
+                    originalName: img.originalName,
+                    fileSize: img.fileSize,
+                    mimeType: img.mimeType,
+                    createdAt: now,
+                    updatedAt: now,
+                    pageId: currentPage?.id || "default",
+                    alt: img.alt || "",
+                    caption: img.caption || "",
+                  }),
+                );
+                count++;
               }
-              
-              for (const plugin of (data.plugins || [])) {
-                const ox = plugin.position.x - minX
-                const oy = plugin.position.y - minY
-                const { addPluginNode } = await import('@features/plugin-nodes/model/slice')
-                dispatch(addPluginNode({
-                  id: `plugin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                  pluginId: plugin.pluginId,
-                  type: plugin.type,
-                  title: plugin.title,
-                  width: plugin.width,
-                  height: plugin.height,
-                  position: { x: pos.x + ox + 30, y: pos.y + oy + 30 },
-                  pageId: currentPage?.id,
-                  createdAt: Date.now(),
-                  updatedAt: Date.now(),
-                  pluginProps: plugin.pluginProps || {},
-                }))
-                count++
+
+              for (const plugin of data.plugins || []) {
+                const ox = plugin.position.x - minX;
+                const oy = plugin.position.y - minY;
+                const { addPluginNode } =
+                  await import("@features/plugin-nodes/model/slice");
+                dispatch(
+                  addPluginNode({
+                    id: `plugin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                    pluginId: plugin.pluginId,
+                    type: plugin.type,
+                    title: plugin.title,
+                    width: plugin.width,
+                    height: plugin.height,
+                    position: { x: pos.x + ox + 30, y: pos.y + oy + 30 },
+                    pageId: currentPage?.id,
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                    pluginProps: plugin.pluginProps || {},
+                  }),
+                );
+                count++;
               }
-              
-              console.log('✅ Вставлено из localStorage:', count, 'элементов')
-              localStorage.removeItem('lil-papper-clipboard')
-              return
+
+              console.log("✅ Вставлено из localStorage:", count, "элементов");
+              localStorage.removeItem("lil-papper-clipboard");
+              return;
             }
           } catch (err) {
-            console.warn('⚠️ Ошибка парсинга localStorage:', err)
+            console.warn("⚠️ Ошибка парсинга localStorage:", err);
           }
         }
-        
-        console.log('⚠️ Нечего вставлять')
-        return
+
+        console.log("⚠️ Нечего вставлять");
+        return;
       }
-      
+
       // Delete
-      if (e.code === 'Delete') {
-        e.preventDefault()
-        if (selectedNodes.length > 0) dispatch(todoNodesActions.deleteSelectedTodos())
-        if (selectedImageNodes.length > 0) dispatch(deleteImageNodes(selectedImageNodes.map(n => n.id)))
+      if (e.code === "Delete") {
+        e.preventDefault();
+        if (selectedNodes.length > 0)
+          dispatch(todoNodesActions.deleteSelectedTodos());
+        if (selectedImageNodes.length > 0)
+          dispatch(deleteImageNodes(selectedImageNodes.map((n) => n.id)));
         if (selectedPluginNodeIds.length > 0) {
           for (const id of selectedPluginNodeIds) {
-            dispatch(deletePluginNode(id))
+            dispatch(deletePluginNode(id));
           }
         }
-        handleClearAllSelection()
-        return
+        handleClearAllSelection();
+        return;
       }
-      
+
       // Ctrl+A
-      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyA' && !e.shiftKey) {
-        e.preventDefault()
-        e.stopPropagation()
-        
-        handleClearAllSelection()
-        
-        currentCanvasNodes.forEach(node => {
-          dispatch(todoNodesActions.selectNode(node.id))
-        })
-        
-        imageNodes.forEach(node => {
-          dispatch(selectImageNode(node.id))
-        })
-        
-        pluginNodes.forEach(node => {
-          dispatch(selectPluginNode(node.id))
-        })
-        
-        console.log('📦 Выделено всё:', currentCanvasNodes.length + imageNodes.length + pluginNodes.length, 'элементов')
-        return
+      if ((e.ctrlKey || e.metaKey) && e.code === "KeyA" && !e.shiftKey) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        handleClearAllSelection();
+
+        currentCanvasNodes.forEach((node) => {
+          dispatch(todoNodesActions.selectNode(node.id));
+        });
+
+        imageNodes.forEach((node) => {
+          dispatch(selectImageNode(node.id));
+        });
+
+        pluginNodes.forEach((node) => {
+          dispatch(selectPluginNode(node.id));
+        });
+
+        console.log(
+          "📦 Выделено всё:",
+          currentCanvasNodes.length + imageNodes.length + pluginNodes.length,
+          "элементов",
+        );
+        return;
       }
-      
+
       // Escape
-      if (e.code === 'Escape') {
-        handleClearAllSelection()
-        return
+      if (e.code === "Escape") {
+        handleClearAllSelection();
+        return;
       }
 
-      handleViewportKeyDown(e)
-    }
+      handleViewportKeyDown(e);
+    };
 
-    window.addEventListener('keydown', handleKeyDown, true)
+    window.addEventListener("keydown", handleKeyDown, true);
 
     return () => {
-      window.removeEventListener('keydown', handleKeyDown, true)
-    }
-  }, [selectedNodes, selectedImageNodes, selectedPluginNodeIds, pluginNodes, currentCanvasNodes, imageNodes, dispatch, currentPage, convertScreenToCanvas, handleViewportKeyDown, handleClearAllSelection, deletePluginNode, selectPluginNode])
+      window.removeEventListener("keydown", handleKeyDown, true);
+    };
+  }, [
+    selectedNodes,
+    selectedImageNodes,
+    selectedPluginNodeIds,
+    pluginNodes,
+    currentCanvasNodes,
+    imageNodes,
+    dispatch,
+    currentPage,
+    convertScreenToCanvas,
+    handleViewportKeyDown,
+    handleClearAllSelection,
+    deletePluginNode,
+    selectPluginNode,
+  ]);
 
   // Panning handlers
   useEffect(() => {
-    const handleGlobalMouseMove = (e: MouseEvent) => handlePanMove(e)
-    const handleGlobalMouseUp = () => { handlePanEnd(); document.body.style.cursor = '' }
-    
-    document.addEventListener('mousemove', handleGlobalMouseMove)
-    document.addEventListener('mouseup', handleGlobalMouseUp)
-    
+    const handleGlobalMouseMove = (e: MouseEvent) => handlePanMove(e);
+    const handleGlobalMouseUp = () => {
+      handlePanEnd();
+      document.body.style.cursor = "";
+    };
+
+    document.addEventListener("mousemove", handleGlobalMouseMove);
+    document.addEventListener("mouseup", handleGlobalMouseUp);
+
     return () => {
-      document.removeEventListener('mousemove', handleGlobalMouseMove)
-      document.removeEventListener('mouseup', handleGlobalMouseUp)
-    }
-  }, [handlePanMove, handlePanEnd])
+      document.removeEventListener("mousemove", handleGlobalMouseMove);
+      document.removeEventListener("mouseup", handleGlobalMouseUp);
+    };
+  }, [handlePanMove, handlePanEnd]);
 
   useEffect(() => {
     if (isDragging) {
-      document.body.style.overflow = 'hidden'
-      document.body.style.userSelect = 'none'
+      document.body.style.overflow = "hidden";
+      document.body.style.userSelect = "none";
     } else {
-      document.body.style.overflow = ''
-      document.body.style.userSelect = ''
+      document.body.style.overflow = "";
+      document.body.style.userSelect = "";
     }
     return () => {
-      document.body.style.overflow = ''
-      document.body.style.userSelect = ''
-    }
-  }, [isDragging])
+      document.body.style.overflow = "";
+      document.body.style.userSelect = "";
+    };
+  }, [isDragging]);
 
   return (
     <div className={styles.workspace}>
@@ -662,13 +837,17 @@ export const CanvasWorkspace: React.FC = () => {
 
       {hasSelection && (
         <div className={styles.selectionInfo}>
-          Выделено: {selectedCount || selectedNodes.length + selectedImageNodes.length + selectedPluginNodeIds.length}
+          Выделено:{" "}
+          {selectedCount ||
+            selectedNodes.length +
+              selectedImageNodes.length +
+              selectedPluginNodeIds.length}
         </div>
       )}
 
-      <div 
+      <div
         ref={canvasRef}
-        className={`${styles.canvas} ${viewport.isPanning ? styles.panning : ''}`}
+        className={`${styles.canvas} ${viewport.isPanning ? styles.panning : ""}`}
         style={{ background: canvasBackground }}
         data-project-id={projectId}
         onWheel={handleWheel}
@@ -677,41 +856,62 @@ export const CanvasWorkspace: React.FC = () => {
         onDragLeave={handleDragLeave}
         onDrop={handleCanvasDrop}
         onClick={(e) => {
-          if (e.button === 0 && !e.altKey && !isDragging) handleClearAllSelection()
+          if (e.button === 0 && !e.altKey && !isDragging)
+            handleClearAllSelection();
         }}
         onDoubleClick={handleCanvasDoubleClick}
         onContextMenu={handleCanvasContextMenu}
       >
         {viewport.showGrid && (
-          <div className={styles.grid} style={{
-            backgroundImage: `linear-gradient(90deg, #e0e0e0 1px, transparent 1px), linear-gradient(#e0e0e0 1px, transparent 1px)`,
-            backgroundSize: `${viewport.gridSize * viewport.scale}px ${viewport.gridSize * viewport.scale}px`,
-            backgroundPosition: `${viewport.position.x}px ${viewport.position.y}px`,
-          }} />
+          <div
+            className={styles.grid}
+            style={{
+              backgroundImage: `linear-gradient(90deg, #e0e0e0 1px, transparent 1px), linear-gradient(#e0e0e0 1px, transparent 1px)`,
+              backgroundSize: `${viewport.gridSize * viewport.scale}px ${viewport.gridSize * viewport.scale}px`,
+              backgroundPosition: `${viewport.position.x}px ${viewport.position.y}px`,
+            }}
+          />
         )}
-        
-        <div className={styles.content} style={{
-          transform: `translate(${viewport.position.x}px, ${viewport.position.y}px) scale(${viewport.scale})`,
-        }}>
+
+        <div
+          className={styles.content}
+          style={{
+            transform: `translate(${viewport.position.x}px, ${viewport.position.y}px) scale(${viewport.scale})`,
+          }}
+        >
           {/* Todo Nodes */}
           {currentCanvasNodes.map((node: any) => (
-            <TodoNode key={node.id} node={node}
+            <TodoNode
+              key={node.id}
+              node={node}
               onContextMenu={(e) => {
-                e.preventDefault(); e.stopPropagation()
-                dispatch(showMenu({ x: e.clientX, y: e.clientY, items: createNodeContextMenu(), context: { nodeId: node.id } }))
+                e.preventDefault();
+                e.stopPropagation();
+                dispatch(
+                  showMenu({
+                    x: e.clientX,
+                    y: e.clientY,
+                    items: createNodeContextMenu(),
+                    context: { nodeId: node.id },
+                  }),
+                );
               }}
               onClick={(e, nodeId) => {
-                e.stopPropagation()
-                const isMultiSelect = (e.ctrlKey || e.metaKey) && e.altKey
+                e.stopPropagation();
+                const isMultiSelect = (e.ctrlKey || e.metaKey) && e.altKey;
                 if (isMultiSelect) {
-                  if (isTodoSelected(nodeId)) dispatch(todoNodesActions.deselectNode(nodeId))
-                  else dispatch(todoNodesActions.selectNode(nodeId))
+                  if (isTodoSelected(nodeId))
+                    dispatch(todoNodesActions.deselectNode(nodeId));
+                  else dispatch(todoNodesActions.selectNode(nodeId));
                 } else {
-                  handleClearAllSelection()
-                  dispatch(todoNodesActions.selectNode(nodeId))
+                  handleClearAllSelection();
+                  dispatch(todoNodesActions.selectNode(nodeId));
                 }
               }}
-              onDoubleClick={(e, nodeId) => { e.stopPropagation(); dispatch(todoNodesActions.startEditingTodo(nodeId)) }}
+              onDoubleClick={(e, nodeId) => {
+                e.stopPropagation();
+                dispatch(todoNodesActions.startEditingTodo(nodeId));
+              }}
               isSelected={isTodoSelected(node.id)}
             />
           ))}
@@ -720,14 +920,14 @@ export const CanvasWorkspace: React.FC = () => {
           {isMarqueeActive && getMarqueeRect() && (
             <div
               style={{
-                position: 'absolute',
+                position: "absolute",
                 left: getMarqueeRect()!.x,
                 top: getMarqueeRect()!.y,
                 width: getMarqueeRect()!.width,
                 height: getMarqueeRect()!.height,
-                border: '2px dashed #3b82f6',
-                backgroundColor: 'rgba(59, 130, 246, 0.08)',
-                pointerEvents: 'none',
+                border: "2px dashed #3b82f6",
+                backgroundColor: "rgba(59, 130, 246, 0.08)",
+                pointerEvents: "none",
                 zIndex: 9999,
               }}
             />
@@ -735,34 +935,52 @@ export const CanvasWorkspace: React.FC = () => {
 
           {/* Uploading Images */}
           {uploadingImages.map((tempNode) => (
-            <ImageNode key={tempNode.tempId}
+            <ImageNode
+              key={tempNode.tempId}
               node={{
-                id: tempNode.tempId, type: 'image', position: tempNode.position,
-                size: tempNode.size, zIndex: 1000, filePath: '',
-                originalName: tempNode.originalName, fileSize: tempNode.fileSize,
-                mimeType: tempNode.mimeType, createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(), pageId: currentPage?.id || 'default',
+                id: tempNode.tempId,
+                type: "image",
+                position: tempNode.position,
+                size: tempNode.size,
+                zIndex: 1000,
+                filePath: "",
+                originalName: tempNode.originalName,
+                fileSize: tempNode.fileSize,
+                mimeType: tempNode.mimeType,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                pageId: currentPage?.id || "default",
               }}
-              isUploading={true} uploadProgress={tempNode.progress} viewport={viewport} isSelected={false}
+              isUploading={true}
+              uploadProgress={tempNode.progress}
+              viewport={viewport}
+              isSelected={false}
             />
           ))}
 
           {/* Image Nodes */}
           {imageNodes.map((node: any) => (
-            <ImageNode key={node.id} node={node}
-              isSelected={isImageSelected(node.id)} viewport={viewport} skipLoading={justUploadedIds.has(node.id)}
+            <ImageNode
+              key={node.id}
+              node={node}
+              isSelected={isImageSelected(node.id)}
+              viewport={viewport}
+              skipLoading={justUploadedIds.has(node.id)}
               onClick={(e, nodeId) => {
-                e.stopPropagation()
-                const isMultiSelect = (e.ctrlKey || e.metaKey) && e.altKey
+                e.stopPropagation();
+                const isMultiSelect = (e.ctrlKey || e.metaKey) && e.altKey;
                 if (isMultiSelect) {
-                  if (isImageSelected(nodeId)) dispatch(deselectImageNode(nodeId))
-                  else dispatch(selectImageNode(nodeId))
+                  if (isImageSelected(nodeId))
+                    dispatch(deselectImageNode(nodeId));
+                  else dispatch(selectImageNode(nodeId));
                 } else {
-                  handleClearAllSelection()
-                  dispatch(selectImageNode(nodeId))
+                  handleClearAllSelection();
+                  dispatch(selectImageNode(nodeId));
                 }
               }}
-              onDoubleClick={(e, nodeId) => { e.stopPropagation() }}
+              onDoubleClick={(e, nodeId) => {
+                e.stopPropagation();
+              }}
             />
           ))}
 
@@ -771,7 +989,7 @@ export const CanvasWorkspace: React.FC = () => {
             <div
               key={node.id}
               style={{
-                position: 'absolute',
+                position: "absolute",
                 left: node.position?.x || 100,
                 top: node.position?.y || 100,
                 zIndex: node.zIndex || 10,
@@ -781,9 +999,13 @@ export const CanvasWorkspace: React.FC = () => {
                 node={node}
                 isSelected={selectedPluginNodeIds.includes(node.id)}
                 isDragging={isDragging && dragState?.draggedNodeId === node.id}
-                onUpdate={(updates) => dispatch(updatePluginNode({ id: node.id, ...updates }))}
+                onUpdate={(updates) =>
+                  dispatch(updatePluginNode({ id: node.id, ...updates }))
+                }
                 onDelete={() => dispatch(deletePluginNode(node.id))}
-                onResize={(width, height) => dispatch(resizePluginNode({ id: node.id, width, height }))}
+                onResize={(width, height) =>
+                  dispatch(resizePluginNode({ id: node.id, width, height }))
+                }
                 onDragStart={handlePluginDragStart}
                 onClick={(e, nodeId) => {
                   e.stopPropagation();
@@ -806,14 +1028,20 @@ export const CanvasWorkspace: React.FC = () => {
                   e.preventDefault();
                   e.stopPropagation();
                   const menuItems = [
-                    { id: 'delete', label: '🗑️ Удалить', actionType: 'DELETE_PLUGIN_NODE' },
+                    {
+                      id: "delete",
+                      label: "🗑️ Удалить",
+                      actionType: "DELETE_PLUGIN_NODE",
+                    },
                   ];
-                  dispatch(showMenu({ 
-                    x: e.clientX, 
-                    y: e.clientY, 
-                    items: menuItems, 
-                    context: { nodeId, nodeType: 'plugin' } 
-                  }));
+                  dispatch(
+                    showMenu({
+                      x: e.clientX,
+                      y: e.clientY,
+                      items: menuItems,
+                      context: { nodeId, nodeType: "plugin" },
+                    }),
+                  );
                 }}
               />
             </div>
@@ -821,24 +1049,36 @@ export const CanvasWorkspace: React.FC = () => {
         </div>
 
         {isDragging && dragState?.draggedNodeId && (
-          <div className={styles.dragPreview} style={{
-            left: dragState.currentPosition.x - dragState.offset.x,
-            top: dragState.currentPosition.y - dragState.offset.y,
-            transform: 'none', position: 'fixed',
-          }}>Перемещение...</div>
+          <div
+            className={styles.dragPreview}
+            style={{
+              left: dragState.currentPosition.x - dragState.offset.x,
+              top: dragState.currentPosition.y - dragState.offset.y,
+              transform: "none",
+              position: "fixed",
+            }}
+          >
+            Перемещение...
+          </div>
         )}
 
-        <ImageDropOverlay isVisible={isDraggingImage} error={imageDropError} onClearError={clearImageError} />
+        <ImageDropOverlay
+          isVisible={isDraggingImage}
+          error={imageDropError}
+          onClearError={clearImageError}
+        />
       </div>
-      
-      <ContextMenu/>
+
+      <ContextMenu />
       <QuickTodoForm />
       <TodoFormModal />
       <BottomToolbar getCenterPosition={getCenterPosition} />
-      
-      <div className={styles.hotkeyHint}>
-        Ctrl+C/V — копировать/вставить • Ctrl+Delete — удалить • Alt+ЛКМ — панорамирование • Ctrl+Alt+ЛКМ — выделение
-      </div>
+      <ZoomToolbar></ZoomToolbar>
+
+      {/* <div className={styles.hotkeyHint}>
+        Ctrl+C/V — копировать/вставить • Ctrl+Delete — удалить • Alt+ЛКМ —
+        панорамирование • Ctrl+Alt+ЛКМ — выделение
+      </div> */}
     </div>
-  )
-}
+  );
+};

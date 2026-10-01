@@ -5,7 +5,7 @@ export type TodoPriority = 'low' | 'medium' | 'high' | 'critical'
 export interface Todo {
   type: any
   id: string
-  pageId: string; // 🆕 ОБЯЗАТЕЛЬНОЕ поле - к какой странице принадлежит
+  pageId: string; 
   title: string
   description: string
   status: TodoStatus
