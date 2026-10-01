@@ -22,7 +22,7 @@ export const Logo: React.FC<LogoProps> = () => {
     <div className={styles.logoContainer}>
       <div className={styles.logo} onClick={handleLogoClick}>
         <div className={styles.logoImage}>
-          <LogoSVG width="150px" height="50px"/>
+          <LogoSVG/>
         </div>
       </div>
     </div>

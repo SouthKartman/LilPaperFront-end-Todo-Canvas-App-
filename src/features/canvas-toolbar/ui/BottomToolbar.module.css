@@ -2,7 +2,7 @@
 .bottom-toolbar {
   position: absolute;
   bottom: 20px;
-  left: 40%;
+  left: 50%;
   transform: translateX(-50%);
   width: fit-content;
   height: fit-content;
@@ -24,17 +24,16 @@
 .toolbar-container {
   display: flex;
   align-items: center;
-  overflow-x:visible;
-  overflow-y: hidden;
+  overflow: hidden;
   /* justify-content: center; */
-  gap: 8px;
+  /* gap: 8px; */
 }
 
 .toolbar-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  /* gap: 5px; */
   background: transparent;
   border: none;
   padding: 17px 20px;
@@ -58,7 +57,7 @@
   border-radius: 10px 0px 0px 10px;
 }
 
-.toolbar-btn:nth-of-type(9)
+.toolbar-btn:nth-of-type(8)
 {
   border-radius: 0px 10px 10px 0px;
 }
@@ -70,8 +69,8 @@
 }
 
 .toolbar-btn:hover:not(:disabled) {
-  background: #414141;
-  color: #fff;
+  background: #F4F4F4;
+  color: #000;
   transform: scale(1.02);
 }
 

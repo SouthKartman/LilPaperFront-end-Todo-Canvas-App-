@@ -1,0 +1,10 @@
+.PageSideMenu
+{
+    width: 250px;
+    height: 85vh;
+    background-color: #fff;
+    position: absolute;
+    top: 120px;
+    border-radius: 7px;
+    left: 120px;
+}

@@ -88,6 +88,16 @@
   }
 }
 
+.MenuSidebar
+{
+  width: 100px;
+}
+
+.PageSideMenu
+{
+  width: 100px;
+}
+
 /* УТИЛИТЫ */
 .resizer {
   flex: 0 0 4px;

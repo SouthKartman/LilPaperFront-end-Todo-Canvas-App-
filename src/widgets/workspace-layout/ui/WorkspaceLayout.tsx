@@ -4,8 +4,11 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useParams } from 'react-router-dom'
 import { createProject, setCurrentProject } from '@features/project-management/model/slice'
 import { selectCurrentProject } from '@features/project-management/model/selectors'
-import { PagesSidebar } from '@widgets/pages-workspace/ui/PagesSidebar'
+// import { PagesSidebar } from '@widgets/pages-workspace/ui/PagesSidebar'
 import styles from './WorkspaceLayout.module.css'
+import { MenuSidebar } from '@widgets/menu-sidebar/ui/MenuSidebar'
+import { Header } from '@shared/ui/kit/Header/ui/Header.component'
+import { PageSideMenu } from '@widgets/pages-workspace/ui/PageSideMenu'
 
 interface WorkspaceLayoutProps {
   toolbar?: React.ReactNode
@@ -15,7 +18,7 @@ interface WorkspaceLayoutProps {
 
 export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
   toolbar,
-  sidebar,
+  // sidebar,
   children,
 }) => {
   const dispatch = useDispatch()
@@ -45,26 +48,36 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     <div className={styles.layout}>
       {toolbar && (
         <header className={styles.toolbar}>
-          {toolbar}
+          {/* Legacy */}
+          {/* {toolbar} */}
+          <Header/>
+          {/* <PageSideMenu/> */}
         </header>
       )}
       <div className={styles.content}>
-        {/* ЛЕВАЯ ПАНЕЛЬ СО СТРАНИЦАМИ */}
-        <aside className={styles.pagesSidebar}>
-          <PagesSidebar />
+        <aside className={styles.MenuSidebar}>
+          <MenuSidebar></MenuSidebar>
         </aside>
+        {/* ЛЕВАЯ ПАНЕЛЬ СО СТРАНИЦАМИ */}
+        {/* <aside className={styles.pagesSidebar}>
+          <PagesSidebar />
+        </aside> */}
+
+       
         
         {/* ОСНОВНАЯ ОБЛАСТЬ С КАНВАСОМ */}
         <main className={styles.main}>
           {children}
         </main>
         
+      {/* Legacy */}
+
         {/* ПРАВАЯ ПАНЕЛЬ */}
-        {sidebar && (
+        {/* {sidebar && (
           <aside className={styles.sidebar}>
             {sidebar}
           </aside>
-        )}
+        )} */}
 
       </div>
     </div>
