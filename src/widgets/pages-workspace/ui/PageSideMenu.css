@@ -2,9 +2,55 @@
 {
     width: 250px;
     height: 85vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
     background-color: #fff;
     position: absolute;
     top: 120px;
     border-radius: 7px;
     left: 120px;
+    height: fit-content;
+    /* padding: 30px; */
+}
+
+.PageSideMenu__titleContainer
+{
+    width: 100%;
+    height: fit-content;
+    background-color: #fff;
+    border: none;
+    text-align: left;
+    padding: 20px;
+    cursor: pointer;
+    transition: 300ms;
+}
+
+.PageSideMenu__titleContainer:hover
+{
+    background-color: #f9f9f9;
+    transition: 300ms;
+}
+
+.PageSideMenu__titleContainer-desc
+{
+    font-size: 10px;
+    margin: 10px 0px 0px;
+}
+.PageSideMenu__Content
+{
+    width: 100%;
+    padding: 20px;
+}
+.PagesContainer__title
+{
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+}
+.PageContainer__list
+{
+    width: 100%;
+    min-height:200px;
+    height: fit-content;
 }

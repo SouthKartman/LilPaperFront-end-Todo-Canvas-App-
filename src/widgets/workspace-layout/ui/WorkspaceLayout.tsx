@@ -51,7 +51,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
           {/* Legacy */}
           {/* {toolbar} */}
           <Header/>
-          {/* <PageSideMenu/> */}
+          <PageSideMenu/>
         </header>
       )}
       <div className={styles.content}>

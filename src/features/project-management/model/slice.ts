@@ -4,6 +4,7 @@ import { ProjectIndexedDBStorage } from '@shared/api/storage/indexedDB/projectSt
 import { TodoIndexedDBStorage } from '@shared/api/storage/indexedDB/todoStorage';
 import { ImageIndexedDBStorage } from '@shared/api/storage/indexedDB/imageStorage';
 
+
 interface ProjectState {
   currentProjectId: string | null;
   projects: Record<string, CanvasProject>;
@@ -35,11 +36,11 @@ export const renameProjectInDB = createAsyncThunk(
         throw new Error('Не удалось переименовать проект в базе данных');
       }
       
-      console.log(`✅ Проект ${projectId} переименован в "${name}" в IndexedDB`);
+      console.log(`Проект ${projectId} переименован в "${name}" в IndexedDB`);
       
       return { projectId, name };
     } catch (error) {
-      console.error('❌ Ошибка при переименовании проекта в БД:', error);
+      console.error(' Ошибка при переименовании проекта в БД:', error);
       return rejectWithValue(error instanceof Error ? error.message : 'Ошибка переименования');
     }
   }

@@ -1,5 +1,5 @@
 // src/shared/api/storage/indexedDB/todoStorage.ts
-import { db, DBTodo } from './schema';
+import { db } from './schema';
 import { Todo } from '@entities/todo/model/types';
 
 export class TodoIndexedDBStorage {
@@ -16,10 +16,10 @@ export class TodoIndexedDBStorage {
       }));
       
       await db.todos.bulkPut(todosArray);
-      console.log(`💾 Сохранено ${todosArray.length} задач в IndexedDB`);
+      console.log(`Сохранено ${todosArray.length} задач в IndexedDB`);
       return true;
     } catch (error) {
-      console.error('❌ Ошибка сохранения задач в IndexedDB:', error);
+      console.error('Ошибка сохранения задач в IndexedDB:', error);
       return false;
     }
   }
@@ -35,10 +35,10 @@ export class TodoIndexedDBStorage {
         return acc;
       }, {} as Record<string, Todo>);
       
-      console.log(`📂 Загружено ${todos.length} задач из IndexedDB`);
+      console.log(`Загружено ${todos.length} задач из IndexedDB`);
       return todosMap;
     } catch (error) {
-      console.error('❌ Ошибка загрузки задач из IndexedDB:', error);
+      console.error('Ошибка загрузки задач из IndexedDB:', error);
       return {};
     }
   }
@@ -54,7 +54,7 @@ export class TodoIndexedDBStorage {
         return acc;
       }, {} as Record<string, Todo>);
     } catch (error) {
-      console.error('❌ Ошибка загрузки задач по странице:', error);
+      console.error('Ошибка загрузки задач по странице:', error);
       return {};
     }
   }
@@ -70,7 +70,7 @@ export class TodoIndexedDBStorage {
         return acc;
       }, {} as Record<string, Todo>);
     } catch (error) {
-      console.error('❌ Ошибка загрузки задач по проекту:', error);
+      console.error('Ошибка загрузки задач по проекту:', error);
       return {};
     }
   }
@@ -82,7 +82,7 @@ export class TodoIndexedDBStorage {
     try {
       return await db.todos.get(id) || null;
     } catch (error) {
-      console.error('❌ Ошибка получения задачи:', error);
+      console.error('Ошибка получения задачи:', error);
       return null;
     }
   }
@@ -98,7 +98,7 @@ export class TodoIndexedDBStorage {
       });
       return true;
     } catch (error) {
-      console.error('❌ Ошибка добавления задачи:', error);
+      console.error('Ошибка добавления задачи:', error);
       return false;
     }
   }
@@ -114,7 +114,7 @@ export class TodoIndexedDBStorage {
       });
       return true;
     } catch (error) {
-      console.error('❌ Ошибка обновления задачи:', error);
+      console.error('Ошибка обновления задачи:', error);
       return false;
     }
   }
@@ -127,7 +127,7 @@ export class TodoIndexedDBStorage {
       await db.todos.delete(id);
       return true;
     } catch (error) {
-      console.error('❌ Ошибка удаления задачи:', error);
+      console.error('Ошибка удаления задачи:', error);
       return false;
     }
   }
@@ -140,7 +140,7 @@ export class TodoIndexedDBStorage {
       await db.todos.bulkDelete(ids);
       return true;
     } catch (error) {
-      console.error('❌ Ошибка удаления задач:', error);
+      console.error('Ошибка удаления задач:', error);
       return false;
     }
   }
@@ -152,7 +152,7 @@ export class TodoIndexedDBStorage {
     try {
       return await db.searchTodos(query, projectId);
     } catch (error) {
-      console.error('❌ Ошибка поиска задач:', error);
+      console.error('Ошибка поиска задач:', error);
       return [];
     }
   }
@@ -173,7 +173,7 @@ export class TodoIndexedDBStorage {
         // Добавьте другую статистику по необходимости
       };
     } catch (error) {
-      console.error('❌ Ошибка получения статистики:', error);
+      console.error('Ошибка получения статистики:', error);
       return null;
     }
   }
