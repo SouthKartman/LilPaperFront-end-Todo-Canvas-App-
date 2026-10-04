@@ -11,6 +11,7 @@ export interface CanvasPage {
 }
 
 export interface CanvasProject {
+  archived: any;
   id: string;
   name: string;
   pageIds: string[]; // Порядок страниц

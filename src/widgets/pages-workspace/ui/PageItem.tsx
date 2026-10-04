@@ -109,7 +109,6 @@ export const PageItem: React.FC<PageItemProps> = ({
       </div>
       
       <div className={styles.pageIcon}>
-        📄
       </div>
       
       <div className={styles.pageContent}>

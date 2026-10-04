@@ -7,9 +7,9 @@ import {
   setPageName,
   // setProjectName,
 } from "@features/project-management";
-import { useDispatch, useSelector } from "react-redux";
+import { useAppDispatch, useAppSelector } from "@shared/lib/state/store";
 
-import { DndContext, DragEndEvent } from "@dnd-kit/core";
+import { closestCenter, DndContext, DragEndEvent } from "@dnd-kit/core";
 //import { SortableContext } from "@dnd-kit/sortable";
 import {
   addPage,
@@ -19,13 +19,18 @@ import {
   deletePageFromDB,
   renameProjectInDB,
 } from "@features/project-management";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { PageItem } from "./PageItem";
 
 export const PageSideMenu: React.FC = () => {
   // code
-  const dispatch = useDispatch();
-  const currentProject = useSelector(selectCurrentProject);
-  const pages = useSelector(selectProjectPages);
-  const currentPageId = useSelector(selectCurrentPageId);
+  const dispatch = useAppDispatch();
+  const currentProject = useAppSelector(selectCurrentProject);
+  const pages = useAppSelector(selectProjectPages);
+  const currentPageId = useAppSelector(selectCurrentPageId);
   const [renamingPageId, setRenamingPageId] = useState<string | null>(null);
   const [isRenamingProject, setIsRenamingProject] = useState<boolean>(false);
   const [projectName, setProjectNameInput] = useState<string>(
@@ -36,7 +41,7 @@ export const PageSideMenu: React.FC = () => {
     return <div>404 Not Found Pages</div>;
   }
 
-  const handleAddPage = () => {
+  const handleAddPage = (): void => {
     dispatch(
       addPage({
         projectId: currentProject.id,
@@ -45,7 +50,7 @@ export const PageSideMenu: React.FC = () => {
     );
   };
 
-  const handleSwitchPage = (pageId: string) => {
+  const handleSwitchPage = (pageId: string): void => {
     dispatch(
       switchPage({
         projectId: currentProject.id,
@@ -54,12 +59,12 @@ export const PageSideMenu: React.FC = () => {
     );
   };
 
-  const handleRenamePage = (pageId: string, newName: srting) => {
+  const handleRenamePage = (pageId: string, newName: string): void => {
     dispatch(setPageName({ pageId, name: newName }));
   };
 
   // fix typen in slice project manager
-  const handleDeletePage = async (pageId: string, newName: string) => {
+  const handleDeletePage = async (pageId: string): Promise<void> => {
     if (pages.length > 1) {
       await dispatch(
         deletePageFromDB({
@@ -70,12 +75,12 @@ export const PageSideMenu: React.FC = () => {
     }
   };
 
-  const handleStartRenameProject = () => {
+  const handleStartRenameProject = (): void => {
     setProjectNameInput(currentProject.name);
     setIsRenamingProject(true);
   };
 
-  const handleRenameProject = async () => {
+  const handleRenameProject = async (): Promise<void> => {
     if (projectName.trim() && projectName.trim() !== currentProject.name) {
       const newName = projectName.trim();
 
@@ -99,21 +104,23 @@ export const PageSideMenu: React.FC = () => {
     }
   };
 
-  const handleCancelRenameProject = () => {
+  const handleCancelRenameProject = (): void => {
     setIsRenamingProject(false);
     setProjectNameInput(currentProject.name);
   };
 
-  const handleProjectNameKeyDown = (e: React.KeyboardEvent) => {
+  const handleProjectNameKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+  ): void => {
     if (e.key === "Enter") {
-      handleCancelRenameProject();
+      void handleRenameProject();
     }
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = (event: DragEndEvent): void => {
     const { active, over } = event;
 
-    if (over && active.id !== over_id) {
+    if (over && active.id !== over.id) {
       const fromIndex = pages.findIndex((p) => p.id === active.id);
       const toIndex = pages.findIndex((p) => p.id === over.id);
 
@@ -139,7 +146,7 @@ export const PageSideMenu: React.FC = () => {
               type="text"
               value={projectName}
               onChange={(e) => setProjectNameInput(e.target.value)}
-              onBlur={handleRenamePage}
+              onBlur={handleRenameProject}
               onKeyDown={handleProjectNameKeyDown}
               autoFocus
             />
@@ -161,13 +168,46 @@ export const PageSideMenu: React.FC = () => {
         <div className="PageSideMenu__PagesContainer">
           <div className="PagesContainer__title">
             <h5>Pages</h5>
-            <button>Создать</button>
+            <button>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M5 12h14" />
+                <path d="M12 5v14" />
+              </svg>
+            </button>
           </div>
           <div className="PageContainer__list">
-            <DndContext>
-              {/* <SortableContext>
-
-              </SortableContext> */}
+            <DndContext
+              onDragEnd={handleDragEnd}
+              collisionDetection={closestCenter}
+            >
+              <SortableContext
+                items={pages.map((p) => p.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {pages.map((page) => (
+                  <PageItem
+                    key={page.id}
+                    page={page}
+                    isActive={page.id === currentPageId}
+                    isRenaming={renamingPageId === page.id}
+                    onSelect={() => handleSwitchPage(page.id)}
+                    onRenameStart={() => setRenamingPageId(page.id)}
+                    onRename={(newName) => handleRenamePage(page.id, newName)}
+                    onRenameCancel={() => setRenamingPageId(null)}
+                    onDelete={() => handleDeletePage(page.id)}
+                  ></PageItem>
+                ))}
+              </SortableContext>
             </DndContext>
           </div>
         </div>

@@ -3,6 +3,16 @@ import { CanvasProject, CanvasPage, Canvas, generateId } from '@entities/canvas/
 import { ProjectIndexedDBStorage } from '@shared/api/storage/indexedDB/projectStorage';
 import { TodoIndexedDBStorage } from '@shared/api/storage/indexedDB/todoStorage';
 import { ImageIndexedDBStorage } from '@shared/api/storage/indexedDB/imageStorage';
+import type { RootState } from '@shared/lib/state/store';
+
+type ProjectThunkConfig = {
+  state: RootState;
+  rejectValue: string;
+};
+
+type RenameProjectPayload = { projectId: string; name: string };
+type DeletePagePayload = { projectId: string; pageId: string };
+type RenamePagePayload = { pageId: string; name: string };
 
 
 interface ProjectState {
@@ -26,9 +36,13 @@ const initialState: ProjectState = {
 };
 
 // 🆕 THUNK ДЛЯ ПЕРЕИМЕНОВАНИЯ ПРОЕКТА В INDEXEDDB
-export const renameProjectInDB = createAsyncThunk(
+export const renameProjectInDB = createAsyncThunk<
+  RenameProjectPayload,
+  RenameProjectPayload,
+  ProjectThunkConfig
+>(
   'project/renameProjectInDB',
-  async ({ projectId, name }: { projectId: string; name: string }, { rejectWithValue }) => {
+  async ({ projectId, name }, { rejectWithValue }) => {
     try {
       const success = await ProjectIndexedDBStorage.updateProject(projectId, { name });
       
@@ -47,11 +61,15 @@ export const renameProjectInDB = createAsyncThunk(
 );
 
 // 🆕 THUNK ДЛЯ УДАЛЕНИЯ СТРАНИЦЫ ИЗ INDEXEDDB
-export const deletePageFromDB = createAsyncThunk(
+export const deletePageFromDB = createAsyncThunk<
+  DeletePagePayload,
+  DeletePagePayload,
+  ProjectThunkConfig
+>(
   'project/deletePageFromDB',
-  async ({ projectId, pageId }: { projectId: string; pageId: string }, { dispatch, getState, rejectWithValue }) => {
+  async ({ projectId, pageId }, { getState, rejectWithValue }) => {
     try {
-      const state = getState() as any;
+      const state = getState();
       const page = state.project.pages[pageId];
       
       if (!page) {
@@ -59,25 +77,27 @@ export const deletePageFromDB = createAsyncThunk(
       }
       
       // Получаем все задачи на этой странице
-      const todos = Object.values(state.todoNodes.nodes || {});
-      const pageTodos = todos.filter((todo: any) => todo.pageId === pageId);
+      const todos = Object.values(state.todoNodes.nodes);
+      const pageTodos = todos.filter((todo) => todo.pageId === pageId);
       
       // Удаляем все задачи страницы из IndexedDB
       if (pageTodos.length > 0) {
-        const todoIds = pageTodos.map((todo: any) => todo.id);
+        const todoIds = pageTodos.map((todo) => todo.id);
         await TodoIndexedDBStorage.deleteTodos(todoIds);
-        console.log(`✅ Удалено ${todoIds.length} задач страницы ${pageId} из IndexedDB`);
+        console.log(` Удалено ${todoIds.length} задач страницы ${pageId} из IndexedDB`);
       }
       
       // Получаем все изображения на этой странице
-      const images = Object.values(state.imageNodes?.nodes || {});
-      const pageImages = images.filter((img: any) => img.pageId === pageId);
+      const images = Object.values(state.imageNodes.nodes) as Array<
+        (typeof state.imageNodes.nodes)[string] & { pageId?: string }
+      >;
+      const pageImages = images.filter((image) => image.pageId === pageId);
       
       // Удаляем все изображения страницы из IndexedDB
       if (pageImages.length > 0) {
-        const imageIds = pageImages.map((img: any) => img.id);
+        const imageIds = pageImages.map((image) => image.id);
         await ImageIndexedDBStorage.deleteImages(imageIds);
-        console.log(`✅ Удалено ${imageIds.length} изображений страницы ${pageId} из IndexedDB`);
+        console.log(` Удалено ${imageIds.length} изображений страницы ${pageId} из IndexedDB`);
       }
       
       // Удаляем страницу и ее полотно из IndexedDB
@@ -87,20 +107,24 @@ export const deletePageFromDB = createAsyncThunk(
         throw new Error('Не удалось удалить страницу из базы данных');
       }
       
-      console.log(`✅ Страница ${pageId} успешно удалена из IndexedDB`);
+      console.log(` Страница ${pageId} успешно удалена из IndexedDB`);
       
       return { projectId, pageId };
     } catch (error) {
-      console.error('❌ Ошибка при удалении страницы из БД:', error);
+      console.error(' Ошибка при удалении страницы из БД:', error);
       return rejectWithValue(error instanceof Error ? error.message : 'Ошибка удаления страницы');
     }
   }
 );
 
 // 🆕 THUNK ДЛЯ ПЕРЕИМЕНОВАНИЯ СТРАНИЦЫ В INDEXEDDB
-export const renamePageInDB = createAsyncThunk(
+export const renamePageInDB = createAsyncThunk<
+  RenamePagePayload,
+  RenamePagePayload,
+  ProjectThunkConfig
+>(
   'project/renamePageInDB',
-  async ({ pageId, name }: { pageId: string; name: string }, { rejectWithValue }) => {
+  async ({ pageId, name }, { rejectWithValue }) => {
     try {
       const success = await ProjectIndexedDBStorage.updatePage(pageId, { name });
       
@@ -108,18 +132,22 @@ export const renamePageInDB = createAsyncThunk(
         throw new Error('Не удалось переименовать страницу в базе данных');
       }
       
-      console.log(`✅ Страница ${pageId} переименована в "${name}" в IndexedDB`);
+      console.log(` Страница ${pageId} переименована в "${name}" в IndexedDB`);
       
       return { pageId, name };
     } catch (error) {
-      console.error('❌ Ошибка при переименовании страницы в БД:', error);
+      console.error(' Ошибка при переименовании страницы в БД:', error);
       return rejectWithValue(error instanceof Error ? error.message : 'Ошибка переименования');
     }
   }
 );
 
 // 🆕 THUNK ДЛЯ СОХРАНЕНИЯ СТРАНИЦЫ В INDEXEDDB
-export const savePageToDB = createAsyncThunk(
+export const savePageToDB = createAsyncThunk<
+  CanvasPage,
+  CanvasPage,
+  ProjectThunkConfig
+>(
   'project/savePageToDB',
   async (page: CanvasPage, { rejectWithValue }) => {
     try {
@@ -129,11 +157,11 @@ export const savePageToDB = createAsyncThunk(
         throw new Error('Не удалось сохранить страницу в базу данных');
       }
       
-      console.log(`✅ Страница ${page.id} сохранена в IndexedDB`);
+      console.log(` Страница ${page.id} сохранена в IndexedDB`);
       
       return page;
     } catch (error) {
-      console.error('❌ Ошибка при сохранении страницы в БД:', error);
+      console.error(' Ошибка при сохранении страницы в БД:', error);
       return rejectWithValue(error instanceof Error ? error.message : 'Ошибка сохранения');
     }
   }
@@ -592,7 +620,7 @@ const projectSlice = createSlice({
       })
       .addCase(deletePageFromDB.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload as string || 'Ошибка удаления страницы';
+        state.error = action.payload ?? 'Ошибка удаления страницы';
       })
       
       // Переименование страницы в БД

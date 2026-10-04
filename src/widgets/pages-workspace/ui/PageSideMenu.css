@@ -47,7 +47,18 @@
     width: 100%;
     display: flex;
     justify-content: space-between;
+    padding: 0px 0px 20px;
 }
+
+.PagesContainer__title button
+{
+    background-color: #fff;
+    border: #fff;
+    cursor: pointer;
+    height: auto;
+    border-radius: 5px;
+}
+
 .PageContainer__list
 {
     width: 100%;
