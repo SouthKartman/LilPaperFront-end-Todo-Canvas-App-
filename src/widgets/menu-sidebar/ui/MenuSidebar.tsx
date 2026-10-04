@@ -6,9 +6,18 @@ import { useAppModal } from '@shared/ui/kit/Modal/AppModal';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import "./MenuSidebar.css";
+import { useNavigate } from 'react-router-dom';
 
 export const MenuSidebar: React.FC = () => {
-  const nodes = useSelector((state: RootState) => state.todoNodes.nodes);
+  const nodes = useSelector((state: RootState) => state.todoNodes.nodes);4
+
+
+  const navigate = useNavigate();
+
+  const handleProjectButton = (e: React.MouseEvent) => {
+    e.preventDefault();
+    navigate('/');
+  };
 
   const [lastSave, setLastSave] = useState<Date | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -73,7 +82,7 @@ export const MenuSidebar: React.FC = () => {
         </svg>
       </div>
       <div className="MenuSidebar__buttonContainer">
-        <button className="MenuSidebar__buttonContainer-button">
+        <button onClick={handleProjectButton} className="MenuSidebar__buttonContainer-button">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 24 24"

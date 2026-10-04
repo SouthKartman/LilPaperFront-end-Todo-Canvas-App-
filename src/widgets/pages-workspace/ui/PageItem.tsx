@@ -5,6 +5,11 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import styles from './PageItem.module.css';
 
+// shadcn
+// import { SquarePen } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {Trash} from 'lucide-react'
+
 interface PageItemProps {
   page: CanvasPage;
   isActive: boolean;
@@ -28,16 +33,7 @@ export const PageItem: React.FC<PageItemProps> = ({
 }) => {
   const [name, setName] = useState(page.name);
   const inputRef = useRef<HTMLInputElement>(null);
-  
-  // 🆕 Безопасное получение количества нод
-  const getNodeCount = () => {
-    // В новой структуре ноды хранятся в canvas, а не в page
-    // Возвращаем 0 или другое значение по умолчанию
-    return 0; // 🆕 Или можно получить из связанного canvas
-  };
-  
-  const nodeCount = getNodeCount(); // 🆕 Используем безопасный метод
-  
+
   const {
     attributes,
     listeners,
@@ -127,7 +123,7 @@ export const PageItem: React.FC<PageItemProps> = ({
           <div className={styles.pageName}>
             {page.name}
             <span className={styles.nodeCount}>
-              ({nodeCount}) {/* 🆕 Используем безопасное значение */}
+              {/* ({nodeCount}) 🆕 Используем безопасное значение */}
             </span>
           </div>
         )}
@@ -135,24 +131,25 @@ export const PageItem: React.FC<PageItemProps> = ({
         <div className={styles.pageActions}>
           {!isRenaming && (
             <>
-              <button
+              {/* <Button
                 className={styles.actionButton}
+                // size="Icon"
                 onClick={(e) => {
                   e.stopPropagation();
                   onRenameStart();
                 }}
                 title="Переименовать"
               >
-                ✏️
-              </button>
-              <button
+                <SquarePen/>
+              </Button> */}
+              <Button
                 className={styles.actionButton}
                 onClick={handleDelete}
                 title="Удалить"
-                disabled={false} // 🆕 Убираем ограничение
+                disabled={false} 
               >
-                🗑️
-              </button>
+                <Trash/>
+              </Button>
             </>
           )}
         </div>

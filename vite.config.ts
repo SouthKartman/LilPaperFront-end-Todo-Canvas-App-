@@ -4,10 +4,12 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import { VitePWA } from 'vite-plugin-pwa';
 import svgr from 'vite-plugin-svgr';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   plugins: [
     react(),
+    tailwindcss(),
     svgr(),
     VitePWA({
       strategies: 'injectManifest',
@@ -74,6 +76,7 @@ export default defineConfig({
   
   resolve: {
     alias: {
+      '@': path.resolve(__dirname, 'src'),
       '@app': path.resolve(__dirname, 'src/app'),
       '@processes': path.resolve(__dirname, 'src/processes'),
       '@features': path.resolve(__dirname, 'src/features'),

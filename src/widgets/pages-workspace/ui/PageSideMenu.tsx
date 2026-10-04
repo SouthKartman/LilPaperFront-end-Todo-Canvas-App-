@@ -25,6 +25,16 @@ import {
 } from "@dnd-kit/sortable";
 import { PageItem } from "./PageItem";
 
+// shadcn
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+
 export const PageSideMenu: React.FC = () => {
   // code
   const dispatch = useAppDispatch();
@@ -136,83 +146,91 @@ export const PageSideMenu: React.FC = () => {
     }
   };
 
+  const InputStyle = {
+    border: "none",
+  };
+
   // Markdown
   return (
     <div className="PageSideMenu">
-      <button className="PageSideMenu__titleContainer">
-        <h4>
-          {isRenamingProject ? (
-            <input
-              type="text"
-              value={projectName}
-              onChange={(e) => setProjectNameInput(e.target.value)}
-              onBlur={handleRenameProject}
-              onKeyDown={handleProjectNameKeyDown}
-              autoFocus
-            />
-          ) : (
-            <div
-              onDoubleClick={handleStartRenameProject}
-              title="Double-click to rename"
-            >
-              {currentProject.name}
+      <Accordion className="">
+        <AccordionItem>
+          <AccordionTrigger className="PageSideMenu__titleContainer">
+            <div>
+              <h4>
+                {isRenamingProject ? (
+                  <input
+                    type="text"
+                    value={projectName}
+                    onChange={(e) => setProjectNameInput(e.target.value)}
+                    onBlur={handleRenameProject}
+                    onKeyDown={handleProjectNameKeyDown}
+                    autoFocus
+                    style={InputStyle}
+                  />
+                ) : (
+                  <div
+                    onDoubleClick={handleStartRenameProject}
+                    title="Нажми для переименования"
+                  >
+                    {currentProject.name}
+                  </div>
+                )}
+              </h4>
+              <div className="PageSideMenu__titleContainer-desc">
+                <span>Project Type: Self hosted</span>
+              </div>
             </div>
-          )}
-        </h4>
-        <div className="PageSideMenu__titleContainer-desc">
-          <span>Project Type: Self hosted</span>
-        </div>
-      </button>
-      <hr></hr>
-      <div className="PageSideMenu__Content">
-        <div className="PageSideMenu__PagesContainer">
-          <div className="PagesContainer__title">
-            <h5>Pages</h5>
-            <button>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M5 12h14" />
-                <path d="M12 5v14" />
-              </svg>
-            </button>
-          </div>
-          <div className="PageContainer__list">
-            <DndContext
-              onDragEnd={handleDragEnd}
-              collisionDetection={closestCenter}
-            >
-              <SortableContext
-                items={pages.map((p) => p.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                {pages.map((page) => (
-                  <PageItem
-                    key={page.id}
-                    page={page}
-                    isActive={page.id === currentPageId}
-                    isRenaming={renamingPageId === page.id}
-                    onSelect={() => handleSwitchPage(page.id)}
-                    onRenameStart={() => setRenamingPageId(page.id)}
-                    onRename={(newName) => handleRenamePage(page.id, newName)}
-                    onRenameCancel={() => setRenamingPageId(null)}
-                    onDelete={() => handleDeletePage(page.id)}
-                  ></PageItem>
-                ))}
-              </SortableContext>
-            </DndContext>
-          </div>
-        </div>
-      </div>
-      <div className="PageSideMenu__LayersContainer"></div>
+          </AccordionTrigger>
+
+          <AccordionContent>
+            <hr></hr>
+            <div className="PageSideMenu__Content">
+              <div className="PageSideMenu__PagesContainer">
+                <div className="PagesContainer__title">
+                  <h5>Pages</h5>
+                  <Button
+                    onClick={handleAddPage}
+                    className="flex flex-wrap items-center gap-2 md:flex-row"
+                    variant="outline"
+                    size="icon"
+                  >
+                    <Plus />
+                  </Button>
+                </div>
+                <div className="PageContainer__list">
+                  <DndContext
+                    onDragEnd={handleDragEnd}
+                    collisionDetection={closestCenter}
+                  >
+                    <SortableContext
+                      items={pages.map((p) => p.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      {pages.map((page) => (
+                        <PageItem
+                          key={page.id}
+                          page={page}
+                          isActive={page.id === currentPageId}
+                          isRenaming={renamingPageId === page.id}
+                          onSelect={() => handleSwitchPage(page.id)}
+                          onRenameStart={() => setRenamingPageId(page.id)}
+                          onRename={(newName) =>
+                            handleRenamePage(page.id, newName)
+                          }
+                          onRenameCancel={() => setRenamingPageId(null)}
+                          onDelete={() => handleDeletePage(page.id)}
+                        ></PageItem>
+                      ))}
+                    </SortableContext>
+                  </DndContext>
+                </div>
+              </div>
+            </div>
+            <div className="PageSideMenu__LayersContainer"></div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </div>
   );
 };

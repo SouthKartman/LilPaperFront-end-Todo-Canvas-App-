@@ -1,7 +1,7 @@
 .PageSideMenu
 {
     width: 250px;
-    height: 85vh;
+    /* height: 85vh; */
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -16,26 +16,33 @@
 
 .PageSideMenu__titleContainer
 {
-    width: 100%;
-    height: fit-content;
-    background-color: #fff;
-    border: none;
-    text-align: left;
-    padding: 20px;
     cursor: pointer;
     transition: 300ms;
+    display: flex;
+    padding: 20px;
+    text-decoration: none;
+    align-items: center;
 }
-
 .PageSideMenu__titleContainer:hover
 {
     background-color: #f9f9f9;
     transition: 300ms;
 }
+/* .PageSideMenu__titleContainer svg
+{
+    display: none;
+} */
+
+/* .PageSideMenu__titleContainer:hover
+{
+    background-color: #f9f9f9;
+    transition: 300ms;
+} */
 
 .PageSideMenu__titleContainer-desc
 {
     font-size: 10px;
-    margin: 10px 0px 0px;
+    margin: 5px 0px 0px;
 }
 .PageSideMenu__Content
 {
@@ -48,20 +55,17 @@
     display: flex;
     justify-content: space-between;
     padding: 0px 0px 20px;
+    align-items: center;
 }
-
 .PagesContainer__title button
 {
-    background-color: #fff;
-    border: #fff;
     cursor: pointer;
-    height: auto;
-    border-radius: 5px;
 }
+
 
 .PageContainer__list
 {
     width: 100%;
-    min-height:200px;
+    min-height:fit-content;
     height: fit-content;
 }

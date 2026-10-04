@@ -12,13 +12,13 @@
 }
 
 .pageItem:hover {
-  background: var(--hover-bg, #f8f9fa);
+  background: var(--hover-bg, #f9f9f9);
   border-color: var(--border-color, #e9ecef);
 }
 
 .pageItem.active {
-  background: var(--accent-light, #eef2ff);
-  border-color: var(--accent-color, #4361ee);
+  background: var(--accent-light, #f9f9f9);
+  border-color: var(--accent-color, #f9f9f9);
 }
 
 .pageItem.dragging {
