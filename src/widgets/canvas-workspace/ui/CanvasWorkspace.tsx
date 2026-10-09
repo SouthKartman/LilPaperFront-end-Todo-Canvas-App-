@@ -96,6 +96,7 @@ export const CanvasWorkspace: React.FC = () => {
 
   const currentPage = useSelector(selectCurrentPage);
   const currentCanvas = useSelector(selectCurrentCanvas);
+  const currentCanvasId = currentCanvas?.id;
   const canvasViewport = useSelector(selectCurrentCanvasViewport);
   const canvasGrid = useSelector(selectCurrentCanvasGrid);
   const canvasBackground = useSelector(selectCurrentCanvasBackground);
@@ -159,6 +160,61 @@ export const CanvasWorkspace: React.FC = () => {
     return pluginNodes.filter((node: any) => node.pageId === currentPage?.id);
   }, [pluginNodes, currentCanvas, currentPage]);
 
+  const previewChangeKey = React.useMemo(
+    () =>
+      JSON.stringify({
+        todos: currentCanvasNodes.map((n: any) => ({
+          id: n.id,
+          title: n.title,
+          description: n.description,
+          status: n.status,
+          priority: n.priority,
+          position: n.position,
+          size: n.size,
+          tags: n.tags,
+          dueDate: n.dueDate,
+        })),
+
+        images: imageNodes.map((n: any) => ({
+          id: n.id,
+          filePath: n.filePath,
+          position: n.position,
+          size: n.size,
+          alt: n.alt,
+          caption: n.caption,
+        })),
+
+        plugins: currentCanvasPluginNodes.map((n: any) => ({
+          id: n.id,
+          pluginId: n.pluginId,
+          title: n.title,
+          position: n.position,
+          width: n.width,
+          height: n.height,
+          pluginProps: n.pluginProps,
+        })),
+
+        viewport: {
+          x: viewport.position.x,
+          y: viewport.position.y,
+          scale: viewport.scale,
+        },
+
+        background: canvasBackground,
+        showGrid: viewport.showGrid,
+      }),
+    [
+      currentCanvasNodes,
+      imageNodes,
+      currentCanvasPluginNodes,
+      viewport.position.x,
+      viewport.position.y,
+      viewport.scale,
+      viewport.showGrid,
+      canvasBackground,
+    ],
+  );
+
   // 👇 ФУНКЦИИ (useCallback)
   const convertScreenToCanvas = useCallback(
     (screenX: number, screenY: number) => {
@@ -192,15 +248,26 @@ export const CanvasWorkspace: React.FC = () => {
   }, [viewport]);
 
   const saveProject = useCallback(async () => {
-    if (!projectId || !canvasRef.current) return;
+    const element = canvasRef.current;
+
+    console.log("[Preview] saveProject вызван", {
+      projectId,
+      canvasMounted: Boolean(element),
+      canvasProjectId: element?.dataset.projectId,
+    });
+
+    if (!projectId || !element) {
+      console.error("[Preview] Сохранение отменено: нет projectId или холста");
+      return;
+    }
 
     setIsSaving(true);
 
     try {
-      if (currentCanvas) {
+      if (currentCanvasId) {
         dispatch(
           updateCanvas({
-            canvasId: currentCanvas.id,
+            canvasId: currentCanvasId,
             updates: {
               viewport: {
                 x: viewport.position.x,
@@ -212,23 +279,43 @@ export const CanvasWorkspace: React.FC = () => {
         );
       }
 
-      const lastGen = localStorage.getItem(`last_preview_${projectId}`);
-      const now = Date.now();
+      console.log("[Preview] Запускаем генерацию", projectId);
 
-      if (!lastGen || now - parseInt(lastGen) > 10000) {
-        localStorage.setItem(`last_preview_${projectId}`, now.toString());
-        await previewService.generateProjectPreview(projectId);
+      const preview = await previewService.generateProjectPreview(projectId);
+
+      if (!preview) {
+        console.warn("[Preview] Генератор вернул null. Превью не обновлено.");
+        return;
       }
+
+      // Записываем время только после успешной генерации.
+      localStorage.setItem(`last_preview_${projectId}`, String(Date.now()));
+
+      console.log("[Preview] Превью создано", {
+        length: preview.length,
+      });
     } catch (error) {
-      console.error("❌ Ошибка сохранения:", error);
+      console.error("[Preview] Ошибка сохранения", error);
     } finally {
       setIsSaving(false);
     }
-  }, [projectId, currentCanvas, viewport, dispatch]);
+  }, [
+    projectId,
+    currentCanvasId,
+    viewport.position.x,
+    viewport.position.y,
+    viewport.scale,
+    dispatch,
+  ]);
 
   const debouncedSave = useCallback(() => {
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(() => saveProject(), 5000);
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      void saveProject();
+    }, 1200);
   }, [saveProject]);
 
   const handleCreateNode = useCallback(
@@ -372,6 +459,20 @@ export const CanvasWorkspace: React.FC = () => {
     return () => {
       document.removeEventListener("keydown", preventBrowserZoom);
       document.removeEventListener("wheel", preventWheelZoom);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!projectId) return;
+
+    debouncedSave();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -827,6 +928,23 @@ export const CanvasWorkspace: React.FC = () => {
     };
   }, [isDragging]);
 
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const handleNativeWheel = (event: WheelEvent) => {
+      handleWheel(event);
+    };
+
+    canvas.addEventListener("wheel", handleNativeWheel, {
+      passive: false,
+    });
+
+    return () => {
+      canvas.removeEventListener("wheel", handleNativeWheel);
+    };
+  }, [handleWheel]);
+
   return (
     <div className={styles.workspace}>
       {isSaving && (
@@ -850,7 +968,6 @@ export const CanvasWorkspace: React.FC = () => {
         className={`${styles.canvas} ${viewport.isPanning ? styles.panning : ""}`}
         style={{ background: canvasBackground }}
         data-project-id={projectId}
-        onWheel={handleWheel}
         onMouseDown={handlePanStart}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}

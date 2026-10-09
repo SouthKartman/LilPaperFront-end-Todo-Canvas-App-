@@ -99,7 +99,7 @@ export const selectCurrentCanvasNodeIds = createSelector(
 );
 
 /**
- * ✅ ОСНОВНОЙ: изображения только для ТЕКУЩЕГО полотна (в виде объекта)
+ * ОСНОВНОЙ: изображения только для ТЕКУЩЕГО полотна (в виде объекта)
  */
 export const selectCurrentCanvasImagesMap = createSelector(
   [selectAllImageNodesMap, selectCurrentCanvasNodeIds],
@@ -135,7 +135,7 @@ export const selectCurrentCanvasImagesCount = createSelector(
 );
 
 /**
- * ❌ УСТАРЕЛО: Исправляем старый селектор
+ * УСТАРЕЛО: Исправляем старый селектор
  * Раньше использовал linkedTodoId, теперь используем canvas
  */
 export const selectImageNodesByPage = (pageId: string) =>

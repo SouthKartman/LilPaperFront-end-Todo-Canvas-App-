@@ -1,6 +1,9 @@
 // src/features/canvas-preview/lib/previewService.ts
-import html2canvas from 'html2canvas';
+import html2canvas from 'html2canvas-pro';
 import styles from '@widgets/canvas-workspace/ui/CanvasWorkspace.module.css';
+import { db } from '@shared/api/storage/indexedDB/schema';
+import { store } from '@shared/lib/state/store';
+import { setProjectPreview } from '@features/project-management/model/slice';
 
 export interface ProjectPreview {
   projectId: string;
@@ -62,34 +65,76 @@ class PreviewService {
     }
   }
 
+
+  private async persistPreview(
+    projectId: string,
+    preview: string,
+  ): Promise<void> {
+    if (!preview || preview === 'data:,') return;
+
+    const previewUpdatedAt = new Date().toISOString();
+
+    // Сохраняем превью в кэш
+    this.previewCache.set(projectId, {
+      preview,
+      timestamp: Date.now(),
+    });
+
+    // Сохраняем кэш в localStorage
+    this.saveToStorage();
+
+    // Обновляем Redux
+    store.dispatch(
+      setProjectPreview({
+        projectId,
+        preview,
+        previewUpdatedAt,
+      }),
+    );
+
+    // Сохраняем превью в IndexedDB
+    try {
+      const updated = await db.projects.update(projectId, {
+        preview,
+        previewUpdatedAt,
+        updatedAt: previewUpdatedAt,
+      });
+
+      if (updated === 0) {
+        console.warn(
+          `⚠️ Не удалось сохранить превью: проект ${projectId} не найден в IndexedDB`,
+        );
+      }
+    } catch (error) {
+      console.error(
+        '❌ Ошибка сохранения превью в IndexedDB:',
+        error,
+      );
+    }
+  }
+
+
   /**
    * УПРОЩЕННЫЙ поиск canvas элемента
    */
-  private findCanvasElement(projectId: string): Element | null {
-    console.log('🔍 Поиск элемента для проекта:', projectId);
-    
-    // Приоритет 1: Прямой canvas элемент
-    const canvasEl = document.querySelector(`[data-project-id="${projectId}"] canvas`);
-    if (canvasEl) {
-      console.log('✅ Найден прямой canvas');
-      return canvasEl;
+  private findCanvasElement(projectId: string): HTMLElement | null {
+    const elements = document.querySelectorAll<HTMLElement>(
+      '[data-project-id]',
+    );
+
+    for (const element of elements) {
+      if (
+        element.dataset.projectId === projectId &&
+        element.classList.contains(styles.canvas)
+      ) {
+        return element;
+      }
     }
-    
-    // Приоритет 2: Контейнер с контентом
-    const contentEl = document.querySelector(`[data-project-id="${projectId}"] .${styles.content}`);
-    if (contentEl) {
-      console.log('✅ Найден content контейнер');
-      return contentEl;
-    }
-    
-    // Приоритет 3: Любой элемент с data-project-id
-    const projectEl = document.querySelector(`[data-project-id="${projectId}"]`);
-    if (projectEl) {
-      console.log('✅ Найден project контейнер');
-      return projectEl;
-    }
-    
-    console.log('❌ Элемент не найден');
+
+    console.warn(
+      `[PreviewService] Холст проекта "${projectId}" не найден`,
+    );
+
     return null;
   }
 
@@ -99,20 +144,20 @@ class PreviewService {
   private async waitForElement(projectId: string, maxAttempts = 3): Promise<Element | null> {
     for (let i = 0; i < maxAttempts; i++) {
       const element = this.findCanvasElement(projectId);
-      
+
       if (element) {
         const rect = element.getBoundingClientRect();
         console.log(`📏 Попытка ${i + 1}: размеры = ${rect.width}x${rect.height}`);
-        
+
         // Если есть ненулевые размеры - возвращаем
         if (rect.width > 0 && rect.height > 0) {
           return element;
         }
       }
-      
+
       await new Promise(resolve => setTimeout(resolve, 200));
     }
-    
+
     // Возвращаем что нашли (даже с нулевыми размерами)
     return this.findCanvasElement(projectId);
   }
@@ -134,13 +179,13 @@ class PreviewService {
    */
   private async captureFromCanvas(canvas: HTMLCanvasElement, projectId: string): Promise<string> {
     console.log('🎨 Съемка напрямую с canvas');
-    
+
     const canvasWidth = canvas.width || canvas.clientWidth || 800;
     const canvasHeight = canvas.height || canvas.clientHeight || 400;
 
     const offscreenCanvas = new OffscreenCanvas(this.PREVIEW_WIDTH, this.PREVIEW_HEIGHT);
     const ctx = offscreenCanvas.getContext('2d');
-    
+
     if (!ctx) {
       throw new Error('Failed to get 2d context');
     }
@@ -168,11 +213,11 @@ class PreviewService {
     });
 
     const previewUrl = await this.blobToDataURL(blob);
-    
+
     // 📊 ПОКАЗЫВАЕМ РАЗМЕР ПРЕВЬЮ
     const sizeInKB = Math.round(previewUrl.length / 1024);
     console.log(`📊 Размер превью: ${sizeInKB} KB`);
-    
+
     this.previewCache.set(projectId, {
       preview: previewUrl,
       timestamp: Date.now()
@@ -186,7 +231,7 @@ class PreviewService {
    */
   private async captureFromDOM(element: HTMLElement, projectId: string): Promise<string> {
     console.log('🖼️ Съемка с DOM элемента');
-    
+
     const originalStyles = {
       display: element.style.display,
       visibility: element.style.visibility,
@@ -200,7 +245,7 @@ class PreviewService {
       element.style.display = 'block';
       element.style.visibility = 'visible';
       element.style.opacity = '1';
-      
+
       const rect = element.getBoundingClientRect();
       if (rect.width < this.MIN_SIZE || rect.height < this.MIN_SIZE) {
         element.style.width = '800px';
@@ -226,7 +271,7 @@ class PreviewService {
       const previewCanvas = document.createElement('canvas');
       previewCanvas.width = this.PREVIEW_WIDTH;
       previewCanvas.height = this.PREVIEW_HEIGHT;
-      
+
       const ctx = previewCanvas.getContext('2d');
       if (!ctx) throw new Error('Failed to get context');
 
@@ -239,11 +284,11 @@ class PreviewService {
       );
 
       const previewUrl = previewCanvas.toDataURL('image/jpeg', 0.7);
-      
+
       // 📊 ПОКАЗЫВАЕМ РАЗМЕР ПРЕВЬЮ
       const sizeInKB = Math.round(previewUrl.length / 1024);
       console.log(`📊 Размер превью: ${sizeInKB} KB`);
-      
+
       this.previewCache.set(projectId, {
         preview: previewUrl,
         timestamp: Date.now()
@@ -266,47 +311,47 @@ class PreviewService {
    */
   private createManualPreview(projectId: string): string {
     console.log('🎨 Создаем ручное превью');
-    
+
     const canvas = document.createElement('canvas');
     canvas.width = this.PREVIEW_WIDTH;
     canvas.height = this.PREVIEW_HEIGHT;
-    
+
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('No context');
-    
+
     // Градиентный фон
     const gradient = ctx.createLinearGradient(0, 0, this.PREVIEW_WIDTH, this.PREVIEW_HEIGHT);
     gradient.addColorStop(0, '#f8f9fa');
     gradient.addColorStop(1, '#e9ecef');
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, this.PREVIEW_WIDTH, this.PREVIEW_HEIGHT);
-    
+
     // Рамка
     ctx.strokeStyle = '#dee2e6';
     ctx.lineWidth = 2;
     ctx.strokeRect(10, 10, this.PREVIEW_WIDTH - 20, this.PREVIEW_HEIGHT - 20);
-    
+
     // Текст
     ctx.fillStyle = '#495057';
     ctx.font = 'bold 24px Arial';
     ctx.textAlign = 'center';
     ctx.fillText('📋', this.PREVIEW_WIDTH / 2, this.PREVIEW_HEIGHT / 2 - 20);
-    
+
     ctx.font = '16px Arial';
     ctx.fillStyle = '#6c757d';
     ctx.fillText('Проект', this.PREVIEW_WIDTH / 2, this.PREVIEW_HEIGHT / 2 + 20);
-    
+
     const previewUrl = canvas.toDataURL('image/jpeg', 0.7);
-    
+
     // 📊 ПОКАЗЫВАЕМ РАЗМЕР ПРЕВЬЮ
     const sizeInKB = Math.round(previewUrl.length / 1024);
     console.log(`📊 Размер ручного превью: ${sizeInKB} KB`);
-    
+
     this.previewCache.set(projectId, {
       preview: previewUrl,
       timestamp: Date.now()
     });
-    
+
     return previewUrl;
   }
 
@@ -326,51 +371,50 @@ class PreviewService {
   /**
    * Генерация превью проекта
    */
-  async generateProjectPreview(projectId: string): Promise<string | null> {
+
+  async generateProjectPreview(
+    projectId: string,
+  ): Promise<string | null> {
     if (this.generationQueue.has(projectId)) {
-      console.log('⏳ Уже генерируется');
       return null;
     }
 
     const lastGen = this.generationAttempts.get(projectId) || 0;
-    const now = Date.now();
-    if (lastGen && now - lastGen < 5000) {
-      console.log('⏳ Throttling');
+
+    if (lastGen && Date.now() - lastGen < 5000) {
       return null;
     }
 
     this.generationQueue.add(projectId);
-    this.generationAttempts.set(projectId, now);
+    this.generationAttempts.set(projectId, Date.now());
 
     try {
-      console.log(`📸 Генерация для проекта: ${projectId}`);
+      // Ищем именно внешний контейнер холста.
+      const element = await this.waitForElement(projectId);
 
-      // Пробуем найти canvas
-      const canvasEl = document.querySelector(`[data-project-id="${projectId}"] canvas`);
-      if (canvasEl instanceof HTMLCanvasElement) {
-        try {
-          return await this.captureFromCanvas(canvasEl, projectId);
-        } catch (error) {
-          console.warn('⚠️ Ошибка canvas:', error);
-        }
+      if (!(element instanceof HTMLElement)) {
+        throw new Error(`Холст проекта ${projectId} не найден`);
       }
 
-      // Пробуем DOM элемент
-      const domElement = await this.waitForElement(projectId);
-      if (domElement) {
-        try {
-          return await this.captureFromDOM(domElement as HTMLElement, projectId);
-        } catch (error) {
-          console.warn('⚠️ Ошибка DOM:', error);
-        }
+      const preview = await this.captureFromDOM(element, projectId);
+
+      if (!preview || preview === "data:,") {
+        throw new Error("Получено пустое превью");
       }
 
-      // Ручное превью как последний шанс
-      return this.createManualPreview(projectId);
+      await this.persistPreview(projectId, preview);
 
+      console.log("✅ Превью настоящего холста сохранено");
+
+      return preview;
     } catch (error) {
-      console.error('❌ Ошибка:', error);
-      return this.createManualPreview(projectId);
+      console.error(
+        `[PreviewService] Ошибка генерации превью проекта ${projectId}:`,
+        error,
+      );
+
+      // Не перезаписываем старое превью заглушкой.
+      return null;
     } finally {
       this.generationQueue.delete(projectId);
     }
@@ -391,6 +435,19 @@ class PreviewService {
         this.saveToStorage();
       }
     }
+    try {
+      const project = await db.projects.get(projectId);
+      if (project?.preview && project.preview !== 'data:,') {
+        const timestamp = project.previewUpdatedAt
+          ? new Date(project.previewUpdatedAt).getTime()
+          : Date.now();
+        this.previewCache.set(projectId, { preview: project.preview, timestamp });
+        return project.preview;
+      }
+    } catch (error) {
+      console.error('❌ Ошибка чтения превью из IndexedDB:', error);
+    }
+
     return null;
   }
 
@@ -410,14 +467,14 @@ class PreviewService {
   cleanCache(): void {
     const now = Date.now();
     let changed = false;
-    
+
     for (const [id, data] of this.previewCache.entries()) {
       if (now - data.timestamp > this.CACHE_DURATION) {
         this.previewCache.delete(id);
         changed = true;
       }
     }
-    
+
     if (changed) {
       this.saveToStorage();
       console.log('🧹 Old previews cleaned');
@@ -432,12 +489,12 @@ class PreviewService {
     this.previewCache.forEach(data => {
       totalSize += data.preview.length;
     });
-    
+
     const stats = {
       size: this.previewCache.size,
       totalSize: Math.round(totalSize / 1024)
     };
-    
+
     console.log(`📊 Статистика: ${stats.size} превью, общий вес ${stats.totalSize} KB`);
     return stats;
   }
@@ -456,18 +513,18 @@ class PreviewService {
    */
   public async diagnose(projectId: string): Promise<void> {
     console.group('🔍 ДИАГНОСТИКА');
-    
+
     const element = this.findCanvasElement(projectId);
     console.log('Найденный элемент:', element);
-    
+
     if (element) {
       const rect = element.getBoundingClientRect();
       console.log('Размеры:', rect);
     }
-    
+
     const stats = this.getStats();
     console.log('Статистика кэша:', stats);
-    
+
     console.groupEnd();
   }
 }

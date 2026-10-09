@@ -51,6 +51,7 @@ const PROJECT_SAVE_ACTIONS = [
   'project/moveNodeBetweenCanvases',
   'project/setCurrentProject',
   'project/updateProjectName',
+  'project/setProjectPreview',
   'project/deleteProject',
   'project/updateCanvas',
   'project/loadProjectState',

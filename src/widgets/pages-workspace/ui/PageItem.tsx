@@ -147,6 +147,7 @@ export const PageItem: React.FC<PageItemProps> = ({
                 onClick={handleDelete}
                 title="Удалить"
                 disabled={false} 
+                variant={'destructive'}
               >
                 <Trash/>
               </Button>

@@ -566,6 +566,20 @@ const projectSlice = createSlice({
         project.metadata.updatedAt = new Date();
       }
     },
+
+    setProjectPreview: (state, action: PayloadAction<{
+      projectId: string;
+      preview: string;
+      previewUpdatedAt: string;
+    }>) => {
+      const { projectId, preview, previewUpdatedAt } = action.payload;
+      const project = state.projects[projectId];
+
+      if (project) {
+        project.preview = preview;
+        project.previewUpdatedAt = previewUpdatedAt;
+      }
+    },
     
     loadProjectState: (state, action: PayloadAction<ProjectState>) => {
       if (action.payload.projectOrder) {
@@ -659,6 +673,7 @@ export const {
   removeNodeFromPage,
   setCurrentProject,
   updateProjectName,
+  setProjectPreview,
   deleteProject,
   loadProjectState,
   reorderProjects,

@@ -1,11 +1,11 @@
 // src/features/canvas-viewport/lib/useEnhancedViewport.ts
 import { useCallback, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from '@shared/lib/state';
-import { 
-  zoomIn, 
-  zoomOut, 
-  panStart, 
-  panMove, 
+import {
+  zoomIn,
+  zoomOut,
+  panStart,
+  panMove,
   panEnd,
   resetViewport,
   setPosition,
@@ -20,40 +20,46 @@ export const useEnhancedViewport = () => {
   const lastPos = useRef({ x: 0, y: 0 });
 
   // Обработчик колеса мыши
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault();
-    
-    if (e.ctrlKey || e.metaKey) {
-      // Zoom с Ctrl/Cmd
-      const delta = e.deltaY > 0 ? 0.8 : 1.2;
-      const rect = e.currentTarget.getBoundingClientRect();
-      
-      // Координаты курсора относительно контейнера
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-      
-      // Вычисляем позицию до зума
-      const oldX = viewport.position.x;
-      const oldY = viewport.position.y;
-      const oldScale = viewport.scale;
-      const newScale = Math.max(
-        viewport.minScale,
-        Math.min(viewport.maxScale, oldScale * delta)
-      );
-      
-      // Вычисляем смещение для сохранения точки под курсором
-      const newX = mouseX - (mouseX - oldX) * (newScale / oldScale);
-      const newY = mouseY - (mouseY - oldY) * (newScale / oldScale);
-      
-      dispatch(setPosition({ x: newX, y: newY }));
-      dispatch({ type: 'viewport/setScale', payload: newScale });
-    } else {
-      // Панорамирование
-      const newX = viewport.position.x - e.deltaX;
-      const newY = viewport.position.y - e.deltaY;
-      dispatch(setPosition({ x: newX, y: newY }));
-    }
-  }, [dispatch, viewport]);
+  const handleWheel = useCallback(
+    (e: WheelEvent | React.WheelEvent<HTMLElement>) => {
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+
+      if (e.ctrlKey || e.metaKey) {
+        // Zoom с Ctrl/Cmd
+        const delta = e.deltaY > 0 ? 0.8 : 1.2;
+        const target = e.currentTarget as HTMLElement | null;
+        if (!target) return;
+
+        const rect = target.getBoundingClientRect();
+
+        // Координаты курсора относительно контейнера
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        // Вычисляем позицию до зума
+        const oldX = viewport.position.x;
+        const oldY = viewport.position.y;
+        const oldScale = viewport.scale;
+        const newScale = Math.max(
+          viewport.minScale,
+          Math.min(viewport.maxScale, oldScale * delta)
+        );
+
+        // Вычисляем смещение для сохранения точки под курсором
+        const newX = mouseX - (mouseX - oldX) * (newScale / oldScale);
+        const newY = mouseY - (mouseY - oldY) * (newScale / oldScale);
+
+        dispatch(setPosition({ x: newX, y: newY }));
+        dispatch({ type: 'viewport/setScale', payload: newScale });
+      } else {
+        // Панорамирование
+        const newX = viewport.position.x - e.deltaX;
+        const newY = viewport.position.y - e.deltaY;
+        dispatch(setPosition({ x: newX, y: newY }));
+      }
+    }, [dispatch, viewport]);
 
   // Начало панорамирования
   const handlePanStart = useCallback((e: React.MouseEvent) => {
@@ -69,13 +75,13 @@ export const useEnhancedViewport = () => {
   // Панорамирование (вызывается из глобального обработчика)
   const handlePanMove = useCallback((e: MouseEvent) => {
     if (!isPanning.current) return;
-    
+
     const deltaX = e.clientX - lastPos.current.x;
     const deltaY = e.clientY - lastPos.current.y;
-    
+
     const newX = viewport.position.x + deltaX;
     const newY = viewport.position.y + deltaY;
-    
+
     dispatch(setPosition({ x: newX, y: newY }));
     lastPos.current = { x: e.clientX, y: e.clientY };
   }, [dispatch, viewport.position]);
@@ -90,26 +96,26 @@ export const useEnhancedViewport = () => {
 
   // Горячие клавиши
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
-  
-    
+
+
     // Ctrl + = для зума
     if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) {
       e.preventDefault();
       dispatch(zoomIn({}));
     }
-    
+
     // Ctrl + - для зума
     if ((e.ctrlKey || e.metaKey) && e.key === '-') {
       e.preventDefault();
       dispatch(zoomOut({}));
     }
-    
+
     // Ctrl + 0 для сброса
     if ((e.ctrlKey || e.metaKey) && e.key === '0') {
       e.preventDefault();
       dispatch(resetViewport());
     }
-    
+
     // Ctrl + G для сетки
     if ((e.ctrlKey || e.metaKey) && e.key === 'g') {
       e.preventDefault();
@@ -140,26 +146,26 @@ export const useEnhancedViewport = () => {
     // Состояние
     viewport,
     isPanning: isPanning.current,
-    
+
     // Обработчики событий
     handleWheel,
     handlePanStart,
     handlePanMove,
     handlePanEnd,
     handleKeyDown,
-    
+
     // Действия
     handleZoomIn,
     handleZoomOut,
     handleResetViewport,
     handleToggleGrid,
-    
+
     // Утилиты
     // getTransformStyle: {
     //   transform: `translate(${viewport.position.x}px, ${viewport.position.y}px) scale(${viewport.scale})`,
     //   transformOrigin: '0 0',
     // },
-    
+
     // getGridStyle: {
     //   backgroundSize: `${viewport.gridSize * viewport.scale}px ${viewport.gridSize * viewport.scale}px`,
     //   backgroundPosition: `${viewport.position.x}px ${viewport.position.y}px`,

@@ -194,19 +194,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
           </div>
         )}
         
-        {/* Badges */}
-        <div className={styles.previewBadges}>
-          <span className={styles.pageBadge}>
-            {project.pageIds.length} 📄
-          </span>
-          <button 
-            className={styles.refreshBadge}
-            onClick={handleRefreshPreview}
-            title="Refresh preview"
-          >
-            ↻
-          </button>
-        </div>
+
       </div>
 
       {/* Content */}

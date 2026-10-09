@@ -1,5 +1,7 @@
 // src/features/canvas-preview/lib/generatePreview.ts
 import { store } from '@shared/lib/state/store';
+import { ProjectIndexedDBStorage } from '@shared/api/storage/indexedDB/projectStorage';
+import { setProjectPreview } from '@features/project-management/model/slice';
 
 interface PreviewNode {
   type: 'todo' | 'image';
@@ -32,7 +34,7 @@ export const generatePreview = async (projectId: string): Promise<string> => {
         canvas.nodes.forEach(nodeId => {
           // Здесь нужно получить ноду из соответствующего slice
           // Это пример, нужно адаптировать под вашу структуру
-          const todoNode = (state as any).todoNodes?.entities?.[nodeId];
+          const todoNode = state.todoNodes?.nodes?.[nodeId];
           if (todoNode) {
             nodes.push({
               type: 'todo',
@@ -44,7 +46,7 @@ export const generatePreview = async (projectId: string): Promise<string> => {
             });
           }
           
-          const imageNode = (state as any).imageNodes?.entities?.[nodeId];
+          const imageNode = state.imageNodes?.nodes?.[nodeId];
           if (imageNode) {
             nodes.push({
               type: 'image',
@@ -60,8 +62,18 @@ export const generatePreview = async (projectId: string): Promise<string> => {
     }
   });
 
-  // Генерируем SVG или Canvas представление
-  return generatePreviewFromNodes(nodes);
+  const preview = generatePreviewFromNodes(nodes);
+  const previewUpdatedAt = new Date().toISOString();
+
+  if (preview && preview !== 'data:,') {
+    store.dispatch(setProjectPreview({ projectId, preview, previewUpdatedAt }));
+    await ProjectIndexedDBStorage.updateProject(projectId, {
+      preview,
+      previewUpdatedAt,
+    });
+  }
+
+  return preview;
 };
 
 const generatePreviewFromNodes = (nodes: PreviewNode[]): string => {

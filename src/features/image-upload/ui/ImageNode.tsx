@@ -4,8 +4,9 @@ import { ImageNode as IImageNode } from '@entities/image/model/types';
 import { ImagePreview } from '@shared/ui/kit/ImagePreview/ImagePreview';
 import { useAppDispatch } from '@shared/lib/state';
 import { useCanvasDnd } from '@features/canvas-dnd/lib/useCanvasDnd';
-import { useProjectImage } from '../lib/useProjectImage';
+import { useImageUrl } from '../lib/useImageUrl';
 import { FileService } from '@shared/lib/dom/fileService';
+import { Spinner } from '@/components/ui/spinner';
 import { 
   moveImageNode, 
   resizeImageNode, 
@@ -44,21 +45,23 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
   const { handleDragStart, isDragging, draggedNodeId, dragState } = useCanvasDnd();
   const [isResizing, setIsResizing] = useState(false);
   const [resizeDirection, setResizeDirection] = useState<string | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
   const [imageLoaded, setImageLoaded] = useState(false);
   
-  // Используем хук для загрузки изображения с возможностью ретрая
-  const { url: imageUrl, loading, error } = useProjectImage(node.id, retryCount);
-  
-  // Автоматический ретрай при ошибке
+  const {
+    url: imageUrl,
+    loading,
+    error,
+    missing,
+    retry,
+    reportImageLoadError,
+    markImageLoaded,
+  } = useImageUrl(node.id);
+
   useEffect(() => {
-    if (error) {
-      const timer = setTimeout(() => {
-        setRetryCount(prev => prev + 1);
-      }, 2000);
-      return () => clearTimeout(timer);
+    if (missing) {
+      dispatch(deleteImageNode(node.id));
     }
-  }, [error]);
+  }, [dispatch, missing, node.id]);
 
   // Сброс состояния загрузки при изменении URL
   useEffect(() => {
@@ -68,9 +71,9 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
   // Ручной ретрай
   const handleRetry = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    setRetryCount(prev => prev + 1);
+    retry();
     setImageLoaded(false);
-  }, []);
+  }, [retry]);
   
   // Для плавности используем requestAnimationFrame
   const rafRef = useRef<number>();
@@ -284,6 +287,7 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
   };
 
   const handleImageLoad = () => {
+    markImageLoaded();
     setImageLoaded(true);
   };
 
@@ -315,7 +319,7 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
         data-node-type="image"
       >
         <div className={styles.imagePlaceholder}>
-          <div className={styles.placeholderSpinner}></div>
+          <Spinner className="size-8 text-muted-foreground" />
         </div>
       </div>
     );
@@ -332,7 +336,7 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
         data-node-type="image"
       >
         <div className={styles.preloadContent}>
-          <div className={styles.preloadSpinner}></div>
+          <Spinner className="size-10 text-muted-foreground" />
           <div className={styles.preloadText}>
             {uploadProgress > 0 ? `${uploadProgress}%` : 'Загрузка...'}
           </div>
@@ -360,7 +364,7 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
         data-node-id={node.id}
         data-node-type="image"
       >
-        <div className={styles.loadingSpinner}>🔄</div>
+        <Spinner className="size-6 text-muted-foreground" />
         <div className={styles.loadingText}>Загрузка...</div>
       </div>
     );
@@ -413,7 +417,7 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
       {/* Плейсхолдер пока изображение загружается */}
       {!imageLoaded && (
         <div className={styles.imagePlaceholder}>
-          <div className={styles.placeholderSpinner}></div>
+          <Spinner className="size-8 text-muted-foreground" />
         </div>
       )}
       
@@ -422,9 +426,9 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
         alt={node.alt || node.originalName}
         className={`${styles.image} ${imageLoaded ? styles.imageVisible : styles.imageHidden}`}
         onLoad={handleImageLoad}
-        onError={(e) => {
+        onError={() => {
           console.error('Ошибка загрузки изображения:', imageUrl);
-          handleRetry(e as any);
+          reportImageLoadError();
         }}
         style={{ display: imageLoaded ? 'block' : 'none' }}
       />

@@ -275,17 +275,6 @@
 
 /* Добавьте в ProjectCard.module.css */
 
-.previewBadges {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  right: 8px;
-  display: flex;
-  justify-content: space-between;
-  pointer-events: none;
-  z-index: 2;
-}
-
 .pageBadge,
 .timeBadge {
   background: rgba(0, 0, 0, 0.6);
@@ -358,7 +347,9 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .placeholderIcon {
@@ -414,7 +405,9 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .previewImage {

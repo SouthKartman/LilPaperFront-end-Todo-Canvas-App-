@@ -13,7 +13,7 @@ import {
   reorderPages,
   setCurrentProject,
   updateProjectName,
-  deleteProject,
+  deleteProject as deleteProjectAction,
   reorderProjects,
   setProjectOrder,
 } from '../model/slice';
@@ -32,7 +32,7 @@ import { RootState } from '@shared/lib/state/store';
 
 export const useProjects = () => {
   const dispatch = useAppDispatch();
-  
+
   // Используем селекторы напрямую, без дополнительной логики
   const currentProject = useAppSelector(selectCurrentProject);
   const currentPage = useAppSelector(selectCurrentPage);
@@ -61,7 +61,7 @@ export const useProjects = () => {
 
   const deleteProject = useCallback((projectId: string) => {
     console.log('🗑️ useProjects: удаление проекта', projectId);
-    dispatch(deleteProject(projectId));
+    dispatch(deleteProjectAction(projectId));
   }, [dispatch]);
 
   // Переупорядочивание проектов
@@ -130,45 +130,45 @@ export const useProjects = () => {
   }, []);
 
   const exportProjects = useCallback(() => {
-  console.log('📤 Экспорт проектов');
-  
-  const exportData = {
-    version: '1.0',
-    exportDate: new Date().toISOString(),
-    projects: allProjects,
-    totalCount: allProjects.length
-  };
-  
-  const dataStr = JSON.stringify(exportData, null, 2);
-  const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-  
-  const exportFileDefaultName = `projects-export-${new Date().toISOString().split('T')[0]}.json`;
-  
-  const linkElement = document.createElement('a');
-  linkElement.setAttribute('href', dataUri);
-  linkElement.setAttribute('download', exportFileDefaultName);
-  linkElement.click();
-}, [allProjects]);
+    console.log('📤 Экспорт проектов');
+
+    const exportData = {
+      version: '1.0',
+      exportDate: new Date().toISOString(),
+      projects: allProjects,
+      totalCount: allProjects.length
+    };
+
+    const dataStr = JSON.stringify(exportData, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+
+    const exportFileDefaultName = `projects-export-${new Date().toISOString().split('T')[0]}.json`;
+
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+  }, [allProjects]);
 
   // Импорт проектов
   const importProjects = useCallback((file: File) => {
     console.log('📥 Импорт проектов:', file.name);
-    
+
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
         const content = e.target?.result as string;
         const importData = JSON.parse(content);
-        
+
         if (importData.projects && Array.isArray(importData.projects)) {
           // TODO: Добавить логику импорта проектов
           console.log('📦 Данные для импорта:', importData);
-          
+
           // Здесь нужно будет создать проекты из импортированных данных
           importData.projects.forEach((project: CanvasProject) => {
             createNewProject(project.name);
           });
-          
+
           alert(`Successfully imported ${importData.projects.length} projects`);
         } else {
           alert('Invalid file format');
@@ -191,7 +191,7 @@ export const useProjects = () => {
     recentProjects,
     canvasViewport,
     canvasGrid,
-    
+
     // Проекты
     createNewProject,
     openProject,
@@ -201,14 +201,14 @@ export const useProjects = () => {
     setCustomProjectOrder,
     exportProjects,
     importProjects,
-    
+
     // Страницы
     createPage,
     switchToPage,
     renamePage,
     deletePage,
     reorderPagesList,
-    
+
     // Полотна
     updateCanvasSettings,
     addNode,
