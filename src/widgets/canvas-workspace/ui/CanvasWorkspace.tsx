@@ -2,7 +2,7 @@
 import React, { useEffect, useCallback, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
-import { useTodoNodes } from "@features/todo-nodes/lib/useTodoNode";
+// import { useTodoNodes } from "@features/todo-nodes/lib/useTodoNode";
 import { TodoNode } from "@features/todo-nodes/ui/TodoNode/TodoNode";
 import { useCanvasDnd } from "@features/canvas-dnd/lib/useCanvasDnd";
 import { ContextMenu } from "@features/node-creations/ui/ContextMenu";
@@ -16,7 +16,7 @@ import {
   selectAllTodoNodes,
   selectSelectedTodoNodes,
 } from "@features/todo-nodes/model/selectors";
-import { useTodoForm } from "@features/todo-form/lib/useTodoForm";
+// import { useTodoForm } from "@features/todo-form/lib/useTodoForm";
 import { QuickTodoForm } from "@features/todo-form/ui/QuickTodoForm";
 import { TodoFormModal } from "@features/todo-form/ui/TodoFormModal";
 import styles from "./CanvasWorkspace.module.css";
@@ -40,11 +40,12 @@ import { ImageNode } from "@features/image-upload/ui/ImageNode";
 import { useImageDrop } from "@features/image-upload/lib/useImageDrop";
 import { useImageUpload } from "@features/image-upload/lib/useImageUpload";
 import { ImageDropOverlay } from "@features/image-upload/ui/ImageDropOverlay";
+import { useSpatialIndex } from "@features/canvas-viewport/lib/useSpatialIndex";
 
 import {
   selectCurrentCanvas,
-  selectCurrentCanvasViewport,
-  selectCurrentCanvasGrid,
+  // selectCurrentCanvasViewport,
+  // selectCurrentCanvasGrid,
   selectCurrentCanvasBackground,
   selectCurrentPage,
 } from "@features/project-management/model/selectors";
@@ -74,11 +75,11 @@ import {
 export const CanvasWorkspace: React.FC = () => {
   const { projectId } = useParams();
 
-  const { nodes } = useTodoNodes();
+  // const { nodes } = useTodoNodes();
   const { dragState, isDragging, handleDragStart } = useCanvasDnd();
   const dispatch = useDispatch();
   const canvasRef = useRef<HTMLDivElement>(null);
-  const lastUpdateRef = useRef<number>(0);
+  // const lastUpdateRef = useRef<number>(0);
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
   const [isSaving, setIsSaving] = useState(false);
 
@@ -92,13 +93,13 @@ export const CanvasWorkspace: React.FC = () => {
   const pluginNodes = useSelector(selectAllPluginNodes);
   const selectedPluginNodeIds = useSelector(selectSelectedPluginNodeIds);
 
-  const { openQuickForm, openForm } = useTodoForm();
+  // const { openQuickForm, openForm } = useTodoForm();
 
   const currentPage = useSelector(selectCurrentPage);
   const currentCanvas = useSelector(selectCurrentCanvas);
   const currentCanvasId = currentCanvas?.id;
-  const canvasViewport = useSelector(selectCurrentCanvasViewport);
-  const canvasGrid = useSelector(selectCurrentCanvasGrid);
+  // const canvasViewport = useSelector(selectCurrentCanvasViewport);
+  // const canvasGrid = useSelector(selectCurrentCanvasGrid);
   const canvasBackground = useSelector(selectCurrentCanvasBackground);
 
   const {
@@ -116,19 +117,19 @@ export const CanvasWorkspace: React.FC = () => {
     handlePanMove,
     handlePanEnd,
     handleKeyDown: handleViewportKeyDown,
-    handleZoomIn,
-    handleZoomOut,
-    handleResetViewport,
-    handleToggleGrid,
+    // handleZoomIn,
+    // handleZoomOut,
+    // handleResetViewport,
+    // handleToggleGrid,
   } = useEnhancedViewport();
 
   const {
-    marquee,
-    handleStartMarquee,
-    handleUpdateMarquee,
-    handleEndMarquee,
+    // marquee,
+    // handleStartMarquee,
+    // handleUpdateMarquee,
+    // handleEndMarquee,
     getMarqueeRect,
-    getNodesInRect,
+    // getNodesInRect,
     isActive: isMarqueeActive,
   } = useMarqueeSelection();
 
@@ -160,60 +161,210 @@ export const CanvasWorkspace: React.FC = () => {
     return pluginNodes.filter((node: any) => node.pageId === currentPage?.id);
   }, [pluginNodes, currentCanvas, currentPage]);
 
-  const previewChangeKey = React.useMemo(
-    () =>
-      JSON.stringify({
-        todos: currentCanvasNodes.map((n: any) => ({
-          id: n.id,
-          title: n.title,
-          description: n.description,
-          status: n.status,
-          priority: n.priority,
-          position: n.position,
-          size: n.size,
-          tags: n.tags,
-          dueDate: n.dueDate,
-        })),
+  const todoSpatialIndex = useSpatialIndex(currentCanvasNodes);
+  const imageSpatialIndex = useSpatialIndex(imageNodes);
+  const pluginSpatialIndex = useSpatialIndex(currentCanvasPluginNodes);
 
-        images: imageNodes.map((n: any) => ({
-          id: n.id,
-          filePath: n.filePath,
-          position: n.position,
-          size: n.size,
-          alt: n.alt,
-          caption: n.caption,
-        })),
+  // Размер видимой области холста
+  const [canvasSize, setCanvasSize] = useState({
+    width: 0,
+    height: 0,
+  });
 
-        plugins: currentCanvasPluginNodes.map((n: any) => ({
-          id: n.id,
-          pluginId: n.pluginId,
-          title: n.title,
-          position: n.position,
-          width: n.width,
-          height: n.height,
-          pluginProps: n.pluginProps,
-        })),
+  // Следим за изменением размеров холста
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-        viewport: {
-          x: viewport.position.x,
-          y: viewport.position.y,
-          scale: viewport.scale,
-        },
+    const updateSize = () => {
+      setCanvasSize({
+        width: canvas.clientWidth,
+        height: canvas.clientHeight,
+      });
+    };
 
-        background: canvasBackground,
-        showGrid: viewport.showGrid,
-      }),
-    [
-      currentCanvasNodes,
-      imageNodes,
-      currentCanvasPluginNodes,
-      viewport.position.x,
-      viewport.position.y,
-      viewport.scale,
-      viewport.showGrid,
-      canvasBackground,
-    ],
+    updateSize();
+
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(canvas);
+
+    return () => observer.disconnect();
+  }, []);
+
+  // Видимая область в координатах самого холста
+  const visibleBounds = React.useMemo(() => {
+    const scale = Math.max(viewport.scale, 0.01);
+
+    // Запас в экранных пикселях по краям холста
+    const overscan = 600;
+    const margin = overscan / scale;
+
+    return {
+      left: -viewport.position.x / scale - margin,
+      top: -viewport.position.y / scale - margin,
+      right: (canvasSize.width - viewport.position.x) / scale + margin,
+      bottom: (canvasSize.height - viewport.position.y) / scale + margin,
+    };
+  }, [
+    canvasSize.width,
+    canvasSize.height,
+    viewport.position.x,
+    viewport.position.y,
+    viewport.scale,
+  ]);
+
+  // Проверка пересечения узла с видимой областью
+  const isNodeVisible = useCallback(
+    (
+      position: { x: number; y: number },
+      size: { width: number; height: number },
+    ) => {
+      if (canvasSize.width <= 0 || canvasSize.height <= 0) {
+        return true;
+      }
+
+      const { left, top, right, bottom } = visibleBounds;
+
+      return (
+        position.x + size.width >= left &&
+        position.x <= right &&
+        position.y + size.height >= top &&
+        position.y <= bottom
+      );
+    },
+    [visibleBounds],
   );
+
+  const visibleTodoNodes = React.useMemo(() => {
+    if (canvasSize.width <= 0 || canvasSize.height <= 0) {
+      return currentCanvasNodes;
+    }
+
+    const pinnedIds = new Set([
+      ...selectedTodoIds,
+      ...selectedNodes.map((node) => node.id),
+    ]);
+
+    if (isDragging && dragState?.draggedNodeId) {
+      pinnedIds.add(dragState.draggedNodeId);
+    }
+
+    return todoSpatialIndex.query(visibleBounds, [...pinnedIds]);
+  }, [
+    canvasSize.width,
+    canvasSize.height,
+    currentCanvasNodes,
+    todoSpatialIndex,
+    visibleBounds,
+    selectedTodoIds,
+    selectedNodes,
+    isDragging,
+    dragState?.draggedNodeId,
+  ]);
+
+  const visibleImageNodes = React.useMemo(() => {
+    if (canvasSize.width <= 0 || canvasSize.height <= 0) {
+      return imageNodes;
+    }
+
+    const pinnedIds = new Set([
+      ...selectedImageIds,
+      ...selectedImageNodes.map((node) => node.id),
+    ]);
+
+    if (isDragging && dragState?.draggedNodeId) {
+      pinnedIds.add(dragState.draggedNodeId);
+    }
+
+    return imageSpatialIndex.query(visibleBounds, [...pinnedIds]);
+  }, [
+    canvasSize.width,
+    canvasSize.height,
+    imageNodes,
+    imageSpatialIndex,
+    visibleBounds,
+    selectedImageIds,
+    selectedImageNodes,
+    isDragging,
+    dragState?.draggedNodeId,
+  ]);
+
+  const visiblePluginNodes = React.useMemo(() => {
+    if (canvasSize.width <= 0 || canvasSize.height <= 0) {
+      return currentCanvasPluginNodes;
+    }
+
+    const pinnedIds = new Set(selectedPluginNodeIds);
+
+    if (isDragging && dragState?.draggedNodeId) {
+      pinnedIds.add(dragState.draggedNodeId);
+    }
+
+    return pluginSpatialIndex.query(visibleBounds, [...pinnedIds]);
+  }, [
+    canvasSize.width,
+    canvasSize.height,
+    currentCanvasPluginNodes,
+    pluginSpatialIndex,
+    visibleBounds,
+    selectedPluginNodeIds,
+    isDragging,
+    dragState?.draggedNodeId,
+  ]);
+  // const previewChangeKey = React.useMemo(
+  //   () =>
+  //     JSON.stringify({
+  //       todos: currentCanvasNodes.map((n: any) => ({
+  //         id: n.id,
+  //         title: n.title,
+  //         description: n.description,
+  //         status: n.status,
+  //         priority: n.priority,
+  //         position: n.position,
+  //         size: n.size,
+  //         tags: n.tags,
+  //         dueDate: n.dueDate,
+  //       })),
+
+  //       images: imageNodes.map((n: any) => ({
+  //         id: n.id,
+  //         filePath: n.filePath,
+  //         position: n.position,
+  //         size: n.size,
+  //         alt: n.alt,
+  //         caption: n.caption,
+  //       })),
+
+  //       plugins: currentCanvasPluginNodes.map((n: any) => ({
+  //         id: n.id,
+  //         pluginId: n.pluginId,
+  //         title: n.title,
+  //         position: n.position,
+  //         width: n.width,
+  //         height: n.height,
+  //         pluginProps: n.pluginProps,
+  //       })),
+
+  //       viewport: {
+  //         x: viewport.position.x,
+  //         y: viewport.position.y,
+  //         scale: viewport.scale,
+  //       },
+
+  //       background: canvasBackground,
+  //       showGrid: viewport.showGrid,
+  //     }),
+  //   [
+  //     currentCanvasNodes,
+  //     imageNodes,
+  //     currentCanvasPluginNodes,
+  //     viewport.position.x,
+  //     viewport.position.y,
+  //     viewport.scale,
+  //     viewport.showGrid,
+  //     canvasBackground,
+  //   ],
+  // );
 
   // 👇 ФУНКЦИИ (useCallback)
   const convertScreenToCanvas = useCallback(
@@ -350,6 +501,54 @@ export const CanvasWorkspace: React.FC = () => {
     [selectedTodoIds, selectedNodes],
   );
 
+  const isTodoSelectedRef = useRef(isTodoSelected);
+  isTodoSelectedRef.current = isTodoSelected;
+
+  const handleTodoContextMenu = useCallback(
+    (e: React.MouseEvent, nodeId: string) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      dispatch(
+        showMenu({
+          x: e.clientX,
+          y: e.clientY,
+          items: createNodeContextMenu(),
+          context: { nodeId },
+        }),
+      );
+    },
+    [dispatch],
+  );
+
+  const handleTodoClick = useCallback(
+    (e: React.MouseEvent, nodeId: string) => {
+      e.stopPropagation();
+
+      const isMultiSelect = (e.ctrlKey || e.metaKey) && e.altKey;
+
+      if (isMultiSelect) {
+        if (isTodoSelectedRef.current(nodeId)) {
+          dispatch(todoNodesActions.deselectNode(nodeId));
+        } else {
+          dispatch(todoNodesActions.selectNode(nodeId));
+        }
+      } else {
+        handleClearAllSelection();
+        dispatch(todoNodesActions.selectNode(nodeId));
+      }
+    },
+    [dispatch, handleClearAllSelection],
+  );
+
+  const handleTodoDoubleClick = useCallback(
+    (e: React.MouseEvent, nodeId: string) => {
+      e.stopPropagation();
+      dispatch(todoNodesActions.startEditingTodo(nodeId));
+    },
+    [dispatch],
+  );
+
   const isImageSelected = useCallback(
     (id: string) => {
       return (
@@ -360,12 +559,35 @@ export const CanvasWorkspace: React.FC = () => {
     [selectedImageIds, selectedImageNodes],
   );
 
-  const isPluginSelected = useCallback(
-    (id: string) => {
-      return selectedPluginNodeIds.includes(id);
+  const isImageSelectedRef = useRef(isImageSelected);
+  isImageSelectedRef.current = isImageSelected;
+
+  const handleImageClick = useCallback(
+    (e: React.MouseEvent, nodeId: string) => {
+      e.stopPropagation();
+
+      const isMultiSelect = (e.ctrlKey || e.metaKey) && e.altKey;
+
+      if (isMultiSelect) {
+        if (isImageSelectedRef.current(nodeId)) {
+          dispatch(deselectImageNode(nodeId));
+        } else {
+          dispatch(selectImageNode(nodeId));
+        }
+      } else {
+        handleClearAllSelection();
+        dispatch(selectImageNode(nodeId));
+      }
     },
-    [selectedPluginNodeIds],
+    [dispatch, handleClearAllSelection],
   );
+
+  // const isPluginSelected = useCallback(
+  //   (id: string) => {
+  //     return selectedPluginNodeIds.includes(id);
+  //   },
+  //   [selectedPluginNodeIds],
+  // );
 
   const handleCanvasDrop = useCallback(
     async (e: React.DragEvent<HTMLDivElement>) => {
@@ -502,13 +724,25 @@ export const CanvasWorkspace: React.FC = () => {
 
       const todoNode = todoNodes.find((n) => n.id === dragState.draggedNodeId);
       if (todoNode) {
+        const nextPosition = {
+          x: canvasX - (todoNode.size?.width || 200) / 2,
+          y: canvasY - (todoNode.size?.height || 150) / 2,
+        };
+
+        // Не отправляем Redux action, если позиция уже совпадает.
+        const positionUnchanged =
+          Math.abs(todoNode.position.x - nextPosition.x) < 0.01 &&
+          Math.abs(todoNode.position.y - nextPosition.y) < 0.01;
+
+        if (positionUnchanged) {
+          rafId = null;
+          return;
+        }
+
         dispatch(
           todoNodesActions.moveTodo({
             id: dragState.draggedNodeId,
-            position: {
-              x: canvasX - (todoNode.size?.width || 200) / 2,
-              y: canvasY - (todoNode.size?.height || 150) / 2,
-            },
+            position: nextPosition,
           }),
         );
       } else {
@@ -516,13 +750,24 @@ export const CanvasWorkspace: React.FC = () => {
           (n) => n.id === dragState.draggedNodeId,
         );
         if (pluginNode) {
+          const nextPosition = {
+            x: canvasX - pluginNode.width / 2,
+            y: canvasY - pluginNode.height / 2,
+          };
+
+          const positionUnchanged =
+            Math.abs(pluginNode.position.x - nextPosition.x) < 0.01 &&
+            Math.abs(pluginNode.position.y - nextPosition.y) < 0.01;
+
+          if (positionUnchanged) {
+            rafId = null;
+            return;
+          }
+
           dispatch(
             updatePluginNodePosition({
               id: dragState.draggedNodeId,
-              position: {
-                x: canvasX - pluginNode.width / 2,
-                y: canvasY - pluginNode.height / 2,
-              },
+              position: nextPosition,
             }),
           );
         }
@@ -552,7 +797,7 @@ export const CanvasWorkspace: React.FC = () => {
       try {
         await navigator.clipboard.readText();
         console.log("✅ Разрешение на буфер получено");
-      } catch (err) {
+      } catch (error) {
         console.log(
           "⚠️ Разрешение на буфер не получено, используем localStorage",
         );
@@ -997,38 +1242,13 @@ export const CanvasWorkspace: React.FC = () => {
           }}
         >
           {/* Todo Nodes */}
-          {currentCanvasNodes.map((node: any) => (
+          {visibleTodoNodes.map((node: any) => (
             <TodoNode
               key={node.id}
               node={node}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                dispatch(
-                  showMenu({
-                    x: e.clientX,
-                    y: e.clientY,
-                    items: createNodeContextMenu(),
-                    context: { nodeId: node.id },
-                  }),
-                );
-              }}
-              onClick={(e, nodeId) => {
-                e.stopPropagation();
-                const isMultiSelect = (e.ctrlKey || e.metaKey) && e.altKey;
-                if (isMultiSelect) {
-                  if (isTodoSelected(nodeId))
-                    dispatch(todoNodesActions.deselectNode(nodeId));
-                  else dispatch(todoNodesActions.selectNode(nodeId));
-                } else {
-                  handleClearAllSelection();
-                  dispatch(todoNodesActions.selectNode(nodeId));
-                }
-              }}
-              onDoubleClick={(e, nodeId) => {
-                e.stopPropagation();
-                dispatch(todoNodesActions.startEditingTodo(nodeId));
-              }}
+              onContextMenu={handleTodoContextMenu}
+              onClick={handleTodoClick}
+              onDoubleClick={handleTodoDoubleClick}
               isSelected={isTodoSelected(node.id)}
             />
           ))}
@@ -1076,25 +1296,14 @@ export const CanvasWorkspace: React.FC = () => {
           ))}
 
           {/* Image Nodes */}
-          {imageNodes.map((node: any) => (
+          {visibleImageNodes.map((node: any) => (
             <ImageNode
               key={node.id}
               node={node}
               isSelected={isImageSelected(node.id)}
               viewport={viewport}
               skipLoading={justUploadedIds.has(node.id)}
-              onClick={(e, nodeId) => {
-                e.stopPropagation();
-                const isMultiSelect = (e.ctrlKey || e.metaKey) && e.altKey;
-                if (isMultiSelect) {
-                  if (isImageSelected(nodeId))
-                    dispatch(deselectImageNode(nodeId));
-                  else dispatch(selectImageNode(nodeId));
-                } else {
-                  handleClearAllSelection();
-                  dispatch(selectImageNode(nodeId));
-                }
-              }}
+              onClick={handleImageClick}
               onDoubleClick={(e, nodeId) => {
                 e.stopPropagation();
               }}
@@ -1102,7 +1311,7 @@ export const CanvasWorkspace: React.FC = () => {
           ))}
 
           {/* Plugin Nodes */}
-          {currentCanvasPluginNodes.map((node: any) => (
+          {visiblePluginNodes.map((node: any) => (
             <div
               key={node.id}
               style={{

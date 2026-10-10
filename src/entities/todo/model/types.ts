@@ -21,6 +21,7 @@ export interface Todo {
     y: number
   }
   size: {
+    height: number;
     width: number
   }
 }

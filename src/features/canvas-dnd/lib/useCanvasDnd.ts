@@ -4,32 +4,56 @@ import { useCallback, useRef, useEffect } from 'react'
 import { useAppDispatch, useAppSelector } from '@shared/lib/state'
 import { startDrag, updateDrag, endDrag } from '../model/slice'
 
-export const useCanvasDnd = (viewport?: { position: { x: number; y: number }; scale: number }) => {
+export const useCanvasDnd = (
+  viewport?: {
+    position: { x: number; y: number }
+    scale: number
+  },
+  nodeId?: string
+) => {
   const dispatch = useAppDispatch()
-  const dragState = useAppSelector((state: any) => state.canvasDnd?.drag)
   const isDraggingRef = useRef(false)
   const startNodePosRef = useRef({ x: 0, y: 0 })
-  
+
   const scaleRef = useRef(viewport?.scale || 1)
-  const vpRef = useRef(viewport?.position || { x: 0, y: 0 })
+  // const vpRef = useRef(viewport?.position || { x: 0, y: 0 })
+
+  const dragState = useAppSelector((state: any) => {
+    const drag = state.canvasDnd?.drag
+
+    // CanvasWorkspace получает полное состояние.
+    if (!nodeId) {
+      return drag
+    }
+
+    // Активная нода получает координаты перетаскивания.
+    if (drag?.isDragging && drag.draggedNodeId === nodeId) {
+      return drag
+    }
+
+    // Остальные ноды не подписываются на изменения координат.
+    return null
+  })
+
+ 
 
   useEffect(() => {
     scaleRef.current = viewport?.scale || 1
-    vpRef.current = viewport?.position || { x: 0, y: 0 }
+    // vpRef.current = viewport?.position || { x: 0, y: 0 }
   }, [viewport?.scale, viewport?.position.x, viewport?.position.y])
 
-  useEffect(() => {
-    const handleGlobalMouseUp = () => {
-      if (isDraggingRef.current) {
-        dispatch(endDrag())
-        document.body.style.cursor = ''
-        document.body.style.userSelect = ''
-        isDraggingRef.current = false
-      }
-    }
-    window.addEventListener('mouseup', handleGlobalMouseUp)
-    return () => window.removeEventListener('mouseup', handleGlobalMouseUp)
-  }, [dispatch])
+  // useEffect(() => {
+  //   const handleGlobalMouseUp = () => {
+  //     if (isDraggingRef.current) {
+  //       dispatch(endDrag())
+  //       document.body.style.cursor = ''
+  //       document.body.style.userSelect = ''
+  //       isDraggingRef.current = false
+  //     }
+  //   }
+  //   window.addEventListener('mouseup', handleGlobalMouseUp)
+  //   return () => window.removeEventListener('mouseup', handleGlobalMouseUp)
+  // }, [dispatch])
 
   const handleDragStart = useCallback((
     nodeId: string,
@@ -37,7 +61,7 @@ export const useCanvasDnd = (viewport?: { position: { x: number; y: number }; sc
     nodePosition: { x: number; y: number }
   ) => {
     if (isDraggingRef.current) return
-    
+
     const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX
     const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY
 
@@ -53,18 +77,18 @@ export const useCanvasDnd = (viewport?: { position: { x: number; y: number }; sc
     }))
 
     const handleMouseMove = (e: MouseEvent | TouchEvent) => {
-      e.preventDefault()
+      // e.preventDefault()
       const moveX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX
       const moveY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY
-      
+
       // Дельта в экранных пикселях
       const deltaX = moveX - clientX
       const deltaY = moveY - clientY
-      
+
       // Переводим в canvas-координаты и прибавляем к начальной позиции
       const newX = startNodePosRef.current.x + deltaX / scaleRef.current
       const newY = startNodePosRef.current.y + deltaY / scaleRef.current
-      
+
       dispatch(updateDrag({ x: newX, y: newY }))
     }
 

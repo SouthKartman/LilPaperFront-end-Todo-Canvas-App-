@@ -1,3 +1,5 @@
+// src/features/storage/model/autoSaveMiddleware
+
 import { Middleware } from '@reduxjs/toolkit';
 import { RootState } from '@shared/lib/state/store';
 import { TodoIndexedDBStorage } from '@shared/api/storage/indexedDB/todoStorage';
