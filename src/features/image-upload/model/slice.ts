@@ -30,7 +30,7 @@ export const imageNodesSlice = createSlice({
       state.nodes[node.id] = node;
       state.error = null;
     },
-    
+
     // Добавление нескольких изображений
     addImageNodes: (state, action: PayloadAction<ImageNode[]>) => {
       action.payload.forEach(node => {
@@ -38,7 +38,7 @@ export const imageNodesSlice = createSlice({
       });
       state.error = null;
     },
-    
+
     // Обновление изображения
     updateImageNode: (state, action: PayloadAction<Partial<ImageNode> & { id: string }>) => {
       const { id, ...updates } = action.payload;
@@ -50,7 +50,7 @@ export const imageNodesSlice = createSlice({
         };
       }
     },
-    
+
     // Перемещение изображения
     moveImageNode: (state, action: PayloadAction<{ id: string; position: { x: number; y: number } }>) => {
       const { id, position } = action.payload;
@@ -59,7 +59,7 @@ export const imageNodesSlice = createSlice({
         state.nodes[id].updatedAt = new Date().toISOString();
       }
     },
-    
+
     // Изменение размера изображения
     resizeImageNode: (state, action: PayloadAction<{ id: string; size: { width: number; height: number } }>) => {
       const { id, size } = action.payload;
@@ -68,7 +68,7 @@ export const imageNodesSlice = createSlice({
         state.nodes[id].updatedAt = new Date().toISOString();
       }
     },
-    
+
     // Изменение z-index
     setImageZIndex: (state, action: PayloadAction<{ id: string; zIndex: number }>) => {
       const { id, zIndex } = action.payload;
@@ -76,13 +76,13 @@ export const imageNodesSlice = createSlice({
         state.nodes[id].zIndex = zIndex;
       }
     },
-    
+
     // Удаление изображения
     deleteImageNode: (state, action: PayloadAction<string>) => {
       delete state.nodes[action.payload];
       state.selectedIds = state.selectedIds.filter(id => id !== action.payload);
     },
-    
+
     // Удаление нескольких изображений
     deleteImageNodes: (state, action: PayloadAction<string[]>) => {
       action.payload.forEach(id => {
@@ -90,39 +90,39 @@ export const imageNodesSlice = createSlice({
       });
       state.selectedIds = state.selectedIds.filter(id => !action.payload.includes(id));
     },
-    
+
     // Выделение изображения
     selectImageNode: (state, action: PayloadAction<string>) => {
       if (!state.selectedIds.includes(action.payload)) {
         state.selectedIds.push(action.payload);
       }
     },
-    
+
     // Снятие выделения
     deselectImageNode: (state, action: PayloadAction<string>) => {
       state.selectedIds = state.selectedIds.filter(id => id !== action.payload);
     },
-    
+
     // Очистка выделения
     clearImageSelection: (state) => {
       state.selectedIds = [];
     },
-    
+
     // Выделение нескольких изображений
     selectMultipleImages: (state, action: PayloadAction<string[]>) => {
       state.selectedIds = action.payload;
     },
-    
+
     // Установка состояния загрузки
     setLoading: (state, action: PayloadAction<boolean>) => {
       state.isLoading = action.payload;
     },
-    
+
     // Установка ошибки
     setError: (state, action: PayloadAction<string | null>) => {
       state.error = action.payload;
     },
-    
+
     // Очистка всех изображений
     clearAllImages: (state) => {
       state.nodes = {};
