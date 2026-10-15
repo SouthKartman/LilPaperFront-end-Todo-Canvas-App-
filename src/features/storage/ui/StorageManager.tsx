@@ -14,7 +14,7 @@ import { db } from '@shared/api/storage/indexedDB/schema';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import './StorageManager.css';
-import { useDatabase } from '@features/databaseManager/model/useDataBase';
+// import { useDatabase } from '@features/databaseManager/model/useDataBase';
 
 interface StorageStats {
   localStorage: {
@@ -899,7 +899,7 @@ export const StorageManager: React.FC<StorageManagerProps> = ({
 
   const containerClass = modalMode ? 'storage-manager storage-manager-modal' : 'storage-manager';
 
-  useDatabase();
+  // useDatabase();
 
   return (
     <div className={containerClass}>

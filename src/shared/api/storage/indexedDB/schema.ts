@@ -3,6 +3,8 @@ import Dexie, { Table } from 'dexie';
 import { Todo } from '@entities/todo/model/types';
 import { ImageNode } from '@entities/image/model/types';
 import { Canvas, CanvasPage, CanvasProject } from '@entities/canvas/model/types';
+import { DBNode } from './nodeTypes';
+import { todo } from 'node:test';
 
 export interface DBTodo extends Todo {
   projectId: string;
@@ -81,11 +83,12 @@ export class TodoAppDatabase extends Dexie {
   syncLog!: Table<DBSyncLog, number>;
   fileStorage!: Table<StoredFile, string>;
   fileMetadata!: Table<FileMetadata, number>;
+  nodes!: Table<DBNode, string>;
 
 
   constructor() {
     super('TodoAppDatabase');
-    
+
     this.version(3).stores({
       todos: 'id, projectId, pageId, status, priority, dueDate, createdAt, updatedAt, [projectId+pageId]',
       images: 'id, projectId, pageId, mimeType, fileSize, createdAt, updatedAt, [projectId+pageId]',
@@ -96,6 +99,73 @@ export class TodoAppDatabase extends Dexie {
       fileStorage: 'id, projectId, fileName, mimeType, size, createdAt, lastAccessed',
       fileMetadata: '++id, fileName, projectId, storage, savedAt, imageNodeId, [projectId+fileName]',
     });
+
+
+    this.version(4)
+      .stores({
+        // Новая единая таблица нод
+        nodes: [
+          'id',
+          'type',
+          'projectId',
+          'pageId',
+          'createdAt',
+          'updatedAt',
+          '[projectId+pageId]',
+          '[type+pageId]',
+        ].join(', '),
+
+        // Старые таблицы пока сохраняем
+        todos: 'id, projectId, pageId, status, priority, dueDate, createdAt, updatedAt, [projectId+pageId]',
+        images: 'id, projectId, pageId, mimeType, fileSize, createdAt, updatedAt, [projectId+pageId]',
+        projects: 'id, name, currentPageId, createdAt, updatedAt, preview, previewUpdatedAt',
+        pages: 'id, projectId, canvasId, name, [projectId+metadata.order], createdAt, updatedAt',
+        canvases: 'id, projectId, pageId, [projectId+pageId], updatedAt',
+        syncLog: '++id, entityType, entityId, timestamp, synced',
+        fileStorage: 'id, projectId, fileName, mimeType, size, createdAt, lastAccessed',
+        fileMetadata: '++id, fileName, projectId, storage, savedAt, imageNodeId, [projectId+fileName]',
+      })
+      .upgrade(async (tx) => {
+        const nodesTable = tx.table('nodes');
+
+        const [todos, images] = await Promise.all([
+          tx.table('todos').toArray(),
+          tx.table('images').toArray(),
+        ]);
+
+        const migratedNodes: DBNode[] = [
+          ...todos.map((todo: Record<string, any>) => ({
+            id: todo.id,
+            type: 'todo' as const,
+            projectId: todo.projectId || 'default',
+            pageId: todo.pageId || 'default',
+            position: todo.position || { x: 0, y: 0 },
+            size: todo.size || { width: 200, height: 150 },
+            zIndex: todo.zIndex ?? 1,
+            data: { ...todo },
+            createdAt: todo.createdAt || new Date(0).toISOString(),
+            updatedAt: todo.updatedAt || todo.createdAt || new Date(0).toISOString(),
+          })),
+
+          ...images.map((image: Record<string, any>) => ({
+            id: image.id,
+            type: 'image' as const,
+            projectId: image.projectId || 'default',
+            pageId: image.pageId || 'default',
+            position: image.position || { x: 0, y: 0 },
+            size: image.size || { width: 200, height: 150 },
+            zIndex: image.zIndex ?? 1,
+            data: { ...image },
+            createdAt: image.createdAt || new Date(0).toISOString(),
+            updatedAt: image.updatedAt || image.createdAt || new Date(0).toISOString(),
+          })),
+        ];
+
+        if (migratedNodes.length > 0) {
+          await nodesTable.bulkPut(migratedNodes);
+        }
+      });
+
   }
 
   // Транзакция для перемещения ноды между страницами
@@ -108,16 +178,16 @@ export class TodoAppDatabase extends Dexie {
   ): Promise<void> {
     return this.transaction('rw', this.todos, this.images, this.syncLog, async () => {
       const timestamp = new Date().toISOString();
-      
+
       if (nodeType === 'todo') {
         const todo = await this.todos.get(nodeId);
         if (todo) {
-          await this.todos.update(nodeId, { 
+          await this.todos.update(nodeId, {
             pageId: targetPageId,
             projectId: targetProjectId,
             updatedAt: timestamp
           });
-          
+
           await this.syncLog.add({
             entityType: 'todo',
             entityId: nodeId,
@@ -129,12 +199,12 @@ export class TodoAppDatabase extends Dexie {
       } else {
         const image = await this.images.get(nodeId);
         if (image) {
-          await this.images.update(nodeId, { 
+          await this.images.update(nodeId, {
             pageId: targetPageId,
             projectId: targetProjectId,
             updatedAt: timestamp
           });
-          
+
           await this.syncLog.add({
             entityType: 'image',
             entityId: nodeId,
@@ -142,7 +212,7 @@ export class TodoAppDatabase extends Dexie {
             timestamp,
             synced: false
           });
-          
+
           // Обновляем связь в метаданных файла
           const pathMatch = image.filePath?.match(/\/images\/projects\/([^/]+)\/(.+)$/);
           if (pathMatch) {
@@ -150,11 +220,11 @@ export class TodoAppDatabase extends Dexie {
             const metadata = await this.fileMetadata
               .where({ projectId: sourcePageId.split('_')[0], fileName })
               .first();
-            
+
             if (metadata) {
-              await this.fileMetadata.update(metadata.id!, { 
+              await this.fileMetadata.update(metadata.id!, {
                 projectId: targetProjectId,
-                imageNodeId: nodeId 
+                imageNodeId: nodeId
               });
             }
           }
@@ -166,14 +236,14 @@ export class TodoAppDatabase extends Dexie {
   // Поиск по задачам
   async searchTodos(searchText: string, projectId?: string): Promise<DBTodo[]> {
     let collection = this.todos.toCollection();
-    
+
     if (projectId) {
       collection = collection.filter(todo => todo.projectId === projectId);
     }
-    
+
     const searchLower = searchText.toLowerCase();
     return collection
-      .filter(todo => 
+      .filter(todo =>
         todo.title.toLowerCase().includes(searchLower) ||
         todo.description?.toLowerCase().includes(searchLower) ||
         todo.tags?.some(tag => tag.toLowerCase().includes(searchLower))
@@ -190,7 +260,7 @@ export class TodoAppDatabase extends Dexie {
       this.todos.where('pageId').equals(pageId).toArray(),
       this.images.where('pageId').equals(pageId).toArray()
     ]);
-    
+
     return { todos, images };
   }
 
@@ -204,7 +274,7 @@ export class TodoAppDatabase extends Dexie {
       this.canvases.toArray(),
       this.fileMetadata.toArray(),
     ]);
-    
+
     return {
       version: '2.0',
       exportDate: new Date().toISOString(),
@@ -246,20 +316,20 @@ export class TodoAppDatabase extends Dexie {
       this.fileMetadata.clear(),
     ]);
   }
-  
+
   /**
    * Сохранить файл в IndexedDB
    */
   async saveFile(
-    file: File, 
-    projectId: string, 
-    fileName: string, 
+    file: File,
+    projectId: string,
+    fileName: string,
     imageNodeId?: string,
     dimensions?: { width: number; height: number }
   ): Promise<void> {
     const id = `${projectId}_${fileName}`;
     const now = new Date().toISOString();
-    
+
     await this.transaction('rw', this.fileStorage, this.fileMetadata, async () => {
       // Сохраняем сам файл
       await this.fileStorage.put({
@@ -272,7 +342,7 @@ export class TodoAppDatabase extends Dexie {
         createdAt: now,
         lastAccessed: now,
       });
-      
+
       // Сохраняем метаданные
       await this.fileMetadata.add({
         fileName,
@@ -287,7 +357,7 @@ export class TodoAppDatabase extends Dexie {
         height: dimensions?.height,
       });
     });
-    
+
     console.log(`💾 Файл сохранен в IndexedDB: ${fileName} (${(file.size / 1024).toFixed(1)} KB)`);
   }
 
@@ -297,12 +367,12 @@ export class TodoAppDatabase extends Dexie {
   async getFile(projectId: string, fileName: string): Promise<File | null> {
     const id = `${projectId}_${fileName}`;
     const stored = await this.fileStorage.get(id);
-    
+
     if (!stored) return null;
-    
+
     // Обновляем время последнего доступа
     await this.fileStorage.update(id, { lastAccessed: new Date().toISOString() });
-    
+
     return new File([stored.blob], stored.fileName, { type: stored.mimeType });
   }
 
@@ -312,7 +382,7 @@ export class TodoAppDatabase extends Dexie {
   async getFileUrl(projectId: string, fileName: string): Promise<string | null> {
     const file = await this.getFile(projectId, fileName);
     if (!file) return null;
-    
+
     return URL.createObjectURL(file);
   }
 
@@ -321,13 +391,13 @@ export class TodoAppDatabase extends Dexie {
    */
   async deleteFile(projectId: string, fileName: string): Promise<boolean> {
     const id = `${projectId}_${fileName}`;
-    
+
     try {
       await this.transaction('rw', this.fileStorage, this.fileMetadata, async () => {
         await this.fileStorage.delete(id);
         await this.fileMetadata.where({ projectId, fileName }).delete();
       });
-      
+
       console.log(`🗑️ Файл удален: ${fileName}`);
       return true;
     } catch (error) {
@@ -356,7 +426,7 @@ export class TodoAppDatabase extends Dexie {
   async getFileByImageId(imageNodeId: string): Promise<{ file: File | null; metadata: FileMetadata | null }> {
     const metadata = await this.fileMetadata.where('imageNodeId').equals(imageNodeId).first();
     if (!metadata) return { file: null, metadata: null };
-    
+
     const file = await this.getFile(metadata.projectId, metadata.fileName);
     return { file, metadata };
   }
@@ -367,7 +437,7 @@ export class TodoAppDatabase extends Dexie {
   async getUrlByImageId(imageNodeId: string): Promise<string | null> {
     const metadata = await this.fileMetadata.where('imageNodeId').equals(imageNodeId).first();
     if (!metadata) return null;
-    
+
     return await this.getFileUrl(metadata.projectId, metadata.fileName);
   }
 
@@ -377,9 +447,9 @@ export class TodoAppDatabase extends Dexie {
   async cleanupUnusedFiles(): Promise<number> {
     const allMetadata = await this.fileMetadata.toArray();
     const usedImageIds = new Set((await this.images.toArray()).map(img => img.id));
-    
+
     let deletedCount = 0;
-    
+
     for (const metadata of allMetadata) {
       // Если файл не привязан к существующему изображению
       if (metadata.imageNodeId && !usedImageIds.has(metadata.imageNodeId)) {
@@ -387,7 +457,7 @@ export class TodoAppDatabase extends Dexie {
         if (success) deletedCount++;
       }
     }
-    
+
     console.log(`🧹 Очищено ${deletedCount} неиспользуемых файлов`);
     return deletedCount;
   }
