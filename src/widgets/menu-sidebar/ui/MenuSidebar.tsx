@@ -1,22 +1,22 @@
-import { RootState } from '@shared/lib/state/store'
-import { StorageManager } from '@features/storage/ui/StorageManager';
-import { TodoStorage } from '@shared/api/storage/jsonStorage/todoStorage';
-import { useSelector } from 'react-redux';
-import { useAppModal } from '@shared/ui/kit/Modal/AppModal';
-import React, { useCallback, useEffect, useState } from 'react';
+import { RootState } from "@shared/lib/state/store";
+import { StorageManager } from "@features/storage/ui/StorageManager";
+import { TodoStorage } from "@shared/api/storage/jsonStorage/todoStorage";
+import { useSelector } from "react-redux";
+import { useAppModal } from "@shared/ui/kit/Modal/AppModal";
+import React, { useCallback, useEffect, useState } from "react";
 
 import "./MenuSidebar.css";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from "react-router-dom";
 
 export const MenuSidebar: React.FC = () => {
-  const nodes = useSelector((state: RootState) => state.todoNodes.nodes);4
-
+  const nodes = useSelector((state: RootState) => state.todoNodes.nodes);
+  4;
 
   const navigate = useNavigate();
 
   const handleProjectButton = (e: React.MouseEvent) => {
     e.preventDefault();
-    navigate('/');
+    navigate("/");
   };
 
   const [lastSave, setLastSave] = useState<Date | null>(null);
@@ -42,15 +42,16 @@ export const MenuSidebar: React.FC = () => {
     }
   }, [nodes]);
 
-  const { openModal } = useAppModal();
+  const { openModal, closeModal } = useAppModal();
 
   const handleOpenStorageManager = () => {
-    openModal(<StorageManager modalMode={true} />, {
-      title: " ",
-      width: "800px",
-      height: "auto",
+    openModal(<StorageManager modalMode onClose={closeModal} />, {
+      title: "Lil Paper — Хранилище",
+      width: "min(1152px, calc(100vw - 32px))",
+      height: "min(820px, 80vh)",
     });
   };
+
   return (
     <div className="MenuSidebar">
       <div className="MenuSidebar__logo">
@@ -82,7 +83,10 @@ export const MenuSidebar: React.FC = () => {
         </svg>
       </div>
       <div className="MenuSidebar__buttonContainer">
-        <button onClick={handleProjectButton} className="MenuSidebar__buttonContainer-button">
+        <button
+          onClick={handleProjectButton}
+          className="MenuSidebar__buttonContainer-button"
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 24 24"
@@ -123,7 +127,11 @@ export const MenuSidebar: React.FC = () => {
           </svg>
           <p>Agents</p>
         </button>
-        <button onClick={handleSave} disabled={isSaving} className="MenuSidebar__buttonContainer-button">
+        <button
+          onClick={handleSave}
+          disabled={isSaving}
+          className="MenuSidebar__buttonContainer-button"
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 24 24"
@@ -137,9 +145,12 @@ export const MenuSidebar: React.FC = () => {
             <path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7" />
             <path d="M7 3v4a1 1 0 0 0 1 1h7" />
           </svg>
-          <p>{isSaving ? 'Saved...' : 'Save'}</p>
+          <p>{isSaving ? "Saved..." : "Save"}</p>
         </button>
-        <button onClick={handleOpenStorageManager} className="MenuSidebar__buttonContainer-button">
+        <button
+          onClick={handleOpenStorageManager}
+          className="MenuSidebar__buttonContainer-button"
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 24 24"

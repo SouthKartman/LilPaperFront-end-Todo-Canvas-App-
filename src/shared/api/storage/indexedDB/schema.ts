@@ -3,8 +3,10 @@ import Dexie, { Table } from 'dexie';
 import { Todo } from '@entities/todo/model/types';
 import { ImageNode } from '@entities/image/model/types';
 import { Canvas, CanvasPage, CanvasProject } from '@entities/canvas/model/types';
-import { DBNode } from './nodeTypes';
-import { todo } from 'node:test';
+import {
+  DBNode,
+  getStoredNodeId,
+} from './nodeTypes';
 
 export interface DBTodo extends Todo {
   projectId: string;
@@ -128,41 +130,124 @@ export class TodoAppDatabase extends Dexie {
       .upgrade(async (tx) => {
         const nodesTable = tx.table('nodes');
 
-        const [todos, images] = await Promise.all([
+        const [existingNodes, todos, images] = await Promise.all([
+          nodesTable.toArray(),
           tx.table('todos').toArray(),
           tx.table('images').toArray(),
         ]);
 
-        const migratedNodes: DBNode[] = [
-          ...todos.map((todo: Record<string, any>) => ({
-            id: todo.id,
-            type: 'todo' as const,
-            projectId: todo.projectId || 'default',
-            pageId: todo.pageId || 'default',
-            position: todo.position || { x: 0, y: 0 },
-            size: todo.size || { width: 200, height: 150 },
-            zIndex: todo.zIndex ?? 1,
-            data: { ...todo },
-            createdAt: todo.createdAt || new Date(0).toISOString(),
-            updatedAt: todo.updatedAt || todo.createdAt || new Date(0).toISOString(),
-          })),
+        // Ключи Map — новые уникальные ID в формате type:originalId.
+        // Уже существующие записи nodes имеют приоритет.
+        const nodesById = new Map<string, DBNode>();
 
-          ...images.map((image: Record<string, any>) => ({
-            id: image.id,
-            type: 'image' as const,
-            projectId: image.projectId || 'default',
-            pageId: image.pageId || 'default',
-            position: image.position || { x: 0, y: 0 },
-            size: image.size || { width: 200, height: 150 },
-            zIndex: image.zIndex ?? 1,
-            data: { ...image },
-            createdAt: image.createdAt || new Date(0).toISOString(),
-            updatedAt: image.updatedAt || image.createdAt || new Date(0).toISOString(),
-          })),
-        ];
+        for (const rawNode of existingNodes as DBNode[]) {
+          const originalId = String(rawNode.data?.id ?? rawNode.id);
+          const id = getStoredNodeId(rawNode.type, originalId);
+
+          nodesById.set(id, {
+            ...rawNode,
+            id,
+            data: {
+              ...rawNode.data,
+              id: originalId,
+            },
+          });
+        }
+
+        const epoch = new Date(0).toISOString();
+
+        const restoreLegacyNode = (
+          raw: Record<string, any>,
+          type: 'todo' | 'image',
+        ): DBNode | null => {
+          if (raw.id == null) return null;
+
+          const originalId = String(raw.id);
+          const id = getStoredNodeId(type, originalId);
+
+          // Не заменяем более актуальную запись из nodes.
+          if (nodesById.has(id)) return null;
+
+          const createdAt = raw.createdAt || epoch;
+
+          return {
+            id,
+            type,
+            projectId: String(raw.projectId || 'default'),
+            pageId: String(raw.pageId || 'default'),
+            position: raw.position || { x: 0, y: 0 },
+            size: raw.size || { width: 200, height: 150 },
+            zIndex: raw.zIndex ?? 1,
+            data: {
+              ...raw,
+              id: originalId,
+            },
+            createdAt,
+            updatedAt: raw.updatedAt || createdAt,
+          };
+        };
+
+        for (const todo of todos as Record<string, any>[]) {
+          const node = restoreLegacyNode(todo, 'todo');
+          if (node) nodesById.set(node.id, node);
+        }
+
+        for (const image of images as Record<string, any>[]) {
+          const node = restoreLegacyNode(image, 'image');
+          if (node) nodesById.set(node.id, node);
+        }
+
+        // Перестраиваем таблицу в рамках транзакции миграции.
+        await nodesTable.clear();
+
+        const migratedNodes = Array.from(nodesById.values());
 
         if (migratedNodes.length > 0) {
           await nodesTable.bulkPut(migratedNodes);
+        }
+      });
+    this.version(5)
+      .stores({
+        nodes: [
+          'id',
+          'type',
+          'projectId',
+          'pageId',
+          'createdAt',
+          'updatedAt',
+          '[projectId+pageId]',
+          '[type+pageId]',
+        ].join(', '),
+
+        // Старые таблицы сохраняем для обратной совместимости.
+        todos: 'id, projectId, pageId, status, priority, dueDate, createdAt, updatedAt, [projectId+pageId]',
+        images: 'id, projectId, pageId, mimeType, fileSize, createdAt, updatedAt, [projectId+pageId]',
+        projects: 'id, name, currentPageId, createdAt, updatedAt, preview, previewUpdatedAt',
+        pages: 'id, projectId, canvasId, name, [projectId+metadata.order], createdAt, updatedAt',
+        canvases: 'id, projectId, pageId, [projectId+pageId], updatedAt',
+        syncLog: '++id, entityType, entityId, timestamp, synced',
+        fileStorage: 'id, projectId, fileName, mimeType, size, createdAt, lastAccessed',
+        fileMetadata: '++id, fileName, projectId, storage, savedAt, imageNodeId, [projectId+fileName]',
+      })
+      .upgrade(async (tx) => {
+        const nodesTable = tx.table('nodes');
+        const existingNodes = await nodesTable.toArray();
+
+        for (const node of existingNodes as DBNode[]) {
+          const originalId = String(node.data?.id ?? node.id);
+          const newId = getStoredNodeId(node.type, originalId);
+
+          if (node.id !== newId) {
+            await nodesTable.delete(node.id);
+            await nodesTable.put({
+              ...node,
+              id: newId,
+              data: {
+                ...node.data,
+                id: originalId,
+              },
+            });
+          }
         }
       });
 
@@ -308,6 +393,7 @@ export class TodoAppDatabase extends Dexie {
     await Promise.all([
       this.todos.clear(),
       this.images.clear(),
+      this.nodes.clear(),
       this.projects.clear(),
       this.pages.clear(),
       this.canvases.clear(),

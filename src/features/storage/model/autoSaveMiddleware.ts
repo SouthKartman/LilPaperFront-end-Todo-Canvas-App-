@@ -12,7 +12,7 @@ import { ProjectIndexedDBStorage } from '@shared/api/storage/indexedDB/projectSt
 
 import { db } from '@shared/api/storage/indexedDB/schema';
 
-import type { DBNode } from '@shared/api/storage/indexedDB/nodeTypes';
+import { getStoredNodeId, type DBNode } from '@shared/api/storage/indexedDB/nodeTypes';
 
 const TODO_SAVE_ACTIONS = [
 
@@ -153,85 +153,102 @@ function debounce(key: string, callback: () => Promise<void>, delay = 1000) {
 }
 
 async function deleteImageRecords(
-
   imageIds: string[],
-
   previousNodes: Record<string, any>,
-
-) {
-
+): Promise<void> {
   const uniqueIds = [...new Set(imageIds)].filter(Boolean);
 
   if (uniqueIds.length === 0) return;
 
-  // Сохраняем filePath до удаления, чтобы убрать метаданные,
-
-  // даже если в fileMetadata нет imageNodeId.
-
   const fileKeys = new Set<string>();
 
   for (const id of uniqueIds) {
-
     const image = previousNodes[id];
+    const match = image?.filePath?.match(
+      /\/images\/projects\/([^/]+)\/([^/]+)$/,
+    );
 
-    const match = image?.filePath?.match(/\/images\/projects\/([^/]+)\/([^/]+)$/);
-
-    if (match) fileKeys.add(`${match[1]}\0${match[2]}`);
-
+    if (match) {
+      fileKeys.add(`${match[1]}\0${match[2]}`);
+    }
   }
 
-  // deleteImages удаляет файлы из fileStorage и записи из db.images.
-
+  // Операции с legacy-изображениями сериализованы через imageWriteQueue.
   await ImageIndexedDBStorage.deleteImages(uniqueIds);
 
-  await db.transaction('rw', [db.fileMetadata, db.canvases, db.nodes], async () => {
+  // Операции с unified nodes сериализованы через общую очередь.
+  await enqueueUnifiedNodeWrite(async () => {
+    await db.transaction(
+      'rw',
+      [
+        db.projects,
+        db.pages,
+        db.canvases,
+        db.todos,
+        db.images,
+        db.nodes,
+        db.fileStorage,
+        db.fileMetadata,
+        db.syncLog,
+      ],
+      async () => {
+        const metadata = await db.fileMetadata.toArray();
 
-    const metadata = await db.fileMetadata.toArray();
+        const metadataIds = metadata
+          .filter(
+            item =>
+              (item.imageNodeId != null &&
+                uniqueIds.includes(item.imageNodeId)) ||
+              (item.projectId != null &&
+                item.fileName != null &&
+                fileKeys.has(`${item.projectId}\0${item.fileName}`)),
+          )
+          .map(item => item.id)
+          .filter((id): id is number => id !== undefined);
 
-    const metadataIds = metadata
+        if (metadataIds.length > 0) {
+          await db.fileMetadata.bulkDelete(metadataIds);
+        }
 
-      .filter((item: any) =>
+        // Удаляем ссылки на изображения из canvas.
+        const canvases = await db.canvases.toArray();
 
-        (item.imageNodeId && uniqueIds.includes(item.imageNodeId)) ||
+        for (const canvas of canvases) {
+          if (
+            Array.isArray(canvas.nodes) &&
+            canvas.nodes.some(id => uniqueIds.includes(id))
+          ) {
+            await db.canvases.update(canvas.id, {
+              nodes: canvas.nodes.filter(
+                id => !uniqueIds.includes(id),
+              ),
+            });
+          }
+        }
 
-        (item.projectId && item.fileName && fileKeys.has(`${item.projectId}\0${item.fileName}`))
+        // Совместимость с новыми и старыми ключами.
+        const unifiedImages = await db.nodes
+          .where('type')
+          .equals('image')
+          .toArray();
 
-      )
+        const idsToDelete = unifiedImages
+          .filter(node => {
+            const originalId = String(node.data?.id ?? node.id);
+            return uniqueIds.includes(originalId);
+          })
+          .map(node => node.id);
 
-      .map((item: any) => item.id)
+        if (idsToDelete.length > 0) {
+          await db.nodes.bulkDelete(idsToDelete);
+        }
 
-      .filter((id: unknown) => id !== undefined);
-
-    if (metadataIds.length > 0) {
-
-      await db.fileMetadata.bulkDelete(metadataIds as number[]);
-
-    }
-
-    // Удаляем из единого хранилища только image-ноды с этими ID.
-    const unifiedImages = await db.nodes.where('type').equals('image').toArray();
-    const unifiedImageIds = unifiedImages.filter(node => uniqueIds.includes(node.id)).map(node => node.id);
-    if (unifiedImageIds.length > 0) await db.nodes.bulkDelete(unifiedImageIds);
-
-    const canvases = await db.canvases.toArray();
-
-    for (const canvas of canvases) {
-
-      if (Array.isArray(canvas.nodes) && canvas.nodes.some((id: string) => uniqueIds.includes(id))) {
-
-        await db.canvases.update(canvas.id, {
-
-          nodes: canvas.nodes.filter((id: string) => !uniqueIds.includes(id)),
-
-        });
-
-      }
-
-    }
-
+        await db.nodes.bulkDelete([...idsToDelete]);
+      },
+    );
   });
-
 }
+
 
 let imageWriteQueue: Promise<void> = Promise.resolve();
 
@@ -559,80 +576,52 @@ function getPageIdByNodeId(
 }
 
 function createDBNode(
-
   node: Record<string, any>,
-
   type: DBNode['type'],
-
   state: RootState,
-
 ): DBNode | null {
+  const originalId = String(node.id);
 
   const pageId =
-
     typeof node.pageId === 'string'
-
       ? node.pageId
-
-      : getPageIdByNodeId(state, node.id);
+      : getPageIdByNodeId(state, originalId);
 
   if (!pageId) {
-
     console.warn(
-
-      `Не удалось определить страницу узла ${node.id}; сохранение пропущено.`,
-
+      `Не удалось определить страницу узла ${originalId}; сохранение пропущено.`,
     );
-
     return null;
-
   }
 
   const now = new Date().toISOString();
 
   return {
-
-    id: node.id,
-
+    id: getStoredNodeId(type, originalId),
     type,
-
     projectId:
-
       typeof node.projectId === 'string'
-
         ? node.projectId
-
         : getProjectIdByPageId(state, pageId),
-
     pageId,
-
     position: {
-
       x: node.position?.x ?? 0,
-
       y: node.position?.y ?? 0,
-
     },
-
     size: {
-
       width: node.size?.width ?? 200,
-
       height: node.size?.height ?? 150,
-
     },
-
     zIndex: node.zIndex ?? 1,
-
-    data: { ...node },
-
+    data: {
+      ...node,
+      id: originalId,
+    },
     createdAt: node.createdAt ?? now,
-
-    updatedAt: node.updatedAt ?? now,
-
+    updatedAt: now,
   };
-
 }
+
 
 let unifiedNodeWriteQueue: Promise<void> = Promise.resolve();
 
@@ -646,12 +635,14 @@ function enqueueUnifiedNodeWrite(task: () => Promise<void>): Promise<void> {
   return unifiedNodeWriteQueue;
 }
 
+
 async function saveUnifiedNodes(
   state: RootState,
   deletedTodoIds: string[] = [],
 ): Promise<void> {
   const todos = Object.values(state.todoNodes?.nodes ?? {});
   const images = Object.values(state.imageNodes?.nodes ?? {});
+
   const nodes: DBNode[] = [
     ...todos
       .map(node => createDBNode(node, 'todo', state))
@@ -662,26 +653,35 @@ async function saveUnifiedNodes(
   ];
 
   await enqueueUnifiedNodeWrite(async () => {
-    const uniqueDeletedIds = [...new Set(deletedTodoIds)].filter(Boolean);
+    const uniqueDeletedIds = [
+      ...new Set(deletedTodoIds.filter(Boolean)),
+    ];
 
-    await db.transaction('rw', db.nodes, db.todos, async () => {
-      // Удаляем только todo-записи: image с тем же ID не затрагивается.
-      if (uniqueDeletedIds.length > 0) {
-        const todoRows = await db.nodes.where('type').equals('todo').toArray();
-        const idsToDelete = todoRows
-          .filter(node => uniqueDeletedIds.includes(node.id))
-          .map(node => node.id);
-        if (idsToDelete.length > 0) await db.nodes.bulkDelete(idsToDelete);
+    await db.transaction(
+      'rw',
+      db.nodes,
+      db.todos,
+      async () => {
+        if (uniqueDeletedIds.length > 0) {
+          const storedIds = uniqueDeletedIds.map(id =>
+            getStoredNodeId('todo', id),
+          );
 
-        // Чистим старую таблицу, чтобы legacy-загрузка не восстановила удалённые задачи.
-        await db.todos.bulkDelete(uniqueDeletedIds);
-      }
+          // Удаляем только todo:<id>, не затрагивая image:<id>.
+          await db.nodes.bulkDelete(storedIds);
 
-      // Даже при пустом nodes удаление выше должно выполниться.
-      if (nodes.length > 0) await db.nodes.bulkPut(nodes);
-    });
+          // Удаляем записи из legacy-хранилища.
+          await db.todos.bulkDelete(uniqueDeletedIds);
+        }
+
+        if (nodes.length > 0) {
+          await db.nodes.bulkPut(nodes);
+        }
+      },
+    );
   });
 }
+
 
 export const autoSaveMiddleware: Middleware = store => next => action => {
 

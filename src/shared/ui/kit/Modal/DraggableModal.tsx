@@ -1,5 +1,4 @@
-// src/shared/ui/kit/Modal/DraggableModal.tsx
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from "react";
 
 interface DraggableModalProps {
   isOpen: boolean;
@@ -16,232 +15,269 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
   onClose,
   title,
   children,
-  width = '500px',
-  height = 'auto',
-  initialPosition
+  width = "500px",
+  height = "auto",
+  initialPosition,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
-  const headerRef = useRef<HTMLDivElement>(null);
-  
+  const dragData = useRef({
+    offsetX: 0,
+    offsetY: 0,
+    dragging: false,
+  });
+
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
-  // Устанавливаем начальную позицию
+  // Рассчитываем положение после того, как браузер определит размеры окна.
   useEffect(() => {
-    if (isOpen) {
-      if (initialPosition) {
-        setPosition(initialPosition);
-      } else {
-        // Центрируем модалку при открытии
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
-        const modalWidth = parseInt(width) || 500;
-        
-        setPosition({
-          x: (viewportWidth - modalWidth) / 2,
-          y: viewportHeight * 0.1 // 10% от верха
-        });
-      }
-    }
-  }, [isOpen, initialPosition, width]);
+    if (!isOpen) return;
 
-  // Обработчики для перетаскивания
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (!modalRef.current || !headerRef.current) return;
-    
-    const modalRect = modalRef.current.getBoundingClientRect();
-    
-    setDragOffset({
-      x: e.clientX - modalRect.left,
-      y: e.clientY - modalRect.top
+    if (initialPosition) {
+      setPosition(initialPosition);
+      return;
+    }
+
+    const frame = requestAnimationFrame(() => {
+      const modal = modalRef.current;
+      if (!modal) return;
+
+      setPosition({
+        x: Math.max(0, (window.innerWidth - modal.offsetWidth) / 2),
+        y: Math.max(
+          0,
+          Math.min(
+            window.innerHeight * 0.1,
+            window.innerHeight - modal.offsetHeight,
+          ),
+        ),
+      });
     });
-    
-    setIsDragging(true);
-    
-    e.preventDefault();
-  };
 
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!isDragging) return;
-    
-    const newX = e.clientX - dragOffset.x;
-    const newY = e.clientY - dragOffset.y;
-    
-    // Проверяем границы экрана
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    const modalWidth = modalRef.current?.offsetWidth || 500;
-    const modalHeight = modalRef.current?.offsetHeight || 300;
-    
-    const boundedX = Math.max(0, Math.min(newX, viewportWidth - modalWidth));
-    const boundedY = Math.max(0, Math.min(newY, viewportHeight - 100)); // Оставляем место для закрытия
-    
-    setPosition({ x: boundedX, y: boundedY });
-  };
+    return () => cancelAnimationFrame(frame);
+  }, [isOpen, initialPosition, width, height]);
 
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  // Добавляем/удаляем глобальные обработчики
+  // Перетаскивание окна.
   useEffect(() => {
-    if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    }
-    
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+    if (!isOpen) return;
+
+    const handleMouseMove = (event: MouseEvent) => {
+      if (!dragData.current.dragging) return;
+
+      const modal = modalRef.current;
+      if (!modal) return;
+
+      const modalWidth = modal.offsetWidth;
+      const modalHeight = modal.offsetHeight;
+
+      const maxX = Math.max(0, window.innerWidth - modalWidth);
+      const maxY = Math.max(0, window.innerHeight - Math.min(modalHeight, 100));
+
+      setPosition({
+        x: Math.max(
+          0,
+          Math.min(event.clientX - dragData.current.offsetX, maxX),
+        ),
+        y: Math.max(
+          0,
+          Math.min(event.clientY - dragData.current.offsetY, maxY),
+        ),
+      });
     };
-  }, [isDragging, dragOffset]);
 
-  // Блокируем скролл при открытии
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    
+    const handleMouseUp = () => {
+      dragData.current.dragging = false;
+      setIsDragging(false);
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+
     return () => {
-      document.body.style.overflow = 'unset';
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
     };
   }, [isOpen]);
 
-  // Закрытие на Escape
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+  const handleMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
+    // Перетаскиваем только левой кнопкой мыши.
+    if (event.button !== 0) return;
+
+    const target = event.target as HTMLElement;
+
+    // Кнопки и интерактивные элементы не должны начинать перетаскивание.
+    if (target.closest("button, a, input, textarea, select")) return;
+
+    const modal = modalRef.current;
+    if (!modal) return;
+
+    const rect = modal.getBoundingClientRect();
+
+    dragData.current = {
+      offsetX: event.clientX - rect.left,
+      offsetY: event.clientY - rect.top,
+      dragging: true,
     };
-    
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
-    }
-    
+
+    setIsDragging(true);
+    event.preventDefault();
+  };
+
+  // Сохраняем и восстанавливаем исходное состояние прокрутки страницы.
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
     return () => {
-      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
+
+  // Закрытие по Escape.
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
     };
   }, [isOpen, onClose]);
+
+  // Удерживаем окно в пределах видимой области при изменении размера окна.
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleResize = () => {
+      const modal = modalRef.current;
+      if (!modal) return;
+
+      setPosition((current) => ({
+        x: Math.max(
+          0,
+          Math.min(current.x, window.innerWidth - modal.offsetWidth),
+        ),
+        y: Math.max(0, Math.min(current.y, window.innerHeight - 100)),
+      }));
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   return (
-    <div 
+    <div
       style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        display: 'flex',
-        alignItems: 'flex-start',
-        justifyContent: 'center',
+        position: "fixed",
+        inset: 0,
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
         zIndex: 1000,
-        paddingTop: '10vh',
       }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
       }}
     >
-      <div 
+      <div
         ref={modalRef}
         style={{
-          position: 'absolute',
-          left: `${position.x}px`,
-          top: `${position.y}px`,
-          backgroundColor: 'white',
-          borderRadius: '12px',
-          width: width,
-          height: height,
-          maxHeight: '80vh',
-          overflow: 'hidden',
-          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
-          display: 'flex',
-          flexDirection: 'column',
-          cursor: isDragging ? 'grabbing' : 'default',
-          userSelect: 'none',
-          animation: 'modalAppear 0.3s ease',
+          position: "absolute",
+          left: position.x,
+          top: position.y,
+          width,
+          height,
+          maxWidth: "calc(100vw - 32px)",
+          maxHeight: "80vh",
+          boxSizing: "border-box",
+          overflow: "hidden",
+          backgroundColor: "#fff",
+          borderRadius: 12,
+          boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)",
+          display: "flex",
+          flexDirection: "column",
+          cursor: isDragging ? "grabbing" : "default",
+          animation: "modalAppear 0.3s ease",
         }}
       >
-        {/* Заголовок с возможностью перетаскивания */}
-        <div 
-          ref={headerRef}
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '16px 24px',
-            borderBottom: '1px solid #eaeaea',
-            backgroundColor: '#f8f9fa',
-            cursor: isDragging ? 'grabbing' : 'grab',
-            userSelect: 'none',
-            borderTopLeftRadius: '12px',
-            borderTopRightRadius: '12px',
-            position: 'relative',
-          }}
+        {/* Шапка всегда видима, даже если title не задан */}
+        <div
           onMouseDown={handleMouseDown}
+          style={{
+            position: "relative",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            minHeight: 56,
+            padding: "12px 56px",
+            boxSizing: "border-box",
+            borderBottom: "1px solid #eaeaea",
+            backgroundColor: "#f8f9fa",
+            cursor: isDragging ? "grabbing" : "grab",
+            userSelect: "none",
+            touchAction: "none",
+          }}
         >
-          {/* Иконка перетаскивания */}
-          <div style={{
-            position: 'absolute',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            display: 'flex',
-            gap: '4px',
-            opacity: 0.6,
-          }}>
-            <div style={{ width: '24px', height: '3px', backgroundColor: '#adb5bd', borderRadius: '2px' }}></div>
-            <div style={{ width: '24px', height: '3px', backgroundColor: '#adb5bd', borderRadius: '2px' }}></div>
-            <div style={{ width: '24px', height: '3px', backgroundColor: '#adb5bd', borderRadius: '2px' }}></div>
-          </div>
-          
-          {title && (
-            <h3 style={{ 
-              margin: 0, 
-              fontSize: '18px', 
+          <span
+            style={{
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              fontSize: 16,
               fontWeight: 600,
-              flex: 1,
-              textAlign: 'center',
-            }}>
-              {title}
-            </h3>
-          )}
-          
+              textAlign: "center",
+            }}
+          >
+            {title || "Lil Paper"}
+          </span>
+
           <button
+            type="button"
+            aria-label="Закрыть окно"
+            title="Закрыть"
+            onMouseDown={(event) => event.stopPropagation()}
             onClick={onClose}
             style={{
-              background: 'none',
-              border: 'none',
-              fontSize: '24px',
-              cursor: 'pointer',
-              color: '#666',
-              width: '32px',
-              height: '32px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: '50%',
-              position: 'absolute',
-              right: '16px',
-              top: '50%',
-              transform: 'translateY(-50%)',
+              position: "absolute",
+              top: "50%",
+              right: 12,
+              transform: "translateY(-50%)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 32,
+              height: 32,
+              padding: 0,
+              border: 0,
+              borderRadius: 8,
+              background: "transparent",
+              color: "#444",
+              fontSize: 24,
+              lineHeight: 1,
+              cursor: "pointer",
               zIndex: 2,
             }}
-            onMouseDown={(e) => e.stopPropagation()} // Предотвращаем перетаскивание при клике на крестик
           >
             ×
           </button>
         </div>
-        
-        {/* Контент модалки */}
-        <div style={{ 
-          padding: '24px', 
-          overflow: 'auto',
-          flex: 1,
-        }}>
+
+        {/* Содержимое окна */}
+        <div
+          style={{
+            minHeight: 0,
+            flex: 1,
+            overflow: "auto",
+            userSelect: "text",
+          }}
+        >
           {children}
         </div>
       </div>

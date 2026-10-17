@@ -1,22 +1,22 @@
-import React, { useCallback, useEffect, useState } from 'react'
-import styles from './CanvasToolbar.module.css'
-import { RootState } from '@shared/lib/state/store'
-import { StorageManager } from '@features/storage/ui/StorageManager';
-import { TodoStorage } from '@shared/api/storage/jsonStorage/todoStorage';
-import { useSelector } from 'react-redux';
-import { useAppModal } from '@shared/ui/kit/Modal/AppModal';
+import React, { useCallback, useEffect, useState } from "react";
+import styles from "./CanvasToolbar.module.css";
+import { RootState } from "@shared/lib/state/store";
+import { StorageManager } from "@features/storage/ui/StorageManager";
+import { TodoStorage } from "@shared/api/storage/jsonStorage/todoStorage";
+import { useSelector } from "react-redux";
+import { useAppModal } from "@shared/ui/kit/Modal/AppModal";
 
 // Legacy
 // import ZoomControls from '@features/canvas-viewport/ui/ZoomControls';
 
-import { Logo } from '@shared/ui/icons/Logo/Logo';
+import { Logo } from "@shared/ui/icons/Logo/Logo";
 
 // header
 
 export const CanvasToolbar: React.FC = () => {
   // Получаем состояние один раз в хуке
   const nodes = useSelector((state: RootState) => state.todoNodes.nodes);
-  
+
   const [lastSave, setLastSave] = useState<Date | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -25,56 +25,47 @@ export const CanvasToolbar: React.FC = () => {
     const savedDate = TodoStorage.getLastSave();
     setLastSave(savedDate);
   }, []);
-  
+
   // Функция для ручного сохранения
   const handleSave = useCallback(() => {
     setIsSaving(true);
     const success = TodoStorage.saveTodos(nodes);
-    
+
     if (success) {
       setLastSave(new Date());
       setTimeout(() => setIsSaving(false), 500);
     } else {
       setIsSaving(false);
-      alert('❌ Не удалось сохранить данные');
+      alert("❌ Не удалось сохранить данные");
     }
   }, [nodes]);
-
-  const { openModal } = useAppModal();
-  
-  const handleOpenStorageManager = () => {
-    openModal(
-      <StorageManager modalMode={true} />,
-      {
-        title: ' ',
-        width: '800px',
-        height: 'auto',
-      }
-    );
-  };
 
   return (
     <div className={styles.toolbar}>
       <div className={styles.tools}>
         <Logo></Logo>
       </div>
-      <div style={{ marginLeft: 'auto', display: 'flex', gap: '10px', alignItems: 'center' }}>
-        
+      <div
+        style={{
+          marginLeft: "auto",
+          display: "flex",
+          gap: "10px",
+          alignItems: "center",
+        }}
+      >
         {/* // Legacy */}
         {/* <span style={{ fontSize: '14px', color: '#666' }}>Масштаб:</span> */}
         {/* <ZoomControls /> */}
-        
-        <button 
+
+        <button
           onClick={handleSave}
           className="storage-btn storage-btn-save"
           disabled={isSaving}
-          title="Сохранить в браузер">
-          {isSaving ? '💾 Сохранение...' : '💾 Сохранить сейчас'}
+          title="Сохранить в браузер"
+        >
+          {isSaving ? "💾 Сохранение..." : "💾 Сохранить сейчас"}
         </button>
-        <button 
-          onClick={handleOpenStorageManager}
-          className="storage-btn"
-          >
+        <button onClick={handleOpenStorageManager} className="storage-btn">
           📁 Хранилище
         </button>
       </div>

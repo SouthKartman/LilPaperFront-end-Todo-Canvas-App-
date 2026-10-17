@@ -8,7 +8,6 @@ import { importNodes } from '@features/todo-nodes/model/slice';
 import { importImages } from '@features/image-upload/model/slice';
 import { loadProjectState } from '@features/project-management/model/slice';
 import { migrationService, MigrationProgress } from './migrationUtils';
-import { ProjectIndexedDBStorage } from '@shared/api/storage/indexedDB/projectStorage';
 
 export const useIndexedDBInit = () => {
   const dispatch = useDispatch();
