@@ -1,5 +1,5 @@
 <h1 align="center">🎨 Lil Papper - Canvas App</h1> 
-<h3 align="center">DEV Branch</h3> 
+<h3 align="center">DEV Branch</h3>
 
 <p align="center">
   <strong>Интерактивное приложение для управления задачами на бесконечном холсте</strong><br />
@@ -47,33 +47,70 @@ src/
 │   │   └── variables.css
 │   └── App.tsx               # 🚪 ГЛАВНЫЙ КОМПОНЕНТ
 │
-├── 📂 entities/              # 🏢 БИЗНЕС-СУЩНОСТИ
-│   └── 📂 todo/              # 📝 СУЩНОСТЬ "ЗАДАЧА"
-│      ├── 📂 model/
-│      │   ├── types.ts      # 📐 Типы задач
-│      │   └── api.ts        # 🌐 API для задач
-│      ├── 📂 lib/
-│      │   └── todoUtils.ts  # ⚙️ Утилиты для задач
-│      └── 📂 ui/
-│          └── TodoCard/     # 🎴 Базовая карточка задачи
-│   
+├── entities/
+│   ├── canvas/
+│   │   ├── lib/
+│   │   └── model/
+│   │       ├── api.ts
+│   │       └── types.ts
+│   ├── frame/
+│   │   ├── lib/
+│   │   └── model/
+│   │       └── types.ts
+│   ├── image/
+│   │   ├── lib/
+│   │   └── model/
+│   │       ├── api.ts
+│   │       └── types.ts
+│   ├── plugin-node/
+│   │   ├── lib/
+│   │   │   └── pluginHelpers.ts
+│   │   ├── model/
+│   │   │   ├── pluginRegistry.ts
+│   │   │   └── types.ts
+│   │   ├── ui/
+│   │   │   └── PluginNodeRenderer.tsx
+│   │   └── index.ts
+│   ├── project/
+│   │   ├── lib/
+│   │   │   └── projectUtils.ts
+│   │   └── model/
+│   │       ├── constants.ts
+│   │       └── types.ts
+│   ├── text-node/
+│   │   └── model/
+│   │       └── types.ts
+│   └── todo/
+│       ├── lib/
+│       └── model/
+│           ├── api.ts
+│           └── types.ts
+├── assets/
+│   ├── icons/
+│   └── Logo/
+│       ├── Logo.svg
+│       └── react.svg
+│
+├── components/ # shadcn components
+│   └── ui/
+│
 ├── 📂 service-worker/              # 🏢 PWA + SW
 │   ├── 📂 config/              # 📝 Конфиг
-│   │   │   └── sw.config.ts      
+│   │   │   └── sw.config.ts
 │   │   ├── 📂 lib/
-│   │   │   └── todoUtils.ts 
+│   │   │   └── todoUtils.ts
 │   │   └── 📂 ui/
-│   │       └── TodoCard/    
-│   ├── 📂 handlers/              
+│   │       └── TodoCard/
+│   ├── 📂 handlers/
 │   │       ├── apihandlers.ts
-│   │       ├── imageHandler.ts    
+│   │       ├── imageHandler.ts
 │   │       ├── pagehandlers.ts
 │   │       ├── statichandlers.ts
-│   │       └── fontHandler.ts     
-│   ├── 📂 storage/            
-│   │      ├── syncManager.ts  
-│   │      └── swSchema.ts     
-│   ├── 📂 strategies/        
+│   │       └── fontHandler.ts
+│   ├── 📂 storage/
+│   │      ├── syncManager.ts
+│   │      └── swSchema.ts
+│   ├── 📂 strategies/
 │   │   ├── cacheFirst.ts/
 │   │   ├── staleWhileRevalidate.ts/
 │   │   └── networkFirst.ts
@@ -176,11 +213,11 @@ src/
 │   │
 │   ├── 📂 clipboard/          # ☑️ буфер обмена
 │   │   ├── 📂 lib/
-│   │   │   ├── clipboardUtils.ts  
-│   │   │   └── useClipboard.ts  
+│   │   │   ├── clipboardUtils.ts
+│   │   │   └── useClipboard.ts
 │   │   ├── 📂 model/
-│   │   │   └── types.ts 
-│   │   └── index.ts 
+│   │   │   └── types.ts
+│   │   └── index.ts
 │   │
 │   ├── 📂 project-management/ # 📁 УПРАВЛЕНИЕ ПРОЕКТАМИ
 │   │   ├── 📂 model/
@@ -194,29 +231,60 @@ src/
 │       │   ├── slice.ts      # 🗃️ Redux slice
 │       │   └── types.ts
 │       ├── 📂 lib/
-│       │   ├── useMarqueeSelection.ts 
-│       │   └── useSelection.ts 
+│       │   ├── useMarqueeSelection.ts
+│       │   └── useSelection.ts
 │       └── index.ts
 │
 ├── 📂 pages/  # 🧩 ГОТОВЫЕ UI страницы
 │   └── 📂 projects/   # 📐 МАКЕТ
 │       └── 📂 ui/
 │           └── ProjectPages.tsx # 🎴 Макет страницы создание проектов
-│   
-├── 📂 widgets/                # 🧩 ГОТОВЫЕ UI БЛОКИ
-│   ├── 📂 workspace-layout/   # 📐 МАКЕТ
-│   │   └── 📂 ui/
-│   │       └── WorkspaceLayout.tsx # 🎴 Макет рабочей области
-│   │
-│   ├── 📂 pages-workspace/    # 📄 ПАНЕЛЬ СТРАНИЦ
-│   │   └── 📂 ui/
-│   │       ├── PageItem/     # 🎴 Элемент страницы
-│   │       └── PagesSidebar/ # 🎴 Сайдбар страниц
-│   │
-│   └── 📂 canvas-workspace/   # 🎨 ХОЛСТ
-│       └── 📂 ui/
-│           ├── CanvasWorkspace/     # 🎴 Основной холст
-│           └── KonvaCanvasWorkspace/ # 🎴 Холст Konva
+│
+├── widgets/
+│   ├── canvas-workspace/
+│   │   ├── lib/
+│   │   ├── model/
+│   │   └── ui/
+│   │       ├── CanvasWorkspace.module.css
+│   │       ├── CanvasWorkspace.tsx
+│   │       ├── KonvaCanvasWorkspace.module.css
+│   │       ├── KonvaCanvasWorkspace.tsx
+│   │       └── KonvaCanvasWorkspace.tsx
+│   ├── create-project-modal/ui/
+│   │   ├── CreateProjectModal.module.css
+│   │   ├── CreateProjectModal.tsx
+│   │   ├── ProjectForm.module.css
+│   │   ├── ProjectForm.tsx
+│   │   └── ProjectTemplateSelector.tsx
+│   ├── menu-sidebar/ui/
+│   │   ├── MenuSidebar.css
+│   │   └── MenuSidebar.tsx
+│   ├── pages-workspace/ui/
+│   │   ├── PageItem.module.css
+│   │   ├── PageItem.tsx
+│   │   ├── PageSideMenu.css
+│   │   ├── PageSideMenu.tsx
+│   │   ├── PagesSidebar.module.css
+│   │   └── PagesSidebar.tsx
+│   ├── projects-list/ui/
+│   │   ├── ProjectCard.module.css
+│   │   ├── ProjectCard.tsx
+│   │   ├── ProjectsList.module.css
+│   │   └── ProjectsList.tsx
+│   ├── projects-menu/ui/
+│   │   ├── ProjectsMenu.module.css
+│   │   └── ProjectsMenu.tsx
+│   ├── recent-projects/ui/
+│   │   ├── RecentProjects.module.css
+│   │   └── RecentProjects.tsx
+│   └── workspace-layout/
+│       ├── lib/
+│       ├── model/
+│       └── ui/
+│           ├── OfflineIndicator.tsx
+│           ├── WorkspaceContent.tsx
+│           ├── WorkspaceLayout.module.css
+│           └── WorkspaceLayout.tsx
 │
 ├── 📂 processes/              # 🔄 СЛОЖНЫЕ ПРОЦЕССЫ
 │   ├── 📂 canvas-actions/     # ✨ ДЕЙСТВИЯ С ХОЛСТОМ
@@ -235,24 +303,33 @@ src/
     │       │   └── imageStorage.ts
     │       │
     │       ├── 📂 indexedDB/   # 🗄️ IndexedDB (текущее)
-    │       │   ├── schema.ts      # 📐 Схема БД
-    │       │   ├── todoStorage.ts # 📝 Задачи
-    │       │   ├── imageStorage.ts # 🖼️ Изображения
-    │       │   ├── projectStorage.ts # 📁 Проекты
-    │       │   └── index.ts     # 📤 Экспорты
+    │       │   ├── lib/
+    │       │   │   └── zipExportService.ts
+    │       │   ├── imageStorage.ts
+    │       │   ├── index.ts
+    │       │   ├── nodeMapper.ts
+    │       │   ├── nodeTypes.ts
+    │       │   ├── projectStorage.ts
+    │       │   ├── schema.ts
+    │       │   ├── storageInspector.ts
+    │       │   └── todoStorage.ts
     │       │
     │       └── storage.ts      # ⚙️ Конфигурация
     │
-    ├── 📂 lib/                 # 🧰 УТИЛИТЫ
-    │   ├── 📂 geometry/        # 📐 Геометрические функции
-    │   │
-    │   ├── 📂 dom/             # 🖥️ РАБОТА С DOM
-    │   │   ├── fileService.ts  # 📁 Сервис для файлов
-    │   │   └── diagnostic.ts   # 🔍 Диагностика
-    │   │
-    │   └── 📂 state/           # 🗃️ НАСТРОЙКИ СОСТОЯНИЯ
-    │       ├── store.ts        # ⚙️ Конфигурация Redux
-    │       └── index.ts        # 📤 Экспорты
+    │   ├── lib/
+    │   │   ├── archive/
+    │   │   │   ├── implementations/
+    │   │   │   │   └── jszipAdapter.ts
+    │   │   │   ├── strategies/
+    │   │   │   │   ├── exportStrategy.ts
+    │   │   │   │   └── importStrategy.ts
+    │   │   │   ├── types.ts
+    │   │   │   └── zipService.ts
+    │   │   ├── geometry/
+    │   │   └── state/
+    │   │       ├── index.ts
+    │   │       └── store.ts
+    │   └── ui/
     │
     ├── 📂 ui/                  # 🎨 ОБЩИЕ КОМПОНЕНТЫ
     │   ├── 📂 kit/             # 🧩 ДИЗАЙН-СИСТЕМА
@@ -276,8 +353,6 @@ src/
         ├── routes.ts           # 🗺️ Маршруты
         └── env.ts              # 🌍 Переменные окружения
 ```
-
-
 
 <h3>🚀 Ключевые возможности</h3>
 
@@ -863,7 +938,6 @@ npm run format</code></pre>
   </li>
 </ol>
 
-
 <h2> Система коммитов Gitflow </h2>
 
 <h3>📋 Общая схема</h3>
@@ -1061,10 +1135,6 @@ git branch -d hotfix/fix-auth-crash
 [optional footer]
 </code></pre>
 
-
-
-
-
 <p><strong>Типы коммитов:</strong></p>
 
 <table>
@@ -1138,14 +1208,11 @@ git log --oneline -5
 git diff v0.0.1 v0.0.2
 </code></pre>
 
-
-
 <h4>Требования к PR</h4>
 <ul>
   <li>✅ Нет конфликтов с target-веткой</li>
   <li>✅ Обновлена документация (если нужно)</li>
 </ul>
-
 
 <h3> Что делать в нештатных ситуациях</h3>
 
@@ -1170,8 +1237,6 @@ git rebase --continue
 git reset --hard HEAD~1
 git push --force-with-lease
 </code></pre>
-
-
 
 <h3>📚 Полезные алиасы для Git</h3>
 
