@@ -5,7 +5,6 @@ import type { TypedUseSelectorHook } from 'react-redux'
 
 // Импорты редьюсеров
 import todoNodesReducer from '@features/todo-nodes/model/slice'
-import canvasDndReducer from '@features/canvas-dnd/model/slice'
 import contextMenuReducer from '@features/node-creations/model/slice'
 import todoFormReducer from '@features/todo-form/model/slice'
 import viewportReducer from '@features/canvas-viewport/model/slice'
@@ -66,7 +65,6 @@ import { selectionReducer } from '@features/selection'
 // Создаем корневой редьюсер
 const rootReducer = combineReducers({
   todoNodes: todoNodesReducer,
-  canvasDnd: canvasDndReducer,
   contextMenu: contextMenuReducer,
   todoForm: todoFormReducer,
   viewport: viewportReducer,
@@ -274,7 +272,6 @@ export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector
 // Вспомогательные селекторы
 export const selectTodoNodes = (state: RootState) => state.todoNodes
 export const selectViewport = (state: RootState) => state.viewport
-export const selectCanvasDnd = (state: RootState) => state.canvasDnd
 export const selectContextMenu = (state: RootState) => state.contextMenu
 export const selectTodoForm = (state: RootState) => state.todoForm
 export const selectProject = (state: RootState) => state.project // 🆕 ДОБАВЛЕНО

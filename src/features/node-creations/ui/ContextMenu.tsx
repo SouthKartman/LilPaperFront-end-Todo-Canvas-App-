@@ -16,6 +16,12 @@ import {
   setTodoPriority
 } from '@features/todo-nodes/model/slice';
 
+const getContextPageId = (context: unknown): string | undefined => {
+  if (!context || typeof context !== 'object' || !('pageId' in context)) return undefined;
+  const pageId = (context as { pageId?: unknown }).pageId;
+  return typeof pageId === 'string' ? pageId : undefined;
+};
+
 // Функция для получения пунктов меню плагинов с группировкой
 export const getPluginMenuItems = (
   onCreate: (pluginId: string) => void,
@@ -109,6 +115,7 @@ export const ContextMenu: React.FC = () => {
       width: plugin.defaultSize.width,
       height: plugin.defaultSize.height,
       position: createPosition,
+      pageId: getContextPageId(context),
       createdAt: Date.now(),
       updatedAt: Date.now(),
       pluginProps: plugin.getDefaultProps ? plugin.getDefaultProps() : {},
@@ -154,7 +161,10 @@ export const ContextMenu: React.FC = () => {
           
         case 'CREATE_TODO':
           if (item.payload?.position) {
-            dispatch(createTodoAtPosition({ position: item.payload.position }));
+            dispatch(createTodoAtPosition({
+              position: item.payload.position,
+              pageId: getContextPageId(context),
+            }));
           }
           break;
           

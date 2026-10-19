@@ -45,6 +45,12 @@ const pluginNodesSlice = createSlice({
   name: 'pluginNodes',
   initialState,
   reducers: {
+    importPluginNodes: (state, action: PayloadAction<Record<string, PluginNodeData>>) => {
+      Object.values(action.payload).forEach(node => {
+        state.nodes[node.id] = node;
+        if (!state.ids.includes(node.id)) state.ids.push(node.id);
+      });
+    },
     addPluginNode: (state, action: PayloadAction<PluginNodeData>) => {
       const node = action.payload;
       // Убеждаемся, что node сериализуемый
@@ -54,7 +60,7 @@ const pluginNodesSlice = createSlice({
           // Очищаем любые не-сериализуемые данные
           pluginProps: JSON.parse(JSON.stringify(node.pluginProps || {}))
         };
-        state.ids.push(node.id);
+        if (!state.ids.includes(node.id)) state.ids.push(node.id);
         console.log('✅ Plugin node added:', node.id, node.pluginId);
       } else {
         console.error('Invalid plugin node:', node);
@@ -207,6 +213,7 @@ export const selectPluginNodesCount = (state: RootState) => {
 };
 
 export const {
+  importPluginNodes,
   addPluginNode,
   updatePluginNode,
   deletePluginNode,

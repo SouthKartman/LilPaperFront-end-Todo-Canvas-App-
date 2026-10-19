@@ -9,13 +9,15 @@ interface PluginNodeRendererProps {
   onUpdate: (updates: Partial<PluginNodeData>) => void;
   onDelete?: () => void;
   onResize?: (width: number, height: number) => void;
-  onDragStart?: (e: React.MouseEvent, nodeId: string, rect: DOMRect) => void;
+  onDragStart?: (e: React.PointerEvent, nodeId: string, position: { x: number; y: number }) => void;
   onClick?: (e: React.MouseEvent, nodeId: string) => void;
   onDoubleClick?: (e: React.MouseEvent, nodeId: string) => void;
   onContextMenu?: (e: React.MouseEvent, nodeId: string) => void;
 }
 
 export const PluginNodeRenderer: React.FC<PluginNodeRendererProps> = (props) => {
+  const nodeRef = useRef<HTMLDivElement>(null);
+
   if (!props || !props.node) {
     console.error('PluginNodeRenderer: props or node is undefined', props);
     return (
@@ -49,8 +51,6 @@ export const PluginNodeRenderer: React.FC<PluginNodeRendererProps> = (props) => 
     onDoubleClick,
     onContextMenu
   } = props;
-  
-  const nodeRef = useRef<HTMLDivElement>(null);
   
   const plugin = PluginRegistry.getPlugin(node.pluginId);
   
@@ -98,10 +98,9 @@ export const PluginNodeRenderer: React.FC<PluginNodeRendererProps> = (props) => 
   const Component = plugin.component;
   
   const handleDragStartWrapper = (e: React.MouseEvent) => {
-    if (onDragStart && nodeRef.current) {
-      const rect = nodeRef.current.getBoundingClientRect();
-      onDragStart(e, node.id, rect);
-    }
+    // Plugin components still expose a mouse-based handle. The outer wrapper
+    // receives the actual PointerEvent used by the shared drag session.
+    e.stopPropagation();
   };
   
   const componentProps: PluginComponentProps = {
@@ -130,7 +129,13 @@ export const PluginNodeRenderer: React.FC<PluginNodeRendererProps> = (props) => 
   };
 
   return (
-    <div ref={nodeRef}>
+    <div
+      ref={nodeRef}
+      onPointerDown={(event) => {
+        if (event.button !== 0 || (event.target as HTMLElement).closest("button, input, textarea, select")) return;
+        onDragStart?.(event, node.id, node.position);
+      }}
+    >
       <Component {...componentProps} />
     </div>
   );

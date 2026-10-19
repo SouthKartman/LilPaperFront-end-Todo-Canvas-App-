@@ -3,7 +3,6 @@ import React, { useRef, useState, useEffect, useCallback } from "react";
 import { ImageNode as IImageNode } from "@entities/image/model/types";
 // import { ImagePreview } from "@shared/ui/kit/ImagePreview/ImagePreview";
 import { useAppDispatch } from "@shared/lib/state";
-import { useCanvasDnd } from "@features/canvas-dnd/lib/useCanvasDnd";
 import { useImageUrl } from "../lib/useImageUrl";
 import { FileService } from "@shared/lib/dom/fileService";
 import { Spinner } from "@/components/ui/spinner";
@@ -27,6 +26,9 @@ interface ImageNodeProps {
   isUploading?: boolean;
   uploadProgress?: number;
   skipLoading?: boolean; // Новый проп - пропустить состояние загрузки
+  isDragging?: boolean;
+  dragPosition?: { x: number; y: number };
+  onDragStart?: (event: React.PointerEvent, nodeId: string, position: { x: number; y: number }) => void;
 }
 
 export const ImageNode: React.FC<ImageNodeProps> = ({
@@ -39,11 +41,12 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
   isUploading = false,
   uploadProgress = 0,
   skipLoading = false,
+  isDragging = false,
+  dragPosition,
+  onDragStart,
 }) => {
   const dispatch = useAppDispatch();
   const nodeRef = useRef<HTMLDivElement>(null);
-  const { handleDragStart, isDragging, draggedNodeId, dragState } =
-    useCanvasDnd(undefined, node.id);
   const [isResizing, setIsResizing] = useState(false);
   const [resizeDirection, setResizeDirection] = useState<string | null>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -79,108 +82,8 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
     [retry],
   );
 
-  // Для плавности используем requestAnimationFrame
-  // const rafRef = useRef<number>();
-  const lastPositionRef = useRef<{ x: number; y: number }>({
-    x: node.position.x,
-    y: node.position.y,
-  });
-
-  // Эффект для плавного перемещения изображения во время DnD
-
-  useEffect(() => {
-    if (
-      !isDragging ||
-      draggedNodeId !== node.id ||
-      !dragState?.currentPosition ||
-      isResizing
-    ) {
-      return;
-    }
-
-    let rafId: number | null = null;
-    let cancelled = false;
-
-    const updatePosition = () => {
-      if (cancelled) return;
-
-      const canvasElement = nodeRef.current?.closest(
-        '[class*="canvas"]',
-      ) as HTMLElement | null;
-
-      if (!canvasElement) return;
-
-      const rect = canvasElement.getBoundingClientRect();
-
-      const mouseX = dragState.currentPosition.x - dragState.offset.x;
-      const mouseY = dragState.currentPosition.y - dragState.offset.y;
-
-      const canvasX =
-        (mouseX - rect.left - viewport.position.x) / viewport.scale;
-      const canvasY =
-        (mouseY - rect.top - viewport.position.y) / viewport.scale;
-
-      const targetX = canvasX - node.size.width / 2;
-      const targetY = canvasY - node.size.height / 2;
-
-      const current = lastPositionRef.current;
-      const speed = 0.8;
-
-      const dx = targetX - current.x;
-      const dy = targetY - current.y;
-
-      if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
-        const nextPosition = {
-          x: current.x + dx * speed,
-          y: current.y + dy * speed,
-        };
-
-        lastPositionRef.current = nextPosition;
-
-        dispatch(
-          moveImageNode({
-            id: node.id,
-            position: nextPosition,
-          }),
-        );
-
-        rafId = requestAnimationFrame(updatePosition);
-      }
-    };
-
-    rafId = requestAnimationFrame(updatePosition);
-
-    return () => {
-      cancelled = true;
-
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
-      }
-    };
-  }, [
-    isDragging,
-    draggedNodeId,
-    dragState?.currentPosition,
-    dragState?.offset,
-    node.id,
-    node.size.width,
-    node.size.height,
-    dispatch,
-    viewport.position.x,
-    viewport.position.y,
-    viewport.scale,
-    isResizing,
-  ]);
-
-  // Сброс lastPosition при окончании перетаскивания
-  useEffect(() => {
-    if (!isDragging || draggedNodeId !== node.id) {
-      lastPositionRef.current = { x: node.position.x, y: node.position.y };
-    }
-  }, [isDragging, draggedNodeId, node.id, node.position]);
-
   // Обработчик начала перетаскивания
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handlePointerDown = (e: React.PointerEvent) => {
     if (e.button !== 0) return;
 
     if ((e.target as HTMLElement).closest(`.${styles.resizeHandle}`)) return;
@@ -193,10 +96,7 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
       dispatch(selectImageNode(node.id));
     }
 
-    if (nodeRef.current) {
-      const rect = nodeRef.current.getBoundingClientRect();
-      handleDragStart(node.id, e, rect);
-    }
+    onDragStart?.(e, node.id, node.position);
   };
 
   const handleResizeStart = (e: React.MouseEvent, direction: string) => {
@@ -336,7 +236,7 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
     setImageLoaded(true);
   };
 
-  const isBeingDragged = isDragging && draggedNodeId === node.id;
+  const isBeingDragged = isDragging;
 
   useEffect(() => {
     if (isBeingDragged) {
@@ -346,8 +246,8 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
 
   // Стили с CSS transition для плавности
   const nodeStyle: React.CSSProperties = {
-    left: node.position.x,
-    top: node.position.y,
+    left: dragPosition?.x ?? node.position.x,
+    top: dragPosition?.y ?? node.position.y,
     width: node.size.width,
     height: node.size.height,
     zIndex: node.zIndex,
@@ -448,7 +348,7 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
         ${!imageLoaded ? styles.hideImage : ""}
       `}
       style={nodeStyle}
-      onMouseDown={handleMouseDown}
+      onPointerDown={handlePointerDown}
       onContextMenu={handleContextMenu}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}

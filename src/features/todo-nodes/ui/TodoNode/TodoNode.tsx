@@ -2,7 +2,6 @@
 
 import React, { useRef, useEffect, useState } from "react";
 import { createISODate, Todo } from "@entities/todo/model/types";
-import { useCanvasDnd } from "@features/canvas-dnd/lib/useCanvasDnd";
 import { useAppDispatch } from "@shared/lib/state";
 import {
   updateTodo,
@@ -23,6 +22,9 @@ interface TodoNodeProps {
   onClick?: (e: React.MouseEvent, nodeId: string) => void;
   onDoubleClick?: (e: React.MouseEvent, nodeId: string) => void;
   isSelected?: boolean;
+  isDragging?: boolean;
+  dragPosition?: { x: number; y: number };
+  onDragStart?: (event: React.PointerEvent, nodeId: string, position: { x: number; y: number }) => void;
 }
 
 
@@ -32,6 +34,9 @@ const TodoNodeComponent: React.FC<TodoNodeProps> = ({
   onClick,
   onDoubleClick,
   isSelected = false,
+  isDragging = false,
+  dragPosition,
+  onDragStart,
 }) => 
 {
   const dispatch = useAppDispatch();
@@ -44,10 +49,6 @@ const TodoNodeComponent: React.FC<TodoNodeProps> = ({
     node.description || "",
   );
 
-  const { handleDragStart, isDragging, draggedNodeId } = useCanvasDnd(
-    undefined,
-    node.id,
-  );
 
   useEffect(() => {
     if (node.isEditing && !isEditingTitle) {
@@ -161,7 +162,7 @@ const TodoNodeComponent: React.FC<TodoNodeProps> = ({
     }
   };
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handlePointerDown = (e: React.PointerEvent) => {
     console.log("🐭 MouseDown on node:", node.id, {
       ctrlKey: e.ctrlKey,
       metaKey: e.metaKey,
@@ -195,24 +196,9 @@ const TodoNodeComponent: React.FC<TodoNodeProps> = ({
       !e.metaKey &&
       !isEditingTitle &&
       !isEditingDesc &&
-      nodeRef.current
+      onDragStart
     ) {
-      const rect = nodeRef.current.getBoundingClientRect();
-      // console.log('📦 Starting drag with rect:', rect)
-      handleDragStart(node.id, e, rect);
-    }
-  };
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    e.stopPropagation();
-
-    if (onClick) {
-      onClick(e as any, node.id);
-    }
-
-    if (nodeRef.current && !isEditingTitle && !isEditingDesc) {
-      const rect = nodeRef.current.getBoundingClientRect();
-      handleDragStart(node.id, e, rect);
+      onDragStart(e, node.id, node.position);
     }
   };
 
@@ -242,15 +228,15 @@ const TodoNodeComponent: React.FC<TodoNodeProps> = ({
     }
   };
 
-  const isBeingDragged = isDragging && draggedNodeId === node.id;
+  const isBeingDragged = isDragging;
 
   return (
     <div
       ref={nodeRef}
       className={`${styles.node} ${isBeingDragged ? styles.dragging : ""} ${isSelected ? styles.selected : ""}`}
       style={{
-        left: node.position.x,
-        top: node.position.y,
+        left: dragPosition?.x ?? node.position.x,
+        top: dragPosition?.y ?? node.position.y,
         width: node.size?.width || 200,
         borderColor: getStatusColor(node.status),
         opacity: isBeingDragged ? 0.7 : 1,
@@ -261,8 +247,7 @@ const TodoNodeComponent: React.FC<TodoNodeProps> = ({
           ? "0 0 0 2px #3b82f6, 0 4px 6px -1px rgba(0, 0, 0, 0.1)"
           : "0 1px 3px 0 rgba(0, 0, 0, 0.1)",
       }}
-      onMouseDown={handleMouseDown}
-      onTouchStart={handleTouchStart}
+      onPointerDown={handlePointerDown}
       onContextMenu={handleContextMenu}
       onDoubleClick={handleDoubleClick}
       data-node-id={node.id}
@@ -431,12 +416,9 @@ const TodoNodeComponent: React.FC<TodoNodeProps> = ({
 
       <div
         className={styles.dragHandle}
-        onMouseDown={(e) => {
+        onPointerDown={(e) => {
           e.stopPropagation();
-          if (nodeRef.current) {
-            const rect = nodeRef.current.getBoundingClientRect();
-            handleDragStart(node.id, e, rect);
-          }
+          onDragStart?.(e, node.id, node.position);
         }}
       >
         ⋮⋮

@@ -6,6 +6,8 @@ import { TodoIndexedDBStorage } from '@shared/api/storage/indexedDB/todoStorage'
 import { ImageIndexedDBStorage } from '@shared/api/storage/indexedDB/imageStorage';
 import { importNodes } from '@features/todo-nodes/model/slice';
 import { importImages } from '@features/image-upload/model/slice';
+import { importPluginNodes } from '@features/plugin-nodes/model/slice';
+import type { PluginNodeData } from '@entities/plugin-node/model/types';
 import { loadProjectState } from '@features/project-management/model/slice';
 import { migrationService, MigrationProgress } from './migrationUtils';
 
@@ -89,10 +91,19 @@ export const useIndexedDBInit = () => {
         console.log(`📂 Загружено ${Object.keys(images).length} изображений в Redux`);
       }
 
-      // Загружаем проект
-      const project = await migrationService.checkData();
-      // Здесь нужно добавить загрузку проекта в Redux
-      
+      const pluginRows = await db.nodes.where('type').equals('iframe').toArray();
+      const plugins: Record<string, PluginNodeData> = {};
+      pluginRows.forEach(row => {
+        const node = row.data;
+        if (typeof node.id === 'string') {
+          plugins[node.id] = node as unknown as PluginNodeData;
+        }
+      });
+      if (Object.keys(plugins).length > 0 && dispatch) {
+        dispatch(importPluginNodes(plugins));
+        console.log(`📂 Загружено plugin nodes: ${Object.keys(plugins).length}`);
+      }
+
     } catch (error) {
       console.error('❌ Ошибка загрузки данных в Redux:', error);
     }

@@ -4,7 +4,6 @@ import { useDispatch, useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
 // import { useTodoNodes } from "@features/todo-nodes/lib/useTodoNode";
 import { TodoNode } from "@features/todo-nodes/ui/TodoNode/TodoNode";
-import { useCanvasDnd } from "@features/canvas-dnd/lib/useCanvasDnd";
 import { ContextMenu } from "@features/node-creations/ui/ContextMenu";
 import { showMenu } from "@features/node-creations/model/slice";
 import {
@@ -35,6 +34,7 @@ import {
   deselectImageNode,
   deleteImageNodes,
   addImageNode,
+  moveImageNode,
 } from "@features/image-upload/model/slice";
 import { ImageNode } from "@features/image-upload/ui/ImageNode";
 import { useImageDrop } from "@features/image-upload/lib/useImageDrop";
@@ -72,12 +72,13 @@ import {
   updatePluginNodePosition,
 } from "@features/plugin-nodes/model/slice";
 import { screenToCanvas } from "@/features/canvas-viewport/lib/canvasCoordinates";
+import { useCanvasDragSession } from "@features/canvas-dnd/model/useCanvasDragSession";
 
 export const CanvasWorkspace: React.FC = () => {
   const { projectId } = useParams();
 
   // const { nodes } = useTodoNodes();
-  const { dragState, isDragging, handleDragStart } = useCanvasDnd();
+
   const dispatch = useDispatch();
   const canvasRef = useRef<HTMLDivElement>(null);
   // const lastUpdateRef = useRef<number>(0);
@@ -95,6 +96,48 @@ export const CanvasWorkspace: React.FC = () => {
   const selectedPluginNodeIds = useSelector(selectSelectedPluginNodeIds);
 
   // const { openQuickForm, openForm } = useTodoForm();
+
+  const commitDrag = useCallback(
+    ({
+      nodeId,
+      nodeType,
+      position,
+    }: {
+      nodeId: string;
+      nodeType: "todo" | "image" | "plugin";
+      position: { x: number; y: number };
+    }) => {
+      switch (nodeType) {
+        case "todo":
+          dispatch(
+            todoNodesActions.moveTodo({
+              id: nodeId,
+              position,
+            }),
+          );
+          break;
+
+        case "image":
+          dispatch(
+            moveImageNode({
+              id: nodeId,
+              position,
+            }),
+          );
+          break;
+
+        case "plugin":
+          dispatch(
+            updatePluginNodePosition({
+              id: nodeId,
+              position,
+            }),
+          );
+          break;
+      }
+    },
+    [dispatch],
+  );
 
   const currentPage = useSelector(selectCurrentPage);
   const currentCanvas = useSelector(selectCurrentCanvas);
@@ -123,6 +166,13 @@ export const CanvasWorkspace: React.FC = () => {
     // handleResetViewport,
     // handleToggleGrid,
   } = useEnhancedViewport();
+
+  const { drag, startDrag, cancelDrag } = useCanvasDragSession({
+    canvasRef,
+    viewport,
+    onCommit: commitDrag,
+  });
+  const isDragging = drag !== null;
 
   const {
     // marquee,
@@ -246,8 +296,8 @@ export const CanvasWorkspace: React.FC = () => {
       ...selectedNodes.map((node) => node.id),
     ]);
 
-    if (isDragging && dragState?.draggedNodeId) {
-      pinnedIds.add(dragState.draggedNodeId);
+    if (drag) {
+      pinnedIds.add(drag.nodeId);
     }
 
     return todoSpatialIndex.query(visibleBounds, [...pinnedIds]);
@@ -260,7 +310,7 @@ export const CanvasWorkspace: React.FC = () => {
     selectedTodoIds,
     selectedNodes,
     isDragging,
-    dragState?.draggedNodeId,
+    drag?.nodeId,
   ]);
 
   const visibleImageNodes = React.useMemo(() => {
@@ -273,8 +323,8 @@ export const CanvasWorkspace: React.FC = () => {
       ...selectedImageNodes.map((node) => node.id),
     ]);
 
-    if (isDragging && dragState?.draggedNodeId) {
-      pinnedIds.add(dragState.draggedNodeId);
+    if (drag) {
+      pinnedIds.add(drag.nodeId);
     }
 
     return imageSpatialIndex.query(visibleBounds, [...pinnedIds]);
@@ -287,7 +337,7 @@ export const CanvasWorkspace: React.FC = () => {
     selectedImageIds,
     selectedImageNodes,
     isDragging,
-    dragState?.draggedNodeId,
+    drag?.nodeId,
   ]);
 
   const visiblePluginNodes = React.useMemo(() => {
@@ -297,8 +347,8 @@ export const CanvasWorkspace: React.FC = () => {
 
     const pinnedIds = new Set(selectedPluginNodeIds);
 
-    if (isDragging && dragState?.draggedNodeId) {
-      pinnedIds.add(dragState.draggedNodeId);
+    if (drag) {
+      pinnedIds.add(drag.nodeId);
     }
 
     return pluginSpatialIndex.query(visibleBounds, [...pinnedIds]);
@@ -310,7 +360,7 @@ export const CanvasWorkspace: React.FC = () => {
     visibleBounds,
     selectedPluginNodeIds,
     isDragging,
-    dragState?.draggedNodeId,
+    drag?.nodeId,
   ]);
   // const previewChangeKey = React.useMemo(
   //   () =>
@@ -480,11 +530,12 @@ export const CanvasWorkspace: React.FC = () => {
           position,
           title,
           priority: "medium",
+          pageId: currentPage?.id,
         }),
       );
       debouncedSave();
     },
-    [dispatch, debouncedSave],
+    [dispatch, debouncedSave, currentPage?.id],
   );
 
   const handleClearAllSelection = useCallback(() => {
@@ -628,11 +679,11 @@ export const CanvasWorkspace: React.FC = () => {
           x: e.clientX,
           y: e.clientY,
           items: menuItems,
-          context: { position: canvasPosition },
+          context: { position: canvasPosition, pageId: currentPage?.id },
         }),
       );
     },
-    [convertScreenToCanvas, dispatch],
+    [convertScreenToCanvas, currentPage?.id, dispatch],
   );
 
   const handleCanvasDoubleClick = useCallback(
@@ -645,11 +696,10 @@ export const CanvasWorkspace: React.FC = () => {
 
   // Обработчик для перетаскивания плагин-нод
   const handlePluginDragStart = useCallback(
-    (e: React.MouseEvent, nodeId: string, rect: DOMRect) => {
-      console.log("🎯 Plugin node drag start:", nodeId);
-      handleDragStart(nodeId, e, rect);
+    (event: React.PointerEvent, nodeId: string, position: { x: number; y: number }) => {
+      startDrag({ nodeId, nodeType: "plugin", nodePosition: position, clientX: event.clientX, clientY: event.clientY, pointerId: event.pointerId });
     },
-    [handleDragStart],
+    [startDrag],
   );
 
   // ============================================
@@ -702,98 +752,15 @@ export const CanvasWorkspace: React.FC = () => {
     };
   }, []);
 
+  // A session is valid only while its model node remains on the current page.
   useEffect(() => {
-    if (
-      !isDragging ||
-      !dragState?.draggedNodeId ||
-      !dragState?.currentPosition ||
-      !canvasRef.current
-    )
-      return;
-
-    // Используем requestAnimationFrame для позиции
-    let rafId: number | null = null;
-
-    const updatePosition = () => {
-      const rect = canvasRef.current?.getBoundingClientRect();
-      if (!rect) return;
-
-      const mouseX = dragState.currentPosition.x - dragState.offset.x;
-      const mouseY = dragState.currentPosition.y - dragState.offset.y;
-      const relativeX = mouseX - rect.left;
-      const relativeY = mouseY - rect.top;
-
-      const canvasX = (relativeX - viewport.position.x) / viewport.scale;
-      const canvasY = (relativeY - viewport.position.y) / viewport.scale;
-
-      const todoNode = todoNodes.find((n) => n.id === dragState.draggedNodeId);
-      if (todoNode) {
-        const nextPosition = {
-          x: canvasX - (todoNode.size?.width || 200) / 2,
-          y: canvasY - (todoNode.size?.height || 150) / 2,
-        };
-
-        // Не отправляем Redux action, если позиция уже совпадает.
-        const positionUnchanged =
-          Math.abs(todoNode.position.x - nextPosition.x) < 0.01 &&
-          Math.abs(todoNode.position.y - nextPosition.y) < 0.01;
-
-        if (positionUnchanged) {
-          rafId = null;
-          return;
-        }
-
-        dispatch(
-          todoNodesActions.moveTodo({
-            id: dragState.draggedNodeId,
-            position: nextPosition,
-          }),
-        );
-      } else {
-        const pluginNode = pluginNodes.find(
-          (n) => n.id === dragState.draggedNodeId,
-        );
-        if (pluginNode) {
-          const nextPosition = {
-            x: canvasX - pluginNode.width / 2,
-            y: canvasY - pluginNode.height / 2,
-          };
-
-          const positionUnchanged =
-            Math.abs(pluginNode.position.x - nextPosition.x) < 0.01 &&
-            Math.abs(pluginNode.position.y - nextPosition.y) < 0.01;
-
-          if (positionUnchanged) {
-            rafId = null;
-            return;
-          }
-
-          dispatch(
-            updatePluginNodePosition({
-              id: dragState.draggedNodeId,
-              position: nextPosition,
-            }),
-          );
-        }
-      }
-      rafId = null;
-    };
-
-    rafId = requestAnimationFrame(updatePosition);
-
-    return () => {
-      if (rafId) cancelAnimationFrame(rafId);
-    };
-  }, [
-    isDragging,
-    dragState?.currentPosition,
-    dragState?.offset,
-    dragState?.draggedNodeId,
-    viewport,
-    todoNodes,
-    pluginNodes,
-    dispatch,
-  ]);
+    if (!drag) return;
+    const exists =
+      (drag.nodeType === "todo" && currentCanvasNodes.some((node) => node.id === drag.nodeId)) ||
+      (drag.nodeType === "image" && imageNodes.some((node) => node.id === drag.nodeId)) ||
+      (drag.nodeType === "plugin" && currentCanvasPluginNodes.some((node) => node.id === drag.nodeId));
+    if (!exists) cancelDrag();
+  }, [drag, currentCanvasNodes, imageNodes, currentCanvasPluginNodes, cancelDrag]);
 
   // Clipboard permission
   useEffect(() => {
@@ -1254,6 +1221,9 @@ export const CanvasWorkspace: React.FC = () => {
               onClick={handleTodoClick}
               onDoubleClick={handleTodoDoubleClick}
               isSelected={isTodoSelected(node.id)}
+              isDragging={drag?.nodeType === "todo" && drag.nodeId === node.id}
+              dragPosition={drag?.nodeType === "todo" && drag.nodeId === node.id ? drag.currentPosition : undefined}
+              onDragStart={(event, nodeId, position) => startDrag({ nodeId, nodeType: "todo", nodePosition: position, clientX: event.clientX, clientY: event.clientY, pointerId: event.pointerId })}
             />
           ))}
 
@@ -1305,6 +1275,9 @@ export const CanvasWorkspace: React.FC = () => {
               key={node.id}
               node={node}
               isSelected={isImageSelected(node.id)}
+              isDragging={drag?.nodeType === "image" && drag.nodeId === node.id}
+              dragPosition={drag?.nodeType === "image" && drag.nodeId === node.id ? drag.currentPosition : undefined}
+              onDragStart={(event, nodeId, position) => startDrag({ nodeId, nodeType: "image", nodePosition: position, clientX: event.clientX, clientY: event.clientY, pointerId: event.pointerId })}
               viewport={viewport}
               skipLoading={justUploadedIds.has(node.id)}
               onClick={handleImageClick}
@@ -1320,15 +1293,15 @@ export const CanvasWorkspace: React.FC = () => {
               key={node.id}
               style={{
                 position: "absolute",
-                left: node.position?.x || 100,
-                top: node.position?.y || 100,
+                left: drag?.nodeType === "plugin" && drag.nodeId === node.id ? drag.currentPosition.x : node.position?.x || 100,
+                top: drag?.nodeType === "plugin" && drag.nodeId === node.id ? drag.currentPosition.y : node.position?.y || 100,
                 zIndex: node.zIndex || 10,
               }}
             >
               <PluginNodeRenderer
                 node={node}
                 isSelected={selectedPluginNodeIds.includes(node.id)}
-                isDragging={isDragging && dragState?.draggedNodeId === node.id}
+                isDragging={drag?.nodeType === "plugin" && drag.nodeId === node.id}
                 onUpdate={(updates) =>
                   dispatch(updatePluginNode({ id: node.id, ...updates }))
                 }
@@ -1378,19 +1351,6 @@ export const CanvasWorkspace: React.FC = () => {
           ))}
         </div>
 
-        {isDragging && dragState?.draggedNodeId && (
-          <div
-            className={styles.dragPreview}
-            style={{
-              left: dragState.currentPosition.x - dragState.offset.x,
-              top: dragState.currentPosition.y - dragState.offset.y,
-              transform: "none",
-              position: "fixed",
-            }}
-          >
-            Перемещение...
-          </div>
-        )}
 
         <ImageDropOverlay
           isVisible={isDraggingImage}

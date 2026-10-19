@@ -1,185 +1,82 @@
-import { Middleware } from '@reduxjs/toolkit'
-import { RootState } from '@shared/lib/state/store'
-import { addNodeToCanvas, removeNodeFromCanvas } from '@features/project-management/model/slice'
+import { Middleware } from '@reduxjs/toolkit';
+import { RootState } from '@shared/lib/state/store';
+import { addNodeToCanvas, removeNodeFromCanvas } from '@features/project-management/model/slice';
 
-export const canvasSyncMiddleware: Middleware = (store) => (next) => (action) => {
-  const result = next(action)
-  const state = store.getState() as RootState
+type NodeWithPage = { id: string; pageId?: string };
 
-  // Автоматически добавляем созданную ноду задачи на текущее полотно
-  if (action.type === 'todoNodes/createTodoAtPosition' || action.type === 'todoNodes/createTodo') {
-    const currentProject = state.project.currentProjectId 
-      ? state.project.projects[state.project.currentProjectId] 
-      : null
-    
-    if (currentProject?.currentPageId) {
-      const page = state.project.pages[currentProject.currentPageId]
-      if (page?.canvasId) {
-        setTimeout(() => {
-          const nodeIds = Object.keys(state.todoNodes.nodes)
-          const lastNodeId = nodeIds[nodeIds.length - 1]
-          
-          if (lastNodeId) {
-            store.dispatch(addNodeToCanvas({
-              canvasId: page.canvasId,
-              nodeId: lastNodeId,
-            }))
-          }
-        }, 50)
-      }
-    }
+const canvasIdForPage = (state: RootState, pageId?: string) =>
+  pageId ? state.project.pages[pageId]?.canvasId : undefined;
+
+const nodeIdsAddedByAction = (
+  before: Record<string, unknown>,
+  after: Record<string, unknown>,
+) => Object.keys(after).filter(id => !(id in before));
+
+/**
+ * Keeps a node slice and Canvas.nodes in sync. The node's own pageId is the
+ * source of truth: using the current page here is wrong when a page changes
+ * while an upload or another async create operation is completing.
+ */
+export const canvasSyncMiddleware: Middleware = store => next => action => {
+  const previous = store.getState() as RootState;
+  const type = (action as { type?: string }).type ?? '';
+  const payload = (action as { payload?: unknown }).payload;
+
+  const deleted: NodeWithPage[] = [];
+  const rememberDeleted = (nodes: Record<string, NodeWithPage>, ids: string[]) => {
+    ids.forEach(id => {
+      const node = nodes[id];
+      if (node) deleted.push(node);
+    });
+  };
+
+  if (type === 'todoNodes/deleteTodo' && typeof payload === 'string') {
+    rememberDeleted(previous.todoNodes.nodes, [payload]);
+  } else if (type === 'todoNodes/deleteSelectedTodos') {
+    rememberDeleted(previous.todoNodes.nodes, previous.todoNodes.selectedNodeIds);
+  } else if (type === 'imageNodes/deleteImageNode' && typeof payload === 'string') {
+    rememberDeleted(previous.imageNodes.nodes, [payload]);
+  } else if (type === 'imageNodes/deleteImageNodes' && Array.isArray(payload)) {
+    rememberDeleted(previous.imageNodes.nodes, payload.filter((id): id is string => typeof id === 'string'));
+  } else if (type === 'pluginNodes/deletePluginNode' && typeof payload === 'string') {
+    rememberDeleted(previous.pluginNodes.nodes, [payload]);
+  } else if (type === 'pluginNodes/deleteMultiplePluginNodes' && Array.isArray(payload)) {
+    rememberDeleted(previous.pluginNodes.nodes, payload.filter((id): id is string => typeof id === 'string'));
   }
 
-  // Добавляем изображение на холст при создании
-  if (action.type === 'imageNodes/addImageNode' && action.payload) {
-    const currentProject = state.project.currentProjectId 
-      ? state.project.projects[state.project.currentProjectId] 
-      : null
-    
-    if (currentProject?.currentPageId) {
-      const page = state.project.pages[currentProject.currentPageId]
-      if (page?.canvasId) {
-        const imageId = action.payload.id
-        store.dispatch(addNodeToCanvas({
-          canvasId: page.canvasId,
-          nodeId: imageId,
-        }))
+  const result = next(action);
+  const current = store.getState() as RootState;
+  const created: NodeWithPage[] = [];
+
+  if (type === 'todoNodes/createTodo' || type === 'todoNodes/createTodoAtPosition' || type === 'todoNodes/createTodoForPage') {
+    nodeIdsAddedByAction(previous.todoNodes.nodes, current.todoNodes.nodes)
+      .map(id => current.todoNodes.nodes[id])
+      .filter(Boolean)
+      .forEach(node => created.push(node));
+  } else if (type === 'imageNodes/addImageNode') {
+    const node = payload as NodeWithPage;
+    if (node?.id && current.imageNodes.nodes[node.id]) created.push(current.imageNodes.nodes[node.id]);
+  } else if (type === 'imageNodes/addImageNodes' && Array.isArray(payload)) {
+    payload.forEach(node => {
+      if (node && typeof node === 'object' && 'id' in node) {
+        const id = (node as NodeWithPage).id;
+        if (current.imageNodes.nodes[id]) created.push(current.imageNodes.nodes[id]);
       }
-    }
+    });
+  } else if (type === 'pluginNodes/addPluginNode') {
+    const node = payload as NodeWithPage;
+    if (node?.id && current.pluginNodes.nodes[node.id]) created.push(current.pluginNodes.nodes[node.id]);
   }
 
-  // Добавляем несколько изображений на холст
-  if (action.type === 'imageNodes/addImageNodes' && action.payload) {
-    const currentProject = state.project.currentProjectId 
-      ? state.project.projects[state.project.currentProjectId] 
-      : null
-    
-    if (currentProject?.currentPageId) {
-      const page = state.project.pages[currentProject.currentPageId]
-      if (page?.canvasId) {
-        action.payload.forEach((image: any) => {
-          store.dispatch(addNodeToCanvas({
-            canvasId: page.canvasId,
-            nodeId: image.id,
-          }))
-        })
-      }
-    }
-  }
+  created.forEach(node => {
+    const canvasId = canvasIdForPage(current, node.pageId);
+    if (canvasId) store.dispatch(addNodeToCanvas({ canvasId, nodeId: node.id }));
+  });
 
-  // Удаляем ноду задачи с полотна (при удалении из БД)
-  if (action.type === 'todoNodes/deleteFromDB/fulfilled' && action.payload) {
-    const nodeId = action.payload
-    const currentProject = state.project.currentProjectId 
-      ? state.project.projects[state.project.currentProjectId] 
-      : null
-    
-    if (currentProject?.currentPageId) {
-      const page = state.project.pages[currentProject.currentPageId]
-      if (page?.canvasId) {
-        store.dispatch(removeNodeFromCanvas({
-          canvasId: page.canvasId,
-          nodeId,
-        }))
-      }
-    }
-  }
+  deleted.forEach(node => {
+    const canvasId = canvasIdForPage(previous, node.pageId);
+    if (canvasId) store.dispatch(removeNodeFromCanvas({ canvasId, nodeId: node.id }));
+  });
 
-  // Массовое удаление нод с полотна
-  if (action.type === 'todoNodes/deleteMultipleFromDB/fulfilled' && action.payload) {
-    const nodeIds = action.payload
-    const currentProject = state.project.currentProjectId 
-      ? state.project.projects[state.project.currentProjectId] 
-      : null
-    
-    if (currentProject?.currentPageId) {
-      const page = state.project.pages[currentProject.currentPageId]
-      if (page?.canvasId) {
-        nodeIds.forEach((nodeId: string) => {
-          store.dispatch(removeNodeFromCanvas({
-            canvasId: page.canvasId,
-            nodeId,
-          }))
-        })
-      }
-    }
-  }
-
-  // Удаляем ноду задачи с полотна (старый способ - для совместимости)
-  if (action.type === 'todoNodes/deleteTodo' && action.payload) {
-    const nodeId = action.payload as string
-    const currentProject = state.project.currentProjectId 
-      ? state.project.projects[state.project.currentProjectId] 
-      : null
-    
-    if (currentProject?.currentPageId) {
-      const page = state.project.pages[currentProject.currentPageId]
-      if (page?.canvasId) {
-        store.dispatch(removeNodeFromCanvas({
-          canvasId: page.canvasId,
-          nodeId,
-        }))
-      }
-    }
-  }
-
-  // Удаляем изображение с полотна
-  if (action.type === 'imageNodes/deleteImageNode' && action.payload) {
-    const nodeId = action.payload as string
-    const currentProject = state.project.currentProjectId 
-      ? state.project.projects[state.project.currentProjectId] 
-      : null
-    
-    if (currentProject?.currentPageId) {
-      const page = state.project.pages[currentProject.currentPageId]
-      if (page?.canvasId) {
-        store.dispatch(removeNodeFromCanvas({
-          canvasId: page.canvasId,
-          nodeId,
-        }))
-      }
-    }
-  }
-
-  // Удаляем несколько изображений
-  if (action.type === 'imageNodes/deleteImageNodes' && action.payload) {
-    const nodeIds = action.payload as string[]
-    const currentProject = state.project.currentProjectId 
-      ? state.project.projects[state.project.currentProjectId] 
-      : null
-    
-    if (currentProject?.currentPageId) {
-      const page = state.project.pages[currentProject.currentPageId]
-      if (page?.canvasId) {
-        nodeIds.forEach(nodeId => {
-          store.dispatch(removeNodeFromCanvas({
-            canvasId: page.canvasId,
-            nodeId,
-          }))
-        })
-      }
-    }
-  }
-
-  // Массовое удаление выделенных задач
-  if (action.type === 'todoNodes/deleteSelectedTodos') {
-    const selectedNodeIds = state.todoNodes.selectedNodeIds
-    const currentProject = state.project.currentProjectId 
-      ? state.project.projects[state.project.currentProjectId] 
-      : null
-    
-    if (currentProject?.currentPageId) {
-      const page = state.project.pages[currentProject.currentPageId]
-      if (page?.canvasId) {
-        selectedNodeIds.forEach(nodeId => {
-          store.dispatch(removeNodeFromCanvas({
-            canvasId: page.canvasId,
-            nodeId,
-          }))
-        })
-      }
-    }
-  }
-
-  return result
-}
+  return result;
+};

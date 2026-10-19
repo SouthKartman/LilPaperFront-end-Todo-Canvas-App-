@@ -74,6 +74,16 @@ const IMAGE_SAVE_ACTIONS = [
 
 ];
 
+const PLUGIN_SAVE_ACTIONS = [
+  'pluginNodes/addPluginNode',
+  'pluginNodes/updatePluginNode',
+  'pluginNodes/updatePluginNodePosition',
+  'pluginNodes/resizePluginNode',
+  'pluginNodes/setPluginNodeZIndex',
+  'pluginNodes/deletePluginNode',
+  'pluginNodes/deleteMultiplePluginNodes',
+];
+
 const IMAGE_DELETE_ACTIONS = new Set([
 
   'imageNodes/deleteImageNode',
@@ -609,8 +619,8 @@ function createDBNode(
       y: node.position?.y ?? 0,
     },
     size: {
-      width: node.size?.width ?? 200,
-      height: node.size?.height ?? 150,
+      width: node.size?.width ?? node.width ?? 200,
+      height: node.size?.height ?? node.height ?? 150,
     },
     zIndex: node.zIndex ?? 1,
     data: {
@@ -638,10 +648,11 @@ function enqueueUnifiedNodeWrite(task: () => Promise<void>): Promise<void> {
 
 async function saveUnifiedNodes(
   state: RootState,
-  deletedTodoIds: string[] = [],
+  deletedNodes: Array<{ id: string; type: DBNode['type'] }> = [],
 ): Promise<void> {
   const todos = Object.values(state.todoNodes?.nodes ?? {});
   const images = Object.values(state.imageNodes?.nodes ?? {});
+  const plugins = Object.values(state.pluginNodes?.nodes ?? {});
 
   const nodes: DBNode[] = [
     ...todos
@@ -650,28 +661,31 @@ async function saveUnifiedNodes(
     ...images
       .map(node => createDBNode(node, 'image', state))
       .filter((node): node is DBNode => node !== null),
+    // The existing IndexedDB schema already reserves the `iframe` node type.
+    // Plugin-specific type and props remain intact in `data`.
+    ...plugins
+      .map(node => createDBNode(node, 'iframe', state))
+      .filter((node): node is DBNode => node !== null),
   ];
 
   await enqueueUnifiedNodeWrite(async () => {
-    const uniqueDeletedIds = [
-      ...new Set(deletedTodoIds.filter(Boolean)),
-    ];
+    const uniqueDeletedNodes = Array.from(
+      new Map(deletedNodes.filter(node => node.id).map(node => [`${node.type}:${node.id}`, node])).values(),
+    );
 
     await db.transaction(
       'rw',
       db.nodes,
       db.todos,
       async () => {
-        if (uniqueDeletedIds.length > 0) {
-          const storedIds = uniqueDeletedIds.map(id =>
-            getStoredNodeId('todo', id),
-          );
+        if (uniqueDeletedNodes.length > 0) {
+          const storedIds = uniqueDeletedNodes.map(node => getStoredNodeId(node.type, node.id));
 
-          // Удаляем только todo:<id>, не затрагивая image:<id>.
           await db.nodes.bulkDelete(storedIds);
-
-          // Удаляем записи из legacy-хранилища.
-          await db.todos.bulkDelete(uniqueDeletedIds);
+          const deletedTodoIds = uniqueDeletedNodes
+            .filter(node => node.type === 'todo')
+            .map(node => node.id);
+          if (deletedTodoIds.length > 0) await db.todos.bulkDelete(deletedTodoIds);
         }
 
         if (nodes.length > 0) {
@@ -710,7 +724,7 @@ export const autoSaveMiddleware: Middleware = store => next => action => {
       : [];
 
     if (deletedTodoIds.length > 0) {
-      void saveUnifiedNodes(currentAfterReducer, deletedTodoIds).catch(error => {
+      void saveUnifiedNodes(currentAfterReducer, deletedTodoIds.map(id => ({ id, type: 'todo' }))).catch(error => {
         console.error('Не удалось синхронизировать удаление задач в nodes:', error);
       });
     }
@@ -725,6 +739,26 @@ export const autoSaveMiddleware: Middleware = store => next => action => {
         await saveUnifiedNodes(current);
         console.log(`💾 Сохранено задач: ${Object.keys(todoNodes).length}`);
       }
+    });
+  }
+
+  if (PLUGIN_SAVE_ACTIONS.includes(actionType)) {
+    const currentAfterReducer = store.getState() as RootState;
+    const previousPlugins = previousState.pluginNodes?.nodes ?? {};
+    const currentPlugins = currentAfterReducer.pluginNodes?.nodes ?? {};
+    const isPluginDeletion = actionType === 'pluginNodes/deletePluginNode' || actionType === 'pluginNodes/deleteMultiplePluginNodes';
+    const deletedPlugins = isPluginDeletion
+      ? Object.keys(previousPlugins).filter(id => !(id in currentPlugins)).map(id => ({ id, type: 'iframe' as const }))
+      : [];
+
+    if (deletedPlugins.length > 0) {
+      void saveUnifiedNodes(currentAfterReducer, deletedPlugins).catch(error => {
+        console.error('Не удалось синхронизировать удаление plugin node:', error);
+      });
+    }
+
+    debounce('plugins', async () => {
+      await saveUnifiedNodes(store.getState() as RootState);
     });
   }
 
@@ -852,9 +886,23 @@ export const autoSaveMiddleware: Middleware = store => next => action => {
 
       .filter(Boolean);
 
+    const pluginIds = Object.values(previousState.pluginNodes?.nodes ?? {})
+
+      .filter(plugin => pageIds.has(plugin.pageId ?? ''))
+
+      .map(plugin => plugin.id)
+
+      .filter(Boolean);
+
     if (imageIds.length > 0) {
 
       store.dispatch({ type: 'imageNodes/deleteImageNodes', payload: imageIds });
+
+    }
+
+    if (pluginIds.length > 0) {
+
+      store.dispatch({ type: 'pluginNodes/deleteMultiplePluginNodes', payload: pluginIds });
 
     }
 

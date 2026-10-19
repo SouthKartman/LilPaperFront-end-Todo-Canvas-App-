@@ -4,10 +4,12 @@ import { useDispatch, useSelector } from 'react-redux'
 import { AppDispatch, RootState } from '@shared/lib/state/store'
 import { openForm, openQuickForm, closeForm, updateFormData } from '../model/slice'
 import { createTodoAtPosition } from '@features/todo-nodes/model/slice'
+import { selectCurrentPageId } from '@features/project-management/model/selectors'
 
 export const useTodoForm = () => {
   const dispatch = useDispatch<AppDispatch>()
   const formState = useSelector((state: RootState) => state.todoForm)
+  const currentPageId = useSelector(selectCurrentPageId)
 
   const handleOpenForm = useCallback((position?: { x: number; y: number }) => {
     console.log('Opening form at:', position)
@@ -45,10 +47,11 @@ export const useTodoForm = () => {
       description: formData.description,
       priority: formData.priority,
       type: formData.type,
+      pageId: currentPageId || undefined,
     }))
 
     dispatch(closeForm())
-  }, [dispatch, formState])
+  }, [dispatch, formState, currentPageId])
 
   return {
     isOpen: formState.isOpen,
