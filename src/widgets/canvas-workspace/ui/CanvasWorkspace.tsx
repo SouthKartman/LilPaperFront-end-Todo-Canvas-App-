@@ -71,6 +71,7 @@ import {
   clearPluginSelection,
   updatePluginNodePosition,
 } from "@features/plugin-nodes/model/slice";
+import { screenToCanvas } from "@/features/canvas-viewport/lib/canvasCoordinates";
 
 export const CanvasWorkspace: React.FC = () => {
   const { projectId } = useParams();
@@ -369,16 +370,19 @@ export const CanvasWorkspace: React.FC = () => {
   // 👇 ФУНКЦИИ (useCallback)
   const convertScreenToCanvas = useCallback(
     (screenX: number, screenY: number) => {
-      if (!canvasRef.current) return { x: 0, y: 0 };
+      const canvas = canvasRef.current;
 
-      const rect = canvasRef.current.getBoundingClientRect();
-      const relativeX = screenX - rect.left;
-      const relativeY = screenY - rect.top;
+      if (!canvas) {
+        return { x: 0, y: 0 };
+      }
 
-      const canvasX = (relativeX - viewport.position.x) / viewport.scale;
-      const canvasY = (relativeY - viewport.position.y) / viewport.scale;
+      const rect = canvas.getBoundingClientRect();
 
-      return { x: canvasX, y: canvasY };
+      return screenToCanvas(
+        { x: screenX, y: screenY },
+        { left: rect.left, top: rect.top },
+        viewport,
+      );
     },
     [viewport],
   );

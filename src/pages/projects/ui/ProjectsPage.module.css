@@ -1,10 +1,18 @@
 /* src/pages/projects/ui/ProjectsPage.module.css */
 .page {
+  width: 100%;
+  min-height: 100%;
+  padding: 32px 90px;
+  background: #ffffff;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow: auto;
+}
+
+.contentPage {
+  width: 100%;
   max-width: 1400px;
   margin: 0 auto;
-  padding: 32px 24px;
-  background: #ffffff;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 /* Header */
@@ -344,4 +352,10 @@
   .grid.grid {
     grid-template-columns: 1fr;
   }
+}
+
+.scrollTrigger_menu {
+  position: absolute;
+  top: 340px;
+  left: 5px;
 }
