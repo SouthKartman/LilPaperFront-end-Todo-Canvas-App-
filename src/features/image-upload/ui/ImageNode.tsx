@@ -28,7 +28,11 @@ interface ImageNodeProps {
   skipLoading?: boolean; // Новый проп - пропустить состояние загрузки
   isDragging?: boolean;
   dragPosition?: { x: number; y: number };
-  onDragStart?: (event: React.PointerEvent, nodeId: string, position: { x: number; y: number }) => void;
+  onDragStart?: (
+    event: React.PointerEvent,
+    nodeId: string,
+    position: { x: number; y: number },
+  ) => void;
 }
 
 export const ImageNode: React.FC<ImageNodeProps> = ({
@@ -207,15 +211,15 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
     e.stopPropagation();
     onClick?.(e, node.id);
 
-    if (e.ctrlKey || e.metaKey) {
-      if (isSelected) {
-        dispatch(deselectImageNode(node.id));
-      } else {
-        dispatch(selectImageNode(node.id));
-      }
-    } else if (!isSelected) {
-      dispatch(selectImageNode(node.id));
-    }
+    // if (e.ctrlKey || e.metaKey) {
+    //   if (isSelected) {
+    //     dispatch(deselectImageNode(node.id));
+    //   } else {
+    //     dispatch(selectImageNode(node.id));
+    //   }
+    // } else if (!isSelected) {
+    //   dispatch(selectImageNode(node.id));
+    // }
   };
 
   const handleDoubleClick = (e: React.MouseEvent) => {

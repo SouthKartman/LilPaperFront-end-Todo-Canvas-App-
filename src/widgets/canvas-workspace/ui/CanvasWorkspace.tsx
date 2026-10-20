@@ -577,21 +577,33 @@ export const CanvasWorkspace: React.FC = () => {
   );
 
   const handleTodoClick = useCallback(
-    (e: React.MouseEvent, nodeId: string) => {
+    (e: React.MouseEvent | React.PointerEvent, nodeId: string) => {
       e.stopPropagation();
 
-      const isMultiSelect = (e.ctrlKey || e.metaKey) && e.altKey;
+      const isToggle = e.ctrlKey || e.metaKey;
 
-      if (isMultiSelect) {
+      if (isToggle) {
         if (isTodoSelectedRef.current(nodeId)) {
           dispatch(todoNodesActions.deselectNode(nodeId));
         } else {
           dispatch(todoNodesActions.selectNode(nodeId));
         }
-      } else {
-        handleClearAllSelection();
-        dispatch(todoNodesActions.selectNode(nodeId));
+
+        return;
       }
+
+      if (e.shiftKey) {
+        if (!isTodoSelectedRef.current(nodeId)) {
+          dispatch(todoNodesActions.selectNode(nodeId));
+        }
+
+        return;
+      }
+
+      // Обычный клик оставляем без изменений по смыслу:
+      // очищаем выделение остальных типов и выбираем одну Todo.
+      handleClearAllSelection();
+      dispatch(todoNodesActions.selectNode(nodeId));
     },
     [dispatch, handleClearAllSelection],
   );
@@ -599,9 +611,26 @@ export const CanvasWorkspace: React.FC = () => {
   const handleTodoDoubleClick = useCallback(
     (e: React.MouseEvent, nodeId: string) => {
       e.stopPropagation();
-      dispatch(todoNodesActions.startEditingTodo(nodeId));
+      const isToggleSelect = e.ctrlKey || e.metaKey;
+      const isAddSelect = e.shiftKey;
+
+      if (isToggleSelect) {
+        if (isTodoSelectedRef.current(nodeId)) {
+          dispatch(todoNodesActions.deselectNode(nodeId));
+        } else {
+          dispatch(todoNodesActions.selectNode(nodeId));
+        }
+      } else if (isAddSelect) {
+        if (!isTodoSelectedRef.current(nodeId)) {
+          dispatch(todoNodesActions.selectNode(nodeId));
+        }
+      } else {
+        // Обычный клик — оставляем существующее поведение
+        handleClearAllSelection();
+        dispatch(todoNodesActions.selectNode(nodeId));
+      }
     },
-    [dispatch],
+    [dispatch, handleClearAllSelection],
   );
 
   const isImageSelected = useCallback(
@@ -618,21 +647,31 @@ export const CanvasWorkspace: React.FC = () => {
   isImageSelectedRef.current = isImageSelected;
 
   const handleImageClick = useCallback(
-    (e: React.MouseEvent, nodeId: string) => {
+    (e: React.MouseEvent | React.PointerEvent, nodeId: string) => {
       e.stopPropagation();
 
-      const isMultiSelect = (e.ctrlKey || e.metaKey) && e.altKey;
+      const isToggle = e.ctrlKey || e.metaKey;
 
-      if (isMultiSelect) {
+      if (isToggle) {
         if (isImageSelectedRef.current(nodeId)) {
           dispatch(deselectImageNode(nodeId));
         } else {
           dispatch(selectImageNode(nodeId));
         }
-      } else {
-        handleClearAllSelection();
-        dispatch(selectImageNode(nodeId));
+
+        return;
       }
+
+      if (e.shiftKey) {
+        if (!isImageSelectedRef.current(nodeId)) {
+          dispatch(selectImageNode(nodeId));
+        }
+
+        return;
+      }
+
+      handleClearAllSelection();
+      dispatch(selectImageNode(nodeId));
     },
     [dispatch, handleClearAllSelection],
   );
@@ -694,12 +733,115 @@ export const CanvasWorkspace: React.FC = () => {
     [convertScreenToCanvas, handleCreateNode],
   );
 
+  const getDragGroup = useCallback(
+    (
+      nodeId: string,
+      nodeType: "todo" | "image" | "plugin",
+      nodePosition: { x: number; y: number },
+    ) => {
+      // Обычное перетаскивание невыделенной ноды
+      // не должно захватывать остальные выделенные элементы.
+      const isNodeSelected =
+        nodeType === "todo"
+          ? selectedNodes.some((node) => node.id === nodeId)
+          : nodeType === "image"
+            ? selectedImageNodes.some((node) => node.id === nodeId)
+            : selectedPluginNodeIds.includes(nodeId);
+
+      if (!isNodeSelected) {
+        return undefined;
+      }
+
+      const group = [
+        ...selectedNodes.map((node) => ({
+          nodeId: node.id,
+          nodeType: "todo" as const,
+          nodePosition: { ...node.position },
+        })),
+        ...selectedImageNodes.map((node) => ({
+          nodeId: node.id,
+          nodeType: "image" as const,
+          nodePosition: { ...node.position },
+        })),
+        ...currentCanvasPluginNodes
+          .filter((node: any) => selectedPluginNodeIds.includes(node.id))
+          .map((node: any) => ({
+            nodeId: node.id,
+            nodeType: "plugin" as const,
+            nodePosition: { ...node.position },
+          })),
+      ];
+
+      // Если выделена только одна нода, используем старый сценарий.
+      if (group.length <= 1) return undefined;
+
+      // Защита от устаревшей позиции основной ноды.
+      return group.map((node) =>
+        node.nodeId === nodeId && node.nodeType === nodeType
+          ? { ...node, nodePosition: { ...nodePosition } }
+          : node,
+      );
+    },
+    [
+      selectedNodes,
+      selectedImageNodes,
+      selectedPluginNodeIds,
+      currentCanvasPluginNodes,
+    ],
+  );
+
+  const getDragPosition = useCallback(
+    (
+      nodeId: string,
+      nodeType: "todo" | "image" | "plugin",
+      fallbackPosition: { x: number; y: number },
+    ) => {
+      if (!drag) return undefined;
+
+      const isPrimary = drag.nodeId === nodeId && drag.nodeType === nodeType;
+
+      const groupNode = drag.groupNodes?.find(
+        (node) => node.nodeId === nodeId && node.nodeType === nodeType,
+      );
+
+      if (!isPrimary && !groupNode) return undefined;
+
+      const delta = {
+        x: drag.currentPosition.x - drag.initialPosition.x,
+        y: drag.currentPosition.y - drag.initialPosition.y,
+      };
+
+      const initialPosition = isPrimary
+        ? drag.initialPosition
+        : groupNode!.initialPosition;
+
+      return {
+        x: initialPosition.x + delta.x,
+        y: initialPosition.y + delta.y,
+      };
+    },
+    [drag],
+  );
   // Обработчик для перетаскивания плагин-нод
   const handlePluginDragStart = useCallback(
-    (event: React.PointerEvent, nodeId: string, position: { x: number; y: number }) => {
-      startDrag({ nodeId, nodeType: "plugin", nodePosition: position, clientX: event.clientX, clientY: event.clientY, pointerId: event.pointerId });
+    (
+      event: React.PointerEvent,
+      nodeId: string,
+      position: { x: number; y: number },
+    ) => {
+      const groupNodes = getDragGroup(nodeId, "plugin", position);
+
+      startDrag({
+        nodeId,
+        nodeType: "plugin",
+        nodePosition: position,
+        clientX: event.clientX,
+        clientY: event.clientY,
+        pointerId: event.pointerId,
+        ...(groupNodes ? { groupNodes } : {}),
+      });
     },
-    [startDrag],
+    [getDragGroup, startDrag],
   );
 
   // ============================================
@@ -756,11 +898,20 @@ export const CanvasWorkspace: React.FC = () => {
   useEffect(() => {
     if (!drag) return;
     const exists =
-      (drag.nodeType === "todo" && currentCanvasNodes.some((node) => node.id === drag.nodeId)) ||
-      (drag.nodeType === "image" && imageNodes.some((node) => node.id === drag.nodeId)) ||
-      (drag.nodeType === "plugin" && currentCanvasPluginNodes.some((node) => node.id === drag.nodeId));
+      (drag.nodeType === "todo" &&
+        currentCanvasNodes.some((node) => node.id === drag.nodeId)) ||
+      (drag.nodeType === "image" &&
+        imageNodes.some((node) => node.id === drag.nodeId)) ||
+      (drag.nodeType === "plugin" &&
+        currentCanvasPluginNodes.some((node) => node.id === drag.nodeId));
     if (!exists) cancelDrag();
-  }, [drag, currentCanvasNodes, imageNodes, currentCanvasPluginNodes, cancelDrag]);
+  }, [
+    drag,
+    currentCanvasNodes,
+    imageNodes,
+    currentCanvasPluginNodes,
+    cancelDrag,
+  ]);
 
   // Clipboard permission
   useEffect(() => {
@@ -1189,8 +1340,20 @@ export const CanvasWorkspace: React.FC = () => {
         onDragLeave={handleDragLeave}
         onDrop={handleCanvasDrop}
         onClick={(e) => {
-          if (e.button === 0 && !e.altKey && !isDragging)
+          // Очищаем выделение только при клике
+          // непосредственно по пустому холсту.
+          if (e.target !== e.currentTarget) return;
+
+          if (
+            e.button === 0 &&
+            !e.altKey &&
+            !e.ctrlKey &&
+            !e.metaKey &&
+            !e.shiftKey &&
+            !isDragging
+          ) {
             handleClearAllSelection();
+          }
         }}
         onDoubleClick={handleCanvasDoubleClick}
         onContextMenu={handleCanvasContextMenu}
@@ -1221,9 +1384,23 @@ export const CanvasWorkspace: React.FC = () => {
               onClick={handleTodoClick}
               onDoubleClick={handleTodoDoubleClick}
               isSelected={isTodoSelected(node.id)}
-              isDragging={drag?.nodeType === "todo" && drag.nodeId === node.id}
-              dragPosition={drag?.nodeType === "todo" && drag.nodeId === node.id ? drag.currentPosition : undefined}
-              onDragStart={(event, nodeId, position) => startDrag({ nodeId, nodeType: "todo", nodePosition: position, clientX: event.clientX, clientY: event.clientY, pointerId: event.pointerId })}
+              isDragging={Boolean(
+                getDragPosition(node.id, "todo", node.position),
+              )}
+              dragPosition={getDragPosition(node.id, "todo", node.position)}
+              onDragStart={(event, nodeId, position) => {
+                const groupNodes = getDragGroup(nodeId, "todo", position);
+
+                startDrag({
+                  nodeId,
+                  nodeType: "todo",
+                  nodePosition: position,
+                  clientX: event.clientX,
+                  clientY: event.clientY,
+                  pointerId: event.pointerId,
+                  ...(groupNodes ? { groupNodes } : {}),
+                });
+              }}
             />
           ))}
 
@@ -1275,9 +1452,23 @@ export const CanvasWorkspace: React.FC = () => {
               key={node.id}
               node={node}
               isSelected={isImageSelected(node.id)}
-              isDragging={drag?.nodeType === "image" && drag.nodeId === node.id}
-              dragPosition={drag?.nodeType === "image" && drag.nodeId === node.id ? drag.currentPosition : undefined}
-              onDragStart={(event, nodeId, position) => startDrag({ nodeId, nodeType: "image", nodePosition: position, clientX: event.clientX, clientY: event.clientY, pointerId: event.pointerId })}
+              isDragging={Boolean(
+                getDragPosition(node.id, "image", node.position),
+              )}
+              dragPosition={getDragPosition(node.id, "image", node.position)}
+              onDragStart={(event, nodeId, position) => {
+                const groupNodes = getDragGroup(nodeId, "image", position);
+
+                startDrag({
+                  nodeId,
+                  nodeType: "image",
+                  nodePosition: position,
+                  clientX: event.clientX,
+                  clientY: event.clientY,
+                  pointerId: event.pointerId,
+                  ...(groupNodes ? { groupNodes } : {}),
+                });
+              }}
               viewport={viewport}
               skipLoading={justUploadedIds.has(node.id)}
               onClick={handleImageClick}
@@ -1293,15 +1484,23 @@ export const CanvasWorkspace: React.FC = () => {
               key={node.id}
               style={{
                 position: "absolute",
-                left: drag?.nodeType === "plugin" && drag.nodeId === node.id ? drag.currentPosition.x : node.position?.x || 100,
-                top: drag?.nodeType === "plugin" && drag.nodeId === node.id ? drag.currentPosition.y : node.position?.y || 100,
+                left:
+                  drag?.nodeType === "plugin" && drag.nodeId === node.id
+                    ? drag.currentPosition.x
+                    : node.position?.x || 100,
+                top:
+                  drag?.nodeType === "plugin" && drag.nodeId === node.id
+                    ? drag.currentPosition.y
+                    : node.position?.y || 100,
                 zIndex: node.zIndex || 10,
               }}
             >
               <PluginNodeRenderer
                 node={node}
                 isSelected={selectedPluginNodeIds.includes(node.id)}
-                isDragging={drag?.nodeType === "plugin" && drag.nodeId === node.id}
+                isDragging={
+                  drag?.nodeType === "plugin" && drag.nodeId === node.id
+                }
                 onUpdate={(updates) =>
                   dispatch(updatePluginNode({ id: node.id, ...updates }))
                 }
@@ -1312,17 +1511,29 @@ export const CanvasWorkspace: React.FC = () => {
                 onDragStart={handlePluginDragStart}
                 onClick={(e, nodeId) => {
                   e.stopPropagation();
-                  const isMultiSelect = (e.ctrlKey || e.metaKey) && e.altKey;
-                  if (isMultiSelect) {
+
+                  const isToggle = e.ctrlKey || e.metaKey;
+
+                  if (isToggle) {
                     if (selectedPluginNodeIds.includes(nodeId)) {
                       dispatch(deselectPluginNode(nodeId));
                     } else {
                       dispatch(selectPluginNode(nodeId));
                     }
-                  } else {
-                    handleClearAllSelection();
-                    dispatch(selectPluginNode(nodeId));
+
+                    return;
                   }
+
+                  if (e.shiftKey) {
+                    if (!selectedPluginNodeIds.includes(nodeId)) {
+                      dispatch(selectPluginNode(nodeId));
+                    }
+
+                    return;
+                  }
+
+                  handleClearAllSelection();
+                  dispatch(selectPluginNode(nodeId));
                 }}
                 onDoubleClick={(e, nodeId) => {
                   e.stopPropagation();
@@ -1350,7 +1561,6 @@ export const CanvasWorkspace: React.FC = () => {
             </div>
           ))}
         </div>
-
 
         <ImageDropOverlay
           isVisible={isDraggingImage}

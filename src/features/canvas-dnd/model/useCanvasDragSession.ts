@@ -17,6 +17,7 @@ export interface CanvasDragSession {
   grabOffset: Point;
   pointerScreen: Point;
   pointerId: number;
+  groupNodes: CanvasDragGroupNode[];
 }
 
 interface Viewport {
@@ -31,6 +32,12 @@ export interface StartCanvasDragOptions {
   clientX: number;
   clientY: number;
   pointerId: number;
+}
+
+export interface CanvasDragGroupNode {
+  nodeId: string;
+  nodeType: CanvasNodeType;
+  initialPosition: Point;
 }
 
 interface UseCanvasDragSessionOptions {
@@ -50,6 +57,7 @@ export function useCanvasDragSession({ canvasRef, viewport, onCommit }: UseCanva
   const viewportRef = useRef(viewport);
   const commitRef = useRef(onCommit);
   const rafRef = useRef<number | null>(null);
+
 
   useEffect(() => {
     viewportRef.current = viewport;
@@ -90,11 +98,44 @@ export function useCanvasDragSession({ canvasRef, viewport, onCommit }: UseCanva
     const initialPosition = { ...options.nodePosition };
     const pointerScreen = { x: options.clientX, y: options.clientY };
     const pointerCanvas = screenToCanvas(pointerScreen, canvasRect(canvas), viewportRef.current);
+    const groupNodes: CanvasDragGroupNode[] = options.groupNodes
+      ? options.groupNodes.map((node) => ({
+        nodeId: node.nodeId,
+        nodeType: node.nodeType,
+        initialPosition: { ...node.nodePosition },
+      }))
+      : [
+        {
+          nodeId: options.nodeId,
+          nodeType: options.nodeType,
+          initialPosition: { ...initialPosition },
+        },
+      ];
+
+    // На случай, если вызывающий код не включил основную ноду в группу.
+    if (
+      !groupNodes.some(
+        (node) =>
+          node.nodeId === options.nodeId &&
+          node.nodeType === options.nodeType,
+      )
+    ) {
+      groupNodes.unshift({
+        nodeId: options.nodeId,
+        nodeType: options.nodeType,
+        initialPosition: { ...initialPosition },
+      });
+    }
+
     const session: CanvasDragSession = {
-      nodeId: options.nodeId, nodeType: options.nodeType, initialPosition,
+      nodeId: options.nodeId,
+      nodeType: options.nodeType,
+      initialPosition,
       currentPosition: initialPosition,
-      grabOffset: getGrabOffset(pointerCanvas, initialPosition), pointerScreen,
+      grabOffset: getGrabOffset(pointerCanvas, initialPosition),
+      pointerScreen,
       pointerId: options.pointerId,
+      groupNodes,
     };
     dragRef.current = session;
     setDrag(session);
@@ -110,10 +151,37 @@ export function useCanvasDragSession({ canvasRef, viewport, onCommit }: UseCanva
     };
     const finish = (event: PointerEvent) => {
       const session = dragRef.current;
+
       if (!session || session.pointerId !== event.pointerId) return;
-      const position = positionFor({ ...session, pointerScreen: { x: event.clientX, y: event.clientY } });
+
+      const position = positionFor({
+        ...session,
+        pointerScreen: {
+          x: event.clientX,
+          y: event.clientY,
+        },
+      });
+
+      const delta = {
+        x: position.x - session.initialPosition.x,
+        y: position.y - session.initialPosition.y,
+      };
+
+      // Сохраняем позиции всех нод с одинаковым смещением.
+      const nodesToCommit = session.groupNodes.map((node) => ({
+        nodeId: node.nodeId,
+        nodeType: node.nodeType,
+        position: {
+          x: node.initialPosition.x + delta.x,
+          y: node.initialPosition.y + delta.y,
+        },
+      }));
+
       cancelDrag();
-      commitRef.current({ nodeId: session.nodeId, nodeType: session.nodeType, position });
+
+      for (const node of nodesToCommit) {
+        commitRef.current(node);
+      }
     };
     const abort = (event: PointerEvent) => {
       if (dragRef.current?.pointerId === event.pointerId) cancelDrag();
