@@ -175,12 +175,11 @@ export const CanvasWorkspace: React.FC = () => {
   const isDragging = drag !== null;
 
   const {
-    // marquee,
-    // handleStartMarquee,
-    // handleUpdateMarquee,
-    // handleEndMarquee,
+    handleStartMarquee,
+    handleUpdateMarquee,
+    handleEndMarquee,
     getMarqueeRect,
-    // getNodesInRect,
+    getNodesInRect,
     isActive: isMarqueeActive,
   } = useMarqueeSelection();
 
@@ -194,6 +193,38 @@ export const CanvasWorkspace: React.FC = () => {
   } = useImageDrop();
 
   const { uploadImages, uploadingImages, justUploadedIds } = useImageUpload();
+
+  const getCanvasPoint = useCallback(
+    (clientX: number, clientY: number) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return null;
+
+      const rect = canvas.getBoundingClientRect();
+
+      return {
+        x: (clientX - rect.left - viewport.position.x) / viewport.scale,
+        y: (clientY - rect.top - viewport.position.y) / viewport.scale,
+      };
+    },
+    [viewport.position.x, viewport.position.y, viewport.scale],
+  );
+
+  const finishMarqueeSelection = useCallback(
+    (todoIds: string[], imageIds: string[]) => {
+      dispatch(todoNodesActions.clearSelection());
+      dispatch(clearImageSelection());
+      clearSelection();
+
+      todoIds.forEach((id) => {
+        dispatch(todoNodesActions.selectNode(id));
+      });
+
+      imageIds.forEach((id) => {
+        dispatch(selectImageNode(id));
+      });
+    },
+    [dispatch, clearSelection],
+  );
 
   // ============================================
   // ВСЕ useMemo и useCallback - ДО useEffect
@@ -608,6 +639,19 @@ export const CanvasWorkspace: React.FC = () => {
     [dispatch, handleClearAllSelection],
   );
 
+  const handleCanvasMouseMove = useCallback(
+    (e: MouseEvent) => {
+      handlePanMove(e);
+
+      const point = getCanvasPoint(e.clientX, e.clientY);
+      if (point) {
+        marqueeMovedRef.current = true;
+        handleUpdateMarquee(point);
+      }
+    },
+    [handlePanMove, isMarqueeActive, getCanvasPoint, handleUpdateMarquee],
+  );
+
   const handleTodoDoubleClick = useCallback(
     (e: React.MouseEvent, nodeId: string) => {
       e.stopPropagation();
@@ -645,6 +689,8 @@ export const CanvasWorkspace: React.FC = () => {
 
   const isImageSelectedRef = useRef(isImageSelected);
   isImageSelectedRef.current = isImageSelected;
+
+  const marqueeMovedRef = useRef(false);
 
   const handleImageClick = useCallback(
     (e: React.MouseEvent | React.PointerEvent, nodeId: string) => {
@@ -930,6 +976,42 @@ export const CanvasWorkspace: React.FC = () => {
       requestPermission();
     }
   }, []);
+
+  const handleCanvasMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      // Сохраняем существующее панорамирование.
+      handlePanStart(e);
+
+      // Marquee запускается только обычной ЛКМ по пустому холсту.
+      if (e.button !== 0 || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) {
+        return;
+      }
+
+      // Не начинаем рамку, если кликнули по узлу или интерактивному элементу.
+      const target = e.target as HTMLElement;
+
+      if (
+        target.closest(
+          [
+            "[data-node-id]",
+            "button",
+            "input",
+            "textarea",
+            "select",
+            '[contenteditable="true"]',
+          ].join(","),
+        )
+      ) {
+        return;
+      }
+
+      const point = getCanvasPoint(e.clientX, e.clientY);
+      if (!point) return;
+      marqueeMovedRef.current = false;
+      handleStartMarquee(point);
+    },
+    [handlePanStart, getCanvasPoint, handleStartMarquee],
+  );
 
   // Keyboard shortcuts (оставляем без изменений, он длинный)
   useEffect(() => {
@@ -1265,9 +1347,34 @@ export const CanvasWorkspace: React.FC = () => {
   ]);
 
   // Panning handlers
+
   useEffect(() => {
-    const handleGlobalMouseMove = (e: MouseEvent) => handlePanMove(e);
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      handleCanvasMouseMove(e);
+    };
+
     const handleGlobalMouseUp = () => {
+      if (isMarqueeActive) {
+        // Сначала вычисляем пересечения, пока состояние рамки ещё доступно.
+        const { todoIds, imageIds } = getNodesInRect(
+          currentCanvasNodes.map((node: any) => ({
+            id: node.id,
+            type: "todo" as const,
+            position: node.position,
+            size: node.size ?? { width: 280, height: 150 },
+          })),
+          imageNodes.map((node: any) => ({
+            id: node.id,
+            type: "image" as const,
+            position: node.position,
+            size: node.size ?? { width: 300, height: 200 },
+          })),
+        );
+
+        handleEndMarquee();
+        finishMarqueeSelection(todoIds, imageIds);
+      }
+
       handlePanEnd();
       document.body.style.cursor = "";
     };
@@ -1279,7 +1386,16 @@ export const CanvasWorkspace: React.FC = () => {
       document.removeEventListener("mousemove", handleGlobalMouseMove);
       document.removeEventListener("mouseup", handleGlobalMouseUp);
     };
-  }, [handlePanMove, handlePanEnd]);
+  }, [
+    handleCanvasMouseMove,
+    isMarqueeActive,
+    getNodesInRect,
+    currentCanvasNodes,
+    imageNodes,
+    handleEndMarquee,
+    finishMarqueeSelection,
+    handlePanEnd,
+  ]);
 
   useEffect(() => {
     if (isDragging) {
@@ -1335,11 +1451,15 @@ export const CanvasWorkspace: React.FC = () => {
         className={`${styles.canvas} ${viewport.isPanning ? styles.panning : ""}`}
         style={{ background: canvasBackground }}
         data-project-id={projectId}
-        onMouseDown={handlePanStart}
+        onMouseDown={handleCanvasMouseDown}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleCanvasDrop}
         onClick={(e) => {
+          if (marqueeMovedRef.current) {
+            marqueeMovedRef.current = false;
+            return;
+          }
           // Очищаем выделение только при клике
           // непосредственно по пустому холсту.
           if (e.target !== e.currentTarget) return;

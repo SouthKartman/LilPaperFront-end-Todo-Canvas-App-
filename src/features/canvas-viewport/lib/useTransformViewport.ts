@@ -72,6 +72,8 @@ export const useEnhancedViewport = () => {
     }
   }, [dispatch]);
 
+
+
   // Панорамирование (вызывается из глобального обработчика)
   const handlePanMove = useCallback((e: MouseEvent) => {
     if (!isPanning.current) return;
