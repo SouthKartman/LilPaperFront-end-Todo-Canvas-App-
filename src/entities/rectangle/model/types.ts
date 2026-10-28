@@ -1,0 +1,1 @@
+export interface RectangleNode { id: string; type: 'rectangle'; pageId: string; parentFrameId?: string; position: { x: number; y: number }; size: { width: number; height: number }; fill: string; cornerRadius: number; zIndex: number; createdAt: string; updatedAt: string; }

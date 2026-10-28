@@ -11,6 +11,9 @@ import viewportReducer from '@features/canvas-viewport/model/slice'
 import { autoSaveMiddleware } from '@features/storage/model/autoSaveMiddleware';
 import imageNodesReducer from '@features/image-upload/model/slice'; // ✅ ИМПОРТ ДОБАВЛЕН
 import pluginNodesReducer from '@features/plugin-nodes/model/slice';
+import frameNodesReducer from '@features/frame-nodes/model/slice';
+import textNodesReducer from '@features/text-nodes/model/slice';
+import rectangleNodesReducer from '@features/rectangle-nodes/model/slice';
 
 // 🆕 ИМПОРТИРУЕМ РЕДЬЮСЕР ПРОЕКТА
 import projectReducer from '@features/project-management/model/slice'
@@ -72,6 +75,9 @@ const rootReducer = combineReducers({
   imageNodes: imageNodesReducer, // ✅ ДОБАВЛЕНО - редьюсер для изображений
   selection: selectionReducer,
   pluginNodes: pluginNodesReducer,
+  frameNodes: frameNodesReducer,
+  textNodes: textNodesReducer,
+  rectangleNodes: rectangleNodesReducer,
   // canvasToolbar: canvasToolbarReducer,
   // propertiesPanel: propertiesPanelReducer,
   // selection: selectionReducer,

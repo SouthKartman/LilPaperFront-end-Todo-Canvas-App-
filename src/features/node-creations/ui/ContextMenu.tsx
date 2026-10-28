@@ -9,6 +9,8 @@ import { PluginRegistry } from '@entities/plugin-node/model/pluginRegistry';
 import { nanoid } from 'nanoid';
 import { addPluginNode } from '@features/plugin-nodes/model/slice';
 import { createTodoAtPosition } from '@features/todo-nodes/model/slice';
+import { createFrame } from '@features/frame-nodes/model/slice';
+import { createRectangle } from '@features/rectangle-nodes/model/slice';
 import { 
   deleteTodoFromDB, 
   deleteMultipleTodosFromDB,
@@ -167,6 +169,18 @@ export const ContextMenu: React.FC = () => {
             }));
           }
           break;
+
+        case 'CREATE_FRAME':
+          if (item.payload?.position) {
+            const pageId = getContextPageId(context);
+            if (pageId) dispatch(createFrame({ position: item.payload.position, pageId }));
+          }
+          break;
+        case 'CREATE_RECTANGLE': {
+          const pageId = getContextPageId(context);
+          if (pageId && item.payload?.position) dispatch(createRectangle({ pageId, position: item.payload.position }));
+          break;
+        }
           
         case 'CREATE_PLUGIN_NODE':
           if (item.pluginId) {

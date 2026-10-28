@@ -84,6 +84,13 @@ const PLUGIN_SAVE_ACTIONS = [
   'pluginNodes/deleteMultiplePluginNodes',
 ];
 
+const FRAME_SAVE_ACTIONS = [
+  'frameNodes/createFrame', 'frameNodes/importFrames', 'frameNodes/updateFrame',
+  'frameNodes/moveFrame', 'frameNodes/resizeFrame', 'frameNodes/deleteFrame',
+];
+const TEXT_SAVE_ACTIONS = ['textNodes/createText', 'textNodes/importTexts', 'textNodes/updateText', 'textNodes/moveText', 'textNodes/deleteText'];
+const RECTANGLE_SAVE_ACTIONS = ['rectangleNodes/createRectangle', 'rectangleNodes/importRectangles', 'rectangleNodes/updateRectangle', 'rectangleNodes/deleteRectangle'];
+
 const IMAGE_DELETE_ACTIONS = new Set([
 
   'imageNodes/deleteImageNode',
@@ -653,6 +660,9 @@ async function saveUnifiedNodes(
   const todos = Object.values(state.todoNodes?.nodes ?? {});
   const images = Object.values(state.imageNodes?.nodes ?? {});
   const plugins = Object.values(state.pluginNodes?.nodes ?? {});
+  const frames = Object.values(state.frameNodes?.nodes ?? {});
+  const texts = Object.values(state.textNodes?.nodes ?? {});
+  const rectangles = Object.values(state.rectangleNodes?.nodes ?? {});
 
   const nodes: DBNode[] = [
     ...todos
@@ -666,6 +676,11 @@ async function saveUnifiedNodes(
     ...plugins
       .map(node => createDBNode(node, 'iframe', state))
       .filter((node): node is DBNode => node !== null),
+    ...frames
+      .map(node => createDBNode(node, 'frame', state))
+      .filter((node): node is DBNode => node !== null),
+    ...texts.map(node => createDBNode(node, 'text', state)).filter((node): node is DBNode => node !== null),
+    ...rectangles.map(node => createDBNode(node, 'rectangle', state)).filter((node): node is DBNode => node !== null),
   ];
 
   await enqueueUnifiedNodeWrite(async () => {
@@ -761,6 +776,24 @@ export const autoSaveMiddleware: Middleware = store => next => action => {
       await saveUnifiedNodes(store.getState() as RootState);
     });
   }
+
+  if (FRAME_SAVE_ACTIONS.includes(actionType)) {
+    const currentAfterReducer = store.getState() as RootState;
+    const before = previousState.frameNodes?.nodes ?? {};
+    const after = currentAfterReducer.frameNodes?.nodes ?? {};
+    const deleted = actionType === 'frameNodes/deleteFrame'
+      ? Object.keys(before).filter(id => !(id in after)).map(id => ({ id, type: 'frame' as const }))
+      : [];
+    void debounce('frames', async () => {
+      await saveUnifiedNodes(store.getState() as RootState, deleted);
+    });
+  }
+  if (TEXT_SAVE_ACTIONS.includes(actionType)) {
+    const before = previousState.textNodes?.nodes ?? {}; const after = (store.getState() as RootState).textNodes?.nodes ?? {};
+    const deleted = actionType === 'textNodes/deleteText' ? Object.keys(before).filter(id => !(id in after)).map(id => ({ id, type: 'text' as const })) : [];
+    debounce('texts', async () => saveUnifiedNodes(store.getState() as RootState, deleted));
+  }
+  if (RECTANGLE_SAVE_ACTIONS.includes(actionType)) debounce('rectangles', async () => saveUnifiedNodes(store.getState() as RootState));
 
   if (IMAGE_DELETE_ACTIONS.has(actionType)) {
 
@@ -894,6 +927,11 @@ export const autoSaveMiddleware: Middleware = store => next => action => {
 
       .filter(Boolean);
 
+    const frameIds = Object.values(previousState.frameNodes?.nodes ?? {})
+      .filter(frame => pageIds.has(frame.pageId))
+      .map(frame => frame.id)
+      .filter(Boolean);
+
     if (imageIds.length > 0) {
 
       store.dispatch({ type: 'imageNodes/deleteImageNodes', payload: imageIds });
@@ -904,6 +942,10 @@ export const autoSaveMiddleware: Middleware = store => next => action => {
 
       store.dispatch({ type: 'pluginNodes/deleteMultiplePluginNodes', payload: pluginIds });
 
+    }
+
+    for (const frameId of frameIds) {
+      store.dispatch({ type: 'frameNodes/deleteFrame', payload: frameId });
     }
 
     for (const todoId of todoIds) {

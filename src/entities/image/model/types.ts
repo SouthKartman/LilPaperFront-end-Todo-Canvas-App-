@@ -7,6 +7,8 @@ export interface ImageNode {
   position: { x: number; y: number };
   size: { width: number; height: number };
   zIndex: number;
+  /** Frame container. When set, position is relative to the Frame origin. */
+  parentFrameId?: string;
   
   // 🆕 ИЗМЕНЕНО: теперь храним путь к файлу, а не base64
   filePath: string;           // Путь к файлу (например: /images/projects/project-1/image-123.jpg)

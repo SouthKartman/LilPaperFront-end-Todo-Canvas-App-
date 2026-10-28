@@ -33,6 +33,7 @@ interface ImageNodeProps {
     nodeId: string,
     position: { x: number; y: number },
   ) => void;
+  clipPath?: string;
 }
 
 export const ImageNode: React.FC<ImageNodeProps> = ({
@@ -48,6 +49,7 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
   isDragging = false,
   dragPosition,
   onDragStart,
+  clipPath,
 }) => {
   const dispatch = useAppDispatch();
   const nodeRef = useRef<HTMLDivElement>(null);
@@ -255,6 +257,7 @@ export const ImageNode: React.FC<ImageNodeProps> = ({
     width: node.size.width,
     height: node.size.height,
     zIndex: node.zIndex,
+    clipPath,
   };
 
   // Если skipLoading=true и изображение еще не загружено, показываем плейсхолдер без состояния загрузки

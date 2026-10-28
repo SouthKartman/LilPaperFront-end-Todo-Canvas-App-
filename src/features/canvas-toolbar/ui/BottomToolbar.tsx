@@ -11,11 +11,15 @@ import { useEnhancedViewport } from "@features/canvas-viewport/lib/useTransformV
 interface BottomToolbarProps {
   onAddIframe?: (url: string) => void;
   getCenterPosition?: () => { x: number; y: number };
+  isTextToolActive?: boolean;
+  onTextToolToggle?: () => void;
 }
 
 export const BottomToolbar: React.FC<BottomToolbarProps> = ({
   onAddIframe,
   getCenterPosition,
+  isTextToolActive = false,
+  onTextToolToggle,
 }) => {
   const { handleToggleGrid } = useEnhancedViewport();
 
@@ -117,7 +121,7 @@ export const BottomToolbar: React.FC<BottomToolbarProps> = ({
         <div className={styles["toolbar-container"]}>
           <button
             className={styles["toolbar-btn"]}
-            title="Добавить веб-страницу"
+            title="Курсор"
           >
             <span className={styles["toolbar-btn-icon"]}>
               <svg
@@ -190,8 +194,9 @@ export const BottomToolbar: React.FC<BottomToolbarProps> = ({
 
           {/* text */}
           <button
-            className={styles["toolbar-btn"]}
-            title="Добавить веб-страницу"
+            className={`${styles["toolbar-btn"]} ${isTextToolActive ? styles.active : ""}`}
+            onClick={onTextToolToggle}
+            title="Текст (T)"
           >
             <span className={styles["toolbar-btn-icon"]}>
               <svg

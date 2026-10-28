@@ -7,7 +7,7 @@ import {
   type Point,
 } from "@features/canvas-viewport/lib/canvasCoordinates";
 
-export type CanvasNodeType = "todo" | "image" | "plugin";
+export type CanvasNodeType = "todo" | "image" | "plugin" | "frame" | "text" | "rectangle";
 
 export interface CanvasDragSession {
   nodeId: string;

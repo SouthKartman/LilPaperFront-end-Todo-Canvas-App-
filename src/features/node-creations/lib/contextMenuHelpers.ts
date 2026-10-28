@@ -75,5 +75,13 @@ export const createCanvasContextMenu = (position: { x: number; y: number }): Men
       actionType: 'CREATE_TODO',
       payload: { position },
     },
+    {
+      id: nanoid(),
+      label: 'Создать Frame',
+      icon: '▣',
+      actionType: 'CREATE_FRAME',
+      payload: { position },
+    },
+    { id: nanoid(), label: 'Создать прямоугольник', icon: '▭', actionType: 'CREATE_RECTANGLE', payload: { position } },
   ];
 };

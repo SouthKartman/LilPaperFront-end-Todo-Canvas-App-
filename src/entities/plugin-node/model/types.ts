@@ -13,6 +13,8 @@ export interface PluginNodeData {
   height: number;
   position: { x: number; y: number };
   pageId?: string; // 👈 ДОБАВЬТЕ ЭТО ПОЛЕ
+  /** Frame container. When set, position is relative to the Frame origin. */
+  parentFrameId?: string;
   createdAt: number;
   updatedAt: number;
   

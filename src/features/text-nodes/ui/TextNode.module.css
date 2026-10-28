@@ -1,0 +1,2 @@
+.node { position: absolute; resize: none; border: 1px solid transparent; outline: none; background: transparent; font-family: Inter, Arial, sans-serif; line-height: 1.35; overflow: hidden; }
+.node:focus, .selected { border-color: #0d99ff; box-shadow: 0 0 0 1px #0d99ff; }

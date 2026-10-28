@@ -1,4 +1,4 @@
-export type StoredNodeType = 'todo' | 'image' | 'iframe';
+export type StoredNodeType = 'todo' | 'image' | 'iframe' | 'frame' | 'text' | 'rectangle';
 
 export interface DBNode {
   id: string;

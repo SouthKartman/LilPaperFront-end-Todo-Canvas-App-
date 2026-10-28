@@ -42,6 +42,8 @@ export const canvasSyncMiddleware: Middleware = store => next => action => {
     rememberDeleted(previous.pluginNodes.nodes, [payload]);
   } else if (type === 'pluginNodes/deleteMultiplePluginNodes' && Array.isArray(payload)) {
     rememberDeleted(previous.pluginNodes.nodes, payload.filter((id): id is string => typeof id === 'string'));
+  } else if (type === 'frameNodes/deleteFrame' && typeof payload === 'string') {
+    rememberDeleted(previous.frameNodes.nodes, [payload]);
   }
 
   const result = next(action);
@@ -66,6 +68,9 @@ export const canvasSyncMiddleware: Middleware = store => next => action => {
   } else if (type === 'pluginNodes/addPluginNode') {
     const node = payload as NodeWithPage;
     if (node?.id && current.pluginNodes.nodes[node.id]) created.push(current.pluginNodes.nodes[node.id]);
+  } else if (type === 'frameNodes/createFrame') {
+    nodeIdsAddedByAction(previous.frameNodes.nodes, current.frameNodes.nodes)
+      .map(id => current.frameNodes.nodes[id]).filter(Boolean).forEach(node => created.push(node));
   }
 
   created.forEach(node => {

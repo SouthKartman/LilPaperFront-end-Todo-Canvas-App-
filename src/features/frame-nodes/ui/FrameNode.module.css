@@ -1,0 +1,56 @@
+.frame {
+  position: absolute;
+  box-sizing: border-box;
+  border-style: solid;
+  min-width: 120px;
+  min-height: 80px;
+  cursor: grab;
+  user-select: none;
+}
+.frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(128, 128, 128, 0.025);
+  pointer-events: none;
+}
+.frame.dragging {
+  cursor: grabbing;
+  opacity: 0.8;
+}
+.selected {
+  outline: 1px solid #0d99ff;
+  outline-offset: -1px;
+  box-shadow: 0 0 0 1px #0d99ff;
+}
+.label {
+  position: absolute;
+  left: 0;
+  top: -23px;
+  color: #333;
+  font:
+    500 12px/16px Inter,
+    Arial,
+    sans-serif;
+  white-space: nowrap;
+}
+.selected .label {
+  color: #0d99ff;
+}
+.nameInput { width: 130px; height: 20px; padding: 1px 4px; border: 1px solid #0d99ff; border-radius: 2px; outline: none; font: inherit; }
+.clipToggle { margin-left: 8px; padding: 1px 5px; border: 1px solid #a8a8a8; border-radius: 3px; background: #fff; color: #555; font: inherit; font-size: 10px; cursor: pointer; }
+.clipEnabled { border-color: #0d99ff; background: #0d99ff; color: #fff; }
+.resizeHandle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 1px solid #0d99ff;
+  border-radius: 2px;
+  background: #fff;
+  z-index: 2;
+}
+.handleN, .handleS { left: 50%; margin-left: -5px; cursor: ns-resize; }
+.handleE, .handleW { top: 50%; margin-top: -5px; cursor: ew-resize; }
+.handleN { top: -5px; } .handleS { bottom: -5px; } .handleE { right: -5px; } .handleW { left: -5px; }
+.handleNE { right: -5px; top: -5px; cursor: nesw-resize; } .handleSW { left: -5px; bottom: -5px; cursor: nesw-resize; }
+.handleNW { left: -5px; top: -5px; cursor: nwse-resize; } .handleSE { right: -5px; bottom: -5px; cursor: nwse-resize; }

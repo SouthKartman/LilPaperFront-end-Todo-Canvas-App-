@@ -18,7 +18,7 @@ interface WorkspaceLayoutProps {
 
 export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
   toolbar,
-  // sidebar,
+  sidebar,
   children,
 }) => {
   const dispatch = useDispatch()
@@ -70,14 +70,11 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
           {children}
         </main>
         
-      {/* Legacy */}
-
-        {/* ПРАВАЯ ПАНЕЛЬ */}
-        {/* {sidebar && (
+        {sidebar && (
           <aside className={styles.sidebar}>
             {sidebar}
           </aside>
-        )} */}
+        )}
 
       </div>
     </div>

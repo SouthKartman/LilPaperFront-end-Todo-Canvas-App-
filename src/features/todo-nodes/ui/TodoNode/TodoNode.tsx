@@ -25,6 +25,7 @@ interface TodoNodeProps {
   isDragging?: boolean;
   dragPosition?: { x: number; y: number };
   onDragStart?: (event: React.PointerEvent, nodeId: string, position: { x: number; y: number }) => void;
+  clipPath?: string;
 }
 
 
@@ -37,6 +38,7 @@ const TodoNodeComponent: React.FC<TodoNodeProps> = ({
   isDragging = false,
   dragPosition,
   onDragStart,
+  clipPath,
 }) => 
 {
   const dispatch = useAppDispatch();
@@ -243,6 +245,7 @@ const TodoNodeComponent: React.FC<TodoNodeProps> = ({
         transform: isBeingDragged ? "scale(1.05)" : "scale(1)",
         zIndex: isBeingDragged ? 1000 : node.zIndex || 1,
         backgroundColor: isSelected ? "#f0f9ff" : "#ffffff",
+        clipPath,
         boxShadow: isSelected
           ? "0 0 0 2px #3b82f6, 0 4px 6px -1px rgba(0, 0, 0, 0.1)"
           : "0 1px 3px 0 rgba(0, 0, 0, 0.1)",

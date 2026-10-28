@@ -34,7 +34,7 @@ import {
   deselectImageNode,
   deleteImageNodes,
   addImageNode,
-  moveImageNode,
+  updateImageNode,
 } from "@features/image-upload/model/slice";
 import { ImageNode } from "@features/image-upload/ui/ImageNode";
 import { useImageDrop } from "@features/image-upload/lib/useImageDrop";
@@ -69,10 +69,15 @@ import {
   selectPluginNode,
   deselectPluginNode,
   clearPluginSelection,
-  updatePluginNodePosition,
 } from "@features/plugin-nodes/model/slice";
 import { screenToCanvas } from "@/features/canvas-viewport/lib/canvasCoordinates";
 import { useCanvasDragSession } from "@features/canvas-dnd/model/useCanvasDragSession";
+import { FrameNode } from "@features/frame-nodes/ui/FrameNode";
+import { TextNode } from "@features/text-nodes/ui/TextNode";
+import { RectangleNode } from "@features/rectangle-nodes/ui/RectangleNode";
+import { selectAllRectangles, selectSelectedRectangleIds, updateRectangle, selectRectangle, clearRectangleSelection } from "@features/rectangle-nodes/model/slice";
+import { createText, selectAllTexts, selectSelectedTextIds, updateText, moveText, deleteText, selectText, clearTextSelection } from "@features/text-nodes/model/slice";
+import { selectAllFrames, selectSelectedFrameIds, moveFrame, resizeFrame, updateFrame, selectFrame, deselectFrame, clearFrameSelection, deleteFrame } from "@features/frame-nodes/model/slice";
 
 export const CanvasWorkspace: React.FC = () => {
   const { projectId } = useParams();
@@ -84,16 +89,27 @@ export const CanvasWorkspace: React.FC = () => {
   // const lastUpdateRef = useRef<number>(0);
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
   const [isSaving, setIsSaving] = useState(false);
+  const [isTextToolActive, setIsTextToolActive] = useState(false);
+  const textStartRef = useRef<{ x: number; y: number } | null>(null);
+  const textCreatedByPointerRef = useRef(false);
 
   const todoNodes = useSelector(selectAllTodoNodes);
   const selectedNodes = useSelector(selectSelectedTodoNodes);
 
-  const imageNodes = useSelector(selectCurrentCanvasImagesArray);
+  const storedImageNodes = useSelector(selectCurrentCanvasImagesArray);
   const selectedImageNodes = useSelector(selectSelectedImageNodes);
 
   // 👇 PLUGIN NODES SELECTORS
   const pluginNodes = useSelector(selectAllPluginNodes);
   const selectedPluginNodeIds = useSelector(selectSelectedPluginNodeIds);
+  const frameNodes = useSelector(selectAllFrames);
+  const selectedFrameIds = useSelector(selectSelectedFrameIds);
+  const textNodes = useSelector(selectAllTexts);
+  const selectedTextIds = useSelector(selectSelectedTextIds);
+  const rectangleNodes = useSelector(selectAllRectangles);
+  const selectedRectangleIds = useSelector(selectSelectedRectangleIds);
+  const currentPage = useSelector(selectCurrentPage);
+  const currentCanvas = useSelector(selectCurrentCanvas);
 
   // const { openQuickForm, openForm } = useTodoForm();
 
@@ -104,43 +120,81 @@ export const CanvasWorkspace: React.FC = () => {
       position,
     }: {
       nodeId: string;
-      nodeType: "todo" | "image" | "plugin";
+      nodeType: "todo" | "image" | "plugin" | "frame" | "text" | "rectangle";
       position: { x: number; y: number };
     }) => {
+      const pageFrames = frameNodes.filter(frame => frame.pageId === currentPage?.id);
+      const framesById = new Map(pageFrames.map(frame => [frame.id, frame]));
+      const globalFramePosition = (frameId: string, visited = new Set<string>()): { x: number; y: number } => {
+        const frame = framesById.get(frameId);
+        if (!frame || visited.has(frameId)) return { x: 0, y: 0 };
+        visited.add(frameId);
+        const parentPosition = frame.parentFrameId
+          ? globalFramePosition(frame.parentFrameId, visited)
+          : { x: 0, y: 0 };
+        return { x: parentPosition.x + frame.position.x, y: parentPosition.y + frame.position.y };
+      };
+      const isDescendantOfDraggedFrame = (frame: typeof pageFrames[number]) => {
+        let cursor = frame.parentFrameId;
+        const visited = new Set<string>();
+        while (cursor && !visited.has(cursor)) {
+          if (cursor === nodeId) return true;
+          visited.add(cursor);
+          cursor = framesById.get(cursor)?.parentFrameId;
+        }
+        return false;
+      };
+      const targetFrame = pageFrames
+        .filter(frame => frame.id !== nodeId && !(nodeType === "frame" && isDescendantOfDraggedFrame(frame)))
+        .map(frame => ({ frame, position: globalFramePosition(frame.id) }))
+        .find(({ frame, position: framePosition }) => position.x >= framePosition.x && position.x <= framePosition.x + frame.size.width && position.y >= framePosition.y && position.y <= framePosition.y + frame.size.height);
+      const storedPosition = targetFrame
+        ? { x: position.x - targetFrame.position.x, y: position.y - targetFrame.position.y }
+        : position;
+      const parentFrameId = targetFrame?.frame.id;
       switch (nodeType) {
         case "todo":
           dispatch(
-            todoNodesActions.moveTodo({
+            todoNodesActions.updateTodoPartial({
               id: nodeId,
-              position,
+              updates: { position: storedPosition, parentFrameId },
             }),
           );
           break;
 
         case "image":
           dispatch(
-            moveImageNode({
+            updateImageNode({
               id: nodeId,
-              position,
+              position: storedPosition,
+              parentFrameId,
             }),
           );
           break;
 
         case "plugin":
           dispatch(
-            updatePluginNodePosition({
+            updatePluginNode({
               id: nodeId,
-              position,
+              position: storedPosition,
+              parentFrameId,
             }),
           );
           break;
+        case "frame":
+          dispatch(moveFrame({ id: nodeId, position: storedPosition, parentFrameId }));
+          break;
+        case "text":
+          dispatch(moveText({ id: nodeId, position }));
+          break;
+        case "rectangle":
+          dispatch(updateRectangle({ id: nodeId, updates: { position } }));
+          break;
       }
     },
-    [dispatch],
+    [dispatch, frameNodes, currentPage?.id],
   );
 
-  const currentPage = useSelector(selectCurrentPage);
-  const currentCanvas = useSelector(selectCurrentCanvas);
   const currentCanvasId = currentCanvas?.id;
   // const canvasViewport = useSelector(selectCurrentCanvasViewport);
   // const canvasGrid = useSelector(selectCurrentCanvasGrid);
@@ -231,17 +285,88 @@ export const CanvasWorkspace: React.FC = () => {
   // ============================================
 
   // 👇 ВЫЧИСЛЯЕМЫЕ ЗНАЧЕНИЯ (useMemo)
+  const storedCanvasFrames = React.useMemo(
+    () => frameNodes.filter(node => node.pageId === currentPage?.id),
+    [frameNodes, currentPage?.id],
+  );
+
+  const storedFrameById = React.useMemo(
+    () => new Map(storedCanvasFrames.map(frame => [frame.id, frame])),
+    [storedCanvasFrames],
+  );
+
+  const frameCanvasPositionById = React.useMemo(() => {
+    const result = new Map<string, { x: number; y: number }>();
+    const resolve = (frameId: string, ancestors = new Set<string>()): { x: number; y: number } => {
+      const frame = storedFrameById.get(frameId);
+      if (!frame || ancestors.has(frameId)) return { x: 0, y: 0 };
+      const parentPosition = frame.parentFrameId
+        ? resolve(frame.parentFrameId, new Set([...ancestors, frameId]))
+        : { x: 0, y: 0 };
+      const position = { x: parentPosition.x + frame.position.x, y: parentPosition.y + frame.position.y };
+      result.set(frameId, position);
+      return position;
+    };
+    storedCanvasFrames.forEach(frame => resolve(frame.id));
+    return result;
+  }, [storedCanvasFrames, storedFrameById]);
+
+  const currentCanvasFrames = React.useMemo(
+    () => storedCanvasFrames.map(frame => ({ ...frame, position: frameCanvasPositionById.get(frame.id) || frame.position })),
+    [storedCanvasFrames, frameCanvasPositionById],
+  );
+
+  const frameById = React.useMemo(
+    () => new Map(currentCanvasFrames.map(frame => [frame.id, frame])),
+    [currentCanvasFrames],
+  );
+
+  /** Returns an element-local clip path intersecting all clipping ancestors. */
+  const clipPathInsideFrames = useCallback((node: { position: { x: number; y: number }; size?: { width: number; height: number }; width?: number; height?: number; parentFrameId?: string }) => {
+    let frameId = node.parentFrameId;
+    const visited = new Set<string>();
+    const width = node.size?.width ?? node.width ?? 0;
+    const height = node.size?.height ?? node.height ?? 0;
+    let top = 0;
+    let right = 0;
+    let bottom = 0;
+    let left = 0;
+    while (frameId && !visited.has(frameId)) {
+      visited.add(frameId);
+      const frame = frameById.get(frameId);
+      const storedFrame = storedFrameById.get(frameId);
+      if (!frame || !storedFrame) break;
+      if (frame.clipContent) {
+        top = Math.max(top, frame.position.y - node.position.y);
+        left = Math.max(left, frame.position.x - node.position.x);
+        right = Math.max(right, node.position.x + width - (frame.position.x + frame.size.width));
+        bottom = Math.max(bottom, node.position.y + height - (frame.position.y + frame.size.height));
+      }
+      frameId = storedFrame.parentFrameId;
+    }
+    if (top <= 0 && right <= 0 && bottom <= 0 && left <= 0) return undefined;
+    return `inset(${Math.max(0, top)}px ${Math.max(0, right)}px ${Math.max(0, bottom)}px ${Math.max(0, left)}px)`;
+  }, [frameById, storedFrameById]);
+
+  const positionOnCanvas = useCallback((node: { position: { x: number; y: number }; parentFrameId?: string }) => {
+    const parent = node.parentFrameId ? frameById.get(node.parentFrameId) : undefined;
+    return parent ? { x: parent.position.x + node.position.x, y: parent.position.y + node.position.y } : node.position;
+  }, [frameById]);
+
   const currentCanvasNodes = React.useMemo(() => {
     if (!currentCanvas) return [];
-    return todoNodes.filter((node: any) =>
-      currentCanvas.nodes?.includes(node.id),
-    );
-  }, [todoNodes, currentCanvas]);
+    return todoNodes.filter((node: any) => currentCanvas.nodes?.includes(node.id)).map(node => ({ ...node, position: positionOnCanvas(node) }));
+  }, [todoNodes, currentCanvas, positionOnCanvas]);
+
+  const imageNodes = React.useMemo(
+    () => storedImageNodes.map(node => ({ ...node, position: positionOnCanvas(node) })),
+    [storedImageNodes, positionOnCanvas],
+  );
 
   const currentCanvasPluginNodes = React.useMemo(() => {
     if (!currentCanvas) return [];
-    return pluginNodes.filter((node: any) => node.pageId === currentPage?.id);
-  }, [pluginNodes, currentCanvas, currentPage]);
+    return pluginNodes.filter((node: any) => node.pageId === currentPage?.id).map(node => ({ ...node, position: positionOnCanvas(node) }));
+  }, [pluginNodes, currentCanvas, currentPage, positionOnCanvas]);
 
   const todoSpatialIndex = useSpatialIndex(currentCanvasNodes);
   const imageSpatialIndex = useSpatialIndex(imageNodes);
@@ -572,6 +697,9 @@ export const CanvasWorkspace: React.FC = () => {
   const handleClearAllSelection = useCallback(() => {
     dispatch(todoNodesActions.clearSelection());
     dispatch(clearImageSelection());
+    dispatch(clearFrameSelection());
+    dispatch(clearTextSelection());
+    dispatch(clearRectangleSelection());
     if (clearPluginSelection) {
       dispatch(clearPluginSelection());
     }
@@ -774,15 +902,15 @@ export const CanvasWorkspace: React.FC = () => {
   const handleCanvasDoubleClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       const canvasPosition = convertScreenToCanvas(e.clientX, e.clientY);
-      handleCreateNode(canvasPosition, "Новая задача");
+      if (!isTextToolActive) handleCreateNode(canvasPosition, "Новая задача");
     },
-    [convertScreenToCanvas, handleCreateNode],
+    [convertScreenToCanvas, handleCreateNode, isTextToolActive],
   );
 
   const getDragGroup = useCallback(
     (
       nodeId: string,
-      nodeType: "todo" | "image" | "plugin",
+      nodeType: "todo" | "image" | "plugin" | "frame" | "text" | "rectangle",
       nodePosition: { x: number; y: number },
     ) => {
       // Обычное перетаскивание невыделенной ноды
@@ -792,7 +920,13 @@ export const CanvasWorkspace: React.FC = () => {
           ? selectedNodes.some((node) => node.id === nodeId)
           : nodeType === "image"
             ? selectedImageNodes.some((node) => node.id === nodeId)
-            : selectedPluginNodeIds.includes(nodeId);
+            : nodeType === "plugin"
+              ? selectedPluginNodeIds.includes(nodeId)
+              : nodeType === "frame"
+                ? selectedFrameIds.includes(nodeId)
+                : nodeType === "text"
+                  ? selectedTextIds.includes(nodeId)
+                  : selectedRectangleIds.includes(nodeId);
 
       if (!isNodeSelected) {
         return undefined;
@@ -802,12 +936,12 @@ export const CanvasWorkspace: React.FC = () => {
         ...selectedNodes.map((node) => ({
           nodeId: node.id,
           nodeType: "todo" as const,
-          nodePosition: { ...node.position },
+          nodePosition: { ...positionOnCanvas(node) },
         })),
         ...selectedImageNodes.map((node) => ({
           nodeId: node.id,
           nodeType: "image" as const,
-          nodePosition: { ...node.position },
+          nodePosition: { ...positionOnCanvas(node) },
         })),
         ...currentCanvasPluginNodes
           .filter((node: any) => selectedPluginNodeIds.includes(node.id))
@@ -816,6 +950,11 @@ export const CanvasWorkspace: React.FC = () => {
             nodeType: "plugin" as const,
             nodePosition: { ...node.position },
           })),
+        ...currentCanvasFrames
+          .filter(node => selectedFrameIds.includes(node.id))
+          .map(node => ({ nodeId: node.id, nodeType: "frame" as const, nodePosition: { ...node.position } })),
+        ...textNodes.filter(node => selectedTextIds.includes(node.id)).map(node => ({ nodeId: node.id, nodeType: "text" as const, nodePosition: { ...node.position } })),
+        ...rectangleNodes.filter(node => selectedRectangleIds.includes(node.id)).map(node => ({ nodeId: node.id, nodeType: "rectangle" as const, nodePosition: { ...node.position } })),
       ];
 
       // Если выделена только одна нода, используем старый сценарий.
@@ -833,13 +972,20 @@ export const CanvasWorkspace: React.FC = () => {
       selectedImageNodes,
       selectedPluginNodeIds,
       currentCanvasPluginNodes,
+      currentCanvasFrames,
+      selectedFrameIds,
+      textNodes,
+      selectedTextIds,
+      rectangleNodes,
+      selectedRectangleIds,
+      positionOnCanvas,
     ],
   );
 
   const getDragPosition = useCallback(
     (
       nodeId: string,
-      nodeType: "todo" | "image" | "plugin",
+      nodeType: "todo" | "image" | "plugin" | "frame" | "text" | "rectangle",
       fallbackPosition: { x: number; y: number },
     ) => {
       if (!drag) return undefined;
@@ -889,6 +1035,22 @@ export const CanvasWorkspace: React.FC = () => {
     },
     [getDragGroup, startDrag],
   );
+
+  const handleFrameDragStart = useCallback((event: React.PointerEvent, nodeId: string, position: { x: number; y: number }) => {
+    const groupNodes = getDragGroup(nodeId, "frame", position);
+    startDrag({ nodeId, nodeType: "frame", nodePosition: position, clientX: event.clientX, clientY: event.clientY, pointerId: event.pointerId, ...(groupNodes ? { groupNodes } : {}) });
+  }, [getDragGroup, startDrag]);
+
+  const handleFrameClick = useCallback((event: React.MouseEvent, nodeId: string) => {
+    event.stopPropagation();
+    if (event.ctrlKey || event.metaKey) {
+      dispatch(selectedFrameIds.includes(nodeId) ? deselectFrame(nodeId) : selectFrame(nodeId));
+      return;
+    }
+    if (event.shiftKey) { dispatch(selectFrame(nodeId)); return; }
+    handleClearAllSelection();
+    dispatch(selectFrame(nodeId));
+  }, [dispatch, handleClearAllSelection, selectedFrameIds]);
 
   // ============================================
   // useEffect - ПОСЛЕ всех объявлений
@@ -949,13 +1111,19 @@ export const CanvasWorkspace: React.FC = () => {
       (drag.nodeType === "image" &&
         imageNodes.some((node) => node.id === drag.nodeId)) ||
       (drag.nodeType === "plugin" &&
-        currentCanvasPluginNodes.some((node) => node.id === drag.nodeId));
+        currentCanvasPluginNodes.some((node) => node.id === drag.nodeId)) ||
+      (drag.nodeType === "frame" && currentCanvasFrames.some(node => node.id === drag.nodeId)) ||
+      (drag.nodeType === "text" && textNodes.some(node => node.id === drag.nodeId)) ||
+      (drag.nodeType === "rectangle" && rectangleNodes.some(node => node.id === drag.nodeId));
     if (!exists) cancelDrag();
   }, [
     drag,
     currentCanvasNodes,
     imageNodes,
     currentCanvasPluginNodes,
+    currentCanvasFrames,
+    textNodes,
+    rectangleNodes,
     cancelDrag,
   ]);
 
@@ -979,6 +1147,11 @@ export const CanvasWorkspace: React.FC = () => {
 
   const handleCanvasMouseDown = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
+      if (isTextToolActive && e.button === 0 && !(e.target as HTMLElement).closest('[data-node-id], button, input, textarea')) {
+        textStartRef.current = getCanvasPoint(e.clientX, e.clientY);
+        textCreatedByPointerRef.current = false;
+        return;
+      }
       // Сохраняем существующее панорамирование.
       handlePanStart(e);
 
@@ -1010,7 +1183,7 @@ export const CanvasWorkspace: React.FC = () => {
       marqueeMovedRef.current = false;
       handleStartMarquee(point);
     },
-    [handlePanStart, getCanvasPoint, handleStartMarquee],
+    [handlePanStart, getCanvasPoint, handleStartMarquee, isTextToolActive],
   );
 
   // Keyboard shortcuts (оставляем без изменений, он длинный)
@@ -1022,6 +1195,7 @@ export const CanvasWorkspace: React.FC = () => {
           selectedNodes.length === 0 &&
           selectedImageNodes.length === 0 &&
           selectedPluginNodeIds.length === 0
+          && selectedFrameIds.length === 0
         )
           return;
 
@@ -1285,6 +1459,8 @@ export const CanvasWorkspace: React.FC = () => {
             dispatch(deletePluginNode(id));
           }
         }
+        if (selectedFrameIds.length > 0) selectedFrameIds.forEach(id => dispatch(deleteFrame(id)));
+        if (selectedTextIds.length > 0) selectedTextIds.forEach(id => dispatch(deleteText(id)));
         handleClearAllSelection();
         return;
       }
@@ -1307,10 +1483,12 @@ export const CanvasWorkspace: React.FC = () => {
         pluginNodes.forEach((node) => {
           dispatch(selectPluginNode(node.id));
         });
+        currentCanvasFrames.forEach(node => dispatch(selectFrame(node.id)));
+        textNodes.filter(node => node.pageId === currentPage?.id).forEach(node => dispatch(selectText(node.id)));
 
         console.log(
           "📦 Выделено всё:",
-          currentCanvasNodes.length + imageNodes.length + pluginNodes.length,
+          currentCanvasNodes.length + imageNodes.length + pluginNodes.length + currentCanvasFrames.length,
           "элементов",
         );
         return;
@@ -1334,9 +1512,11 @@ export const CanvasWorkspace: React.FC = () => {
     selectedNodes,
     selectedImageNodes,
     selectedPluginNodeIds,
+    selectedFrameIds,
     pluginNodes,
     currentCanvasNodes,
     imageNodes,
+    currentCanvasFrames,
     dispatch,
     currentPage,
     convertScreenToCanvas,
@@ -1353,7 +1533,14 @@ export const CanvasWorkspace: React.FC = () => {
       handleCanvasMouseMove(e);
     };
 
-    const handleGlobalMouseUp = () => {
+    const handleGlobalMouseUp = (event: MouseEvent) => {
+      const textStart = textStartRef.current;
+      if (textStart && currentPage?.id) {
+        const end = getCanvasPoint(event.clientX, event.clientY) || textStart;
+        dispatch(createText({ pageId: currentPage.id, position: textStart, size: { width: Math.max(120, Math.abs(end.x - textStart.x)), height: Math.max(32, Math.abs(end.y - textStart.y)) } }));
+        textStartRef.current = null;
+        textCreatedByPointerRef.current = true;
+      }
       if (isMarqueeActive) {
         // Сначала вычисляем пересечения, пока состояние рамки ещё доступно.
         const { todoIds, imageIds } = getNodesInRect(
@@ -1392,6 +1579,9 @@ export const CanvasWorkspace: React.FC = () => {
     getNodesInRect,
     currentCanvasNodes,
     imageNodes,
+    currentPage?.id,
+    getCanvasPoint,
+    dispatch,
     handleEndMarquee,
     finishMarqueeSelection,
     handlePanEnd,
@@ -1462,6 +1652,16 @@ export const CanvasWorkspace: React.FC = () => {
           }
           // Очищаем выделение только при клике
           // непосредственно по пустому холсту.
+          if (isTextToolActive) {
+            if ((e.target as HTMLElement).closest('[data-node-id], button, input, textarea')) return;
+            if (textCreatedByPointerRef.current) {
+              textCreatedByPointerRef.current = false;
+              return;
+            }
+            const position = convertScreenToCanvas(e.clientX, e.clientY);
+            if (currentPage?.id) dispatch(createText({ pageId: currentPage.id, position }));
+            return;
+          }
           if (e.target !== e.currentTarget) return;
 
           if (
@@ -1496,6 +1696,40 @@ export const CanvasWorkspace: React.FC = () => {
           }}
         >
           {/* Todo Nodes */}
+          {/* Frames render first, so they act as Figma-like containers behind content. */}
+          {currentCanvasFrames.map(node => (
+            <FrameNode
+              key={node.id}
+              node={node}
+              isSelected={selectedFrameIds.includes(node.id)}
+              isDragging={Boolean(getDragPosition(node.id, "frame", node.position))}
+              dragPosition={getDragPosition(node.id, "frame", node.position)}
+              scale={viewport.scale}
+              clipPath={clipPathInsideFrames(node)}
+              onClick={handleFrameClick}
+              onDragStart={handleFrameDragStart}
+              onRename={(id, name) => dispatch(updateFrame({ id, updates: { name } }))}
+              onToggleClip={(id, clipContent) => dispatch(updateFrame({ id, updates: { clipContent } }))}
+              onResize={(id, size, position) => {
+                const parentId = storedFrameById.get(id)?.parentFrameId;
+                const parentPosition = parentId ? frameCanvasPositionById.get(parentId) : undefined;
+                dispatch(resizeFrame({
+                  id,
+                  size,
+                  position: parentPosition
+                    ? { x: position.x - parentPosition.x, y: position.y - parentPosition.y }
+                    : position,
+                }));
+              }}
+            />
+          ))}
+
+          {textNodes.filter(node => node.pageId === currentPage?.id).map(node => (
+            <TextNode key={node.id} node={node} selected={selectedTextIds.includes(node.id)} isDragging={Boolean(getDragPosition(node.id, "text", node.position))} dragPosition={getDragPosition(node.id, "text", node.position)} onChange={text => dispatch(updateText({ id: node.id, updates: { text } }))} onClick={event => { event.stopPropagation(); if (!event.ctrlKey && !event.metaKey) handleClearAllSelection(); dispatch(selectText(node.id)); }} onDragStart={(event, nodeId, position) => { const groupNodes = getDragGroup(nodeId, "text", position); startDrag({ nodeId, nodeType: "text", nodePosition: position, clientX: event.clientX, clientY: event.clientY, pointerId: event.pointerId, ...(groupNodes ? { groupNodes } : {}) }); }} />
+          ))}
+          {rectangleNodes.filter(node => node.pageId === currentPage?.id).map(node => <RectangleNode key={node.id} node={node} selected={selectedRectangleIds.includes(node.id)} isDragging={Boolean(getDragPosition(node.id, "rectangle", node.position))} dragPosition={getDragPosition(node.id, "rectangle", node.position)} onClick={event => { event.stopPropagation(); handleClearAllSelection(); dispatch(selectRectangle(node.id)); }} onDragStart={(event, nodeId, position) => { const groupNodes = getDragGroup(nodeId, "rectangle", position); startDrag({ nodeId, nodeType: "rectangle", nodePosition: position, clientX: event.clientX, clientY: event.clientY, pointerId: event.pointerId, ...(groupNodes ? { groupNodes } : {}) }); }} />)}
+
+          {/* Todo Nodes */}
           {visibleTodoNodes.map((node: any) => (
             <TodoNode
               key={node.id}
@@ -1508,6 +1742,7 @@ export const CanvasWorkspace: React.FC = () => {
                 getDragPosition(node.id, "todo", node.position),
               )}
               dragPosition={getDragPosition(node.id, "todo", node.position)}
+              clipPath={clipPathInsideFrames(node)}
               onDragStart={(event, nodeId, position) => {
                 const groupNodes = getDragGroup(nodeId, "todo", position);
 
@@ -1576,6 +1811,7 @@ export const CanvasWorkspace: React.FC = () => {
                 getDragPosition(node.id, "image", node.position),
               )}
               dragPosition={getDragPosition(node.id, "image", node.position)}
+              clipPath={clipPathInsideFrames(node)}
               onDragStart={(event, nodeId, position) => {
                 const groupNodes = getDragGroup(nodeId, "image", position);
 
@@ -1613,6 +1849,7 @@ export const CanvasWorkspace: React.FC = () => {
                     ? drag.currentPosition.y
                     : node.position?.y || 100,
                 zIndex: node.zIndex || 10,
+                clipPath: clipPathInsideFrames(node),
               }}
             >
               <PluginNodeRenderer
@@ -1692,7 +1929,7 @@ export const CanvasWorkspace: React.FC = () => {
       <ContextMenu />
       <QuickTodoForm />
       <TodoFormModal />
-      <BottomToolbar getCenterPosition={getCenterPosition} />
+      <BottomToolbar getCenterPosition={getCenterPosition} isTextToolActive={isTextToolActive} onTextToolToggle={() => setIsTextToolActive(active => !active)} />
       <ZoomToolbar></ZoomToolbar>
 
       {/* <div className={styles.hotkeyHint}>

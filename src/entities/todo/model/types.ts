@@ -15,6 +15,8 @@ export interface Todo {
   dueDate?: string;   // Изменено: Date → string (ISO format)
   tags: string[]
   parentId?: string
+  /** Frame container. When set, position is relative to the Frame origin. */
+  parentFrameId?: string
   assignee?: string
   position: {
     x: number

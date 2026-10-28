@@ -7,6 +7,12 @@ import { ImageIndexedDBStorage } from '@shared/api/storage/indexedDB/imageStorag
 import { importNodes } from '@features/todo-nodes/model/slice';
 import { importImages } from '@features/image-upload/model/slice';
 import { importPluginNodes } from '@features/plugin-nodes/model/slice';
+import { importFrames } from '@features/frame-nodes/model/slice';
+import type { FrameNode } from '@entities/frame/model/types';
+import { importTexts } from '@features/text-nodes/model/slice';
+import type { TextNodeData } from '@entities/text-node/model/types';
+import { importRectangles } from '@features/rectangle-nodes/model/slice';
+import type { RectangleNode } from '@entities/rectangle/model/types';
 import type { PluginNodeData } from '@entities/plugin-node/model/types';
 import { loadProjectState } from '@features/project-management/model/slice';
 import { migrationService, MigrationProgress } from './migrationUtils';
@@ -103,6 +109,24 @@ export const useIndexedDBInit = () => {
         dispatch(importPluginNodes(plugins));
         console.log(`📂 Загружено plugin nodes: ${Object.keys(plugins).length}`);
       }
+
+      const frameRows = await db.nodes.where('type').equals('frame').toArray();
+      const frames: Record<string, FrameNode> = {};
+      frameRows.forEach(row => {
+        const frame = row.data as unknown as FrameNode;
+        if (typeof frame.id === 'string') frames[frame.id] = frame;
+      });
+      if (Object.keys(frames).length > 0 && dispatch) {
+        dispatch(importFrames(frames));
+        console.log(`📂 Загружено frame nodes: ${Object.keys(frames).length}`);
+      }
+      const textRows = await db.nodes.where('type').equals('text').toArray();
+      const texts: Record<string, TextNodeData> = {};
+      textRows.forEach(row => { const text = row.data as unknown as TextNodeData; if (typeof text.id === 'string') texts[text.id] = text; });
+      if (Object.keys(texts).length > 0 && dispatch) dispatch(importTexts(texts));
+      const rectangleRows = await db.nodes.where('type').equals('rectangle').toArray(); const rectangles: Record<string, RectangleNode> = {};
+      rectangleRows.forEach(row => { const rectangle = row.data as unknown as RectangleNode; if (typeof rectangle.id === 'string') rectangles[rectangle.id] = rectangle; });
+      if (Object.keys(rectangles).length > 0 && dispatch) dispatch(importRectangles(rectangles));
 
     } catch (error) {
       console.error('❌ Ошибка загрузки данных в Redux:', error);
